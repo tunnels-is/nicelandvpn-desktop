@@ -230,7 +230,7 @@ const LaunchApp = () => {
         }
 
         {/* <TopBar toggleLoading={ToggleLoading}></TopBar> */}
-        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} />
+        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} />
 
         <div className="content-container" >
 

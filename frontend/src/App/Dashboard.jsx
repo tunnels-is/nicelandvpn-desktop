@@ -13,7 +13,6 @@ import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 const Dashboard = (props) => {
 
   const [filter, setFilter] = useState("");
-  const [prevToastID, setPrevToastID] = useState(undefined)
   const navigate = useNavigate();
   const [error, setError] = useState(undefined)
 
@@ -22,7 +21,7 @@ const Dashboard = (props) => {
   }
 
   const LogOut = () => {
-    props.toggleError(ERROR_LOGIN)
+    props.toggleError("You have been logged out")
     STORE.Cache.Clear()
   }
 

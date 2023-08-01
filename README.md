@@ -77,8 +77,7 @@ $ cd [PROJECT_ROOT]
 
 </br>
 
- - using internal plugins/modules from ReactJS is not preferred. We want to keep the complexity of this project to a minimum.
- - Any functionality that is not generally accepted will need to be reviewed on a per-case basis.
+ - We want to keep the complexity of this project to a minimum. Any ReactJS functionality that is not generally accepted will need to be reviewed on a per-case basis.
 
  - ReactJS functionality that is generally accepted:
     - useState
@@ -88,7 +87,7 @@ $ cd [PROJECT_ROOT]
 # Pull Requests
  - No copy/paste from machine learning tools.
 
-Pull requests should have a short descriptive title and a long description, listing everything that has been modified or added, but more importantly why it was modified or added. 
+Pull requests should have a short descriptive title and a long description when needed, listing everything that has been modified or added, but more importantly why it was modified or added. 
 
 
 # AdBlock sources

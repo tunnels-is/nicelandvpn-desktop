@@ -94,11 +94,11 @@ Pull requests should have a short descriptive title and a long description, list
 # AdBlock sources
  - https://github.com/badmojr/1Hosts
 
-[forks-shield]: https://img.shields.io/github/forks/tunnels-is/niceland-app?style=for-the-badge&logo=github
-[forks-url]: https://github.com/tunnels-is/niceland-app/network/members
-[stars-shield]: https://img.shields.io/github/stars/tunnels-is/niceland-app?style=for-the-badge&logo=github
-[stars-url]: https://github.com/tunnels-is/niceland-app/stargazers
-[issues-shield]: https://img.shields.io/github/issues/tunnels-is/niceland-app?style=for-the-badge&logo=github
-[issues-url]: https://github.com/tunnels-is/niceland-app/issues
+[forks-shield]: https://img.shields.io/github/forks/tunnels-is/nicelandvpn-desktop?style=for-the-badge&logo=github
+[forks-url]: https://github.com/tunnels-is/nicelandvpn-desktop/network/members
+[stars-shield]: https://img.shields.io/github/stars/tunnels-is/nicelandvpn-desktop?style=for-the-badge&logo=github
+[stars-url]: https://github.com/tunnels-is/nicelandvpn-desktop/stargazers
+[issues-shield]: https://img.shields.io/github/issues/tunnels-is/nicelandvpn-desktop?style=for-the-badge&logo=github
+[issues-url]: https://github.com/tunnels-is/nicelandvpn-desktop/issues
 <!-- [license-shield]: https://img.shields.io/github/license/umutsevdi/Logic-Circuit-Simulator.svg?style=for-the-badge -->
 <!-- [license-url]: https://github.com/umutsevdi/Logic-Circuit-Simulator/blob/main/LICENSE -->

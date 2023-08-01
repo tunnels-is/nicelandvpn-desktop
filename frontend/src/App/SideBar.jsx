@@ -178,6 +178,7 @@ const SideBar = (props) => {
                         Connection
                     </div>
                 </div>
+
                 {props.state?.ActiveRouter &&
                     <>
                         <div className="stats-item">
@@ -186,7 +187,7 @@ const SideBar = (props) => {
                         </div>
                         <div className="stats-item">
                             <div className="label">MS / QoS</div>
-                            <div className="value">{props.state.ActiveRouter.Score}{" / "}{props.state.ActiveRouter.MS} </div>
+                            <div className="value">{props.state.ActiveRouter.MS}{" / "}{props.state.ActiveRouter.Score} </div>
                         </div>
                     </>
                 }
@@ -199,14 +200,12 @@ const SideBar = (props) => {
                         </div>
                         <div className="stats-item">
                             <div className="label">MS / QoS</div>
-                            <div className="value">{props.state.ActiveAccessPoint.Router.Score}{" / "}{props.state.ActiveAccessPoint.Router.MS}</div>
+                            <div className="value">{props.state.ActiveAccessPoint.Router.MS}{" / "}{props.state.ActiveAccessPoint.Router.Score}</div>
                         </div>
-
                         <div className="stats-item">
                             <div className="label">VPN</div>
                             <div className="value">{props.state.ActiveAccessPoint.Tag}</div>
                         </div>
-
                         {props.state?.Connected &&
                             <div className="stats-item">
                                 <div className="label">Duration</div>

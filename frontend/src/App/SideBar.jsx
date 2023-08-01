@@ -1,10 +1,10 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { ActivityLogIcon, BarChartIcon, ChatBubbleIcon, DesktopIcon, EnterIcon, ExitIcon, ExternalLinkIcon, FileTextIcon, GearIcon, GlobeIcon, HamburgerMenuIcon, LinkBreak2Icon, MobileIcon, Share1Icon, } from '@radix-ui/react-icons'
 import Loader from "react-spinners/PacmanLoader";
 
-import { OpenURL } from "../../wailsjs/go/main/App";
+import { GetVersion, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
 
@@ -12,6 +12,8 @@ const SideBar = (props) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuTab, setMenuTab] = useState(1)
+    const [version, setVersion] = useState("0.0.0")
+    const [needsUpdate, setNeedsUpdate] = useState(false)
 
     let { pathname } = location
     let sp = pathname.split("/")
@@ -28,15 +30,24 @@ const SideBar = (props) => {
         navigate("/login")
     }
 
+    useEffect(() => {
+        GetVersion((x) => {
+            let user = STORE.GetUser()
+            setVersion(x)
+            if (user.Version !== x) {
+                setNeedsUpdate(true)
+            }
+        }).catch((e) => {
+            console.dir(e)
+            props.toggleError("Unknown error, please try again in a moment")
+
+        })
+
+
+    })
+
     let user = STORE.GetUser()
-    let version = STORE.Cache.Get("version")
     let hasSub = false
-    let needsUpdate = false
-    if (user && user.Version) {
-        if (user.Version !== version) {
-            needsUpdate = true
-        }
-    }
 
     if (user) {
         if (user.SubLevel === 666) {

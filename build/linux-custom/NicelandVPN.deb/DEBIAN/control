@@ -1,0 +1,5 @@
+Package: NicelandVPN
+Version: 1.1.0
+Architecture: amd64
+Maintainer: Tunnels EHF <support@nicelandvpn.is>
+Description: A mesh-network VPN made by Tunnels EHF

@@ -13,6 +13,7 @@ import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
 const Dashboard = (props) => {
 
   const [filter, setFilter] = useState("");
+  const [prevToastID, setPrevToastID] = useState(undefined)
   const navigate = useNavigate();
   const [error, setError] = useState(undefined)
 
@@ -27,7 +28,8 @@ const Dashboard = (props) => {
 
   const ConfirmQuickConnect = (country, ar) => {
 
-    toast.success((t) => (
+    toast.success((t) =>
+    (
       <div className="exit-confirm">
         <div className="text">
           Your are connecting to
@@ -43,7 +45,8 @@ const Dashboard = (props) => {
         }>Connect</button>
       </div>
 
-    ), { duration: 999999 })
+    ), { id: "connect", duration: 999999 }
+    )
   }
 
   const ConfirmConnect = (a, ar) => {
@@ -63,7 +66,7 @@ const Dashboard = (props) => {
         }>Connect</button>
         <button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
       </div>
-    ), { duration: 999999 })
+    ), { id: "connect", duration: 999999 })
 
   }
 

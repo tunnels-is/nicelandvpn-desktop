@@ -21,13 +21,14 @@ const Dashboard = (props) => {
   }
 
   const LogOut = () => {
-    props.toggleError(ERROR_LOGIN)
+    props.toggleError("You have been logged out")
     STORE.Cache.Clear()
   }
 
   const ConfirmQuickConnect = (country, ar) => {
 
-    toast.success((t) => (
+    toast.success((t) =>
+    (
       <div className="exit-confirm">
         <div className="text">
           Your are connecting to
@@ -43,7 +44,8 @@ const Dashboard = (props) => {
         }>Connect</button>
       </div>
 
-    ), { duration: 999999 })
+    ), { id: "connect", duration: 999999 }
+    )
   }
 
   const ConfirmConnect = (a, ar) => {
@@ -63,7 +65,7 @@ const Dashboard = (props) => {
         }>Connect</button>
         <button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
       </div>
-    ), { duration: 999999 })
+    ), { id: "connect", duration: 999999 })
 
   }
 

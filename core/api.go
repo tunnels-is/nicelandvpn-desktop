@@ -50,10 +50,8 @@ func ResetEverything() {
 }
 
 func CleanupWithStateLock() {
-	defer func() {
-		RecoverAndLogToFile()
-		STATE_LOCK.Unlock()
-	}()
+	defer STATE_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	DisconnectFromRouter(AS)
@@ -68,10 +66,8 @@ func CleanupWithStateLock() {
 }
 
 func SwitchRouter(Tag string) (code int, err error) {
-	defer func() {
-		RecoverAndLogToFile()
-		STATE_LOCK.Unlock()
-	}()
+	defer STATE_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	if GLOBAL_STATE.ClientStartupError {
@@ -553,10 +549,8 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 var NEXT_SERVER_REFRESH time.Time
 
 func SetRouterFile(path string) error {
-	defer func() {
-		RecoverAndLogToFile()
-		STATE_LOCK.Unlock()
-	}()
+	defer STATE_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	CreateLog("START", "")
@@ -597,10 +591,8 @@ func SetRouterFile(path string) error {
 }
 
 func SetConfig(SF *CONFIG_FORM) error {
-	defer func() {
-		RecoverAndLogToFile()
-		STATE_LOCK.Unlock()
-	}()
+	defer STATE_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	CreateLog("START", "")
@@ -673,10 +665,8 @@ func SetConfig(SF *CONFIG_FORM) error {
 }
 
 func PrepareState() {
-	defer func() {
-		RecoverAndLogToFile()
-		STATE_LOCK.Unlock()
-	}()
+	defer STATE_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	GLOBAL_STATE.EgressPackets = EGRESS_PACKETS
@@ -840,6 +830,8 @@ func DisconnectFromRouter(AdapterSettings *AdapterSettings) {
 }
 
 func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S *CLIENT_SESSION, code int, errm error) {
+	defer RecoverAndLogToFile()
+
 	var router_shared_key [32]byte
 	OTKResp := new(OTK_RESPONSE)
 	OTKReq := new(OTK_REQUEST)
@@ -853,7 +845,6 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 	var FINAL_OTK = new(OTK)
 	var FINAL_OTKR = new(OTK_REQUEST)
 	defer func() {
-		RecoverAndLogToFile()
 
 		if S != nil {
 			S.PrivateKey = nil
@@ -1085,10 +1076,10 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 
 func Connect(NS *CONTROLLER_SESSION_REQUEST, initializeRouting bool) (S *CLIENT_SESSION, code int, err error) {
 	defer func() {
-		RecoverAndLogToFile()
 		GLOBAL_STATE.Connecting = false
 		STATE_LOCK.Unlock()
 	}()
+	defer RecoverAndLogToFile()
 	STATE_LOCK.Lock()
 
 	if GLOBAL_STATE.Connecting {

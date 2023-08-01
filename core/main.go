@@ -41,9 +41,9 @@ func StartService(MONITOR chan int) {
 
 func CalculateBandwidth(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		MONITOR <- 6
 	}()
+	defer RecoverAndLogToFile()
 
 	for {
 		time.Sleep(980 * time.Millisecond)
@@ -57,13 +57,14 @@ func CalculateBandwidth(MONITOR chan int) {
 }
 
 func StateMaintenance(MONITOR chan int) {
+	defer RecoverAndLogToFile()
 	defer func() {
-		RecoverAndLogToFile()
 		time.Sleep(10 * time.Second)
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 1
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 	CleanTCPPorts()
 	CleanUDPPorts()
@@ -157,10 +158,10 @@ func StateMaintenance(MONITOR chan int) {
 	}
 
 	if BUFFER_ERROR {
-		if AS.TCPTunnelSocket != nil {
-			_ = AS.TCPTunnelSocket.Close()
-			AS.TCPTunnelSocket = nil
-		}
+		// if AS.TCPTunnelSocket != nil {
+		// 	_ = AS.TCPTunnelSocket.Close()
+		// 	AS.TCPTunnelSocket = nil
+		// }
 
 		SetGlobalStateAsDisconnected()
 		BUFFER_ERROR = false
@@ -217,11 +218,11 @@ func AutoReconnect() (connected bool) {
 func SaveConfig() (err error) {
 	var config *os.File
 	defer func() {
-		RecoverAndLogToFile()
 		if config != nil {
 			_ = config.Close()
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 	// _ = os.Remove(GLOBAL_STATE.ConfigPath)
 
@@ -262,10 +263,11 @@ func SaveConfig() (err error) {
 // var GLOBAL_STATE.ConfigPath string
 
 func LoadConfig() {
+	defer RecoverAndLogToFile()
+
 	var config *os.File
 	var err error
 	defer func() {
-		RecoverAndLogToFile()
 
 		if config != nil {
 			_ = config.Close()
@@ -651,12 +653,12 @@ func BackupSettingsToFile(NewDefault *CONNECTION_SETTINGS) {
 	}
 
 	defer func() {
-		RecoverAndLogToFile()
 
 		if backupFile != nil {
 			_ = backupFile.Close()
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 	sb, err := json.Marshal(NewDefault)
 	if err != nil {

@@ -62,6 +62,8 @@ func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int
 }
 
 func GenerateEllipticCurveAndPrivateKey() (PK *ecdsa.PrivateKey, R *OTK_REQUEST, err error) {
+	defer RecoverAndLogToFile()
+
 	E := elliptic.P521()
 	PK, err = ecdsa.GenerateKey(E, crand.Reader)
 	if err != nil {
@@ -79,10 +81,10 @@ func GenerateAEADFromPrivateKey(PK *ecdsa.PrivateKey, R *OTK_REQUEST) (AEAD ciph
 	var CCKeyb *big.Int
 	var CCKey [32]byte
 	defer func() {
-		RecoverAndLogToFile()
 		CCKeyb = nil
 		CCKey = [32]byte{}
 	}()
+	defer RecoverAndLogToFile()
 
 	CCKeyb, _ = PK.Curve.ScalarMult(R.X, R.Y, PK.D.Bytes())
 	CCKey = sha256.Sum256(CCKeyb.Bytes())

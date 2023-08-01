@@ -17,13 +17,13 @@ var PREVDNS net.IP
 
 func ReadFromLocalTunnel(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 4
 		} else {
 			CreateLog("general", "tunnel interface loop has exited")
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 	var (
 		err            error
@@ -207,12 +207,12 @@ WAITFORDEVICE:
 
 func ReadFromRouterSocket(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		if !GLOBAL_STATE.Exiting {
 			CreateErrorLog("", "Router tunnel listener exiting")
 			MONITOR <- 2
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 WAIT_FOR_TUNNEL:
 	if GLOBAL_STATE.ActiveRouter == nil {
@@ -223,6 +223,8 @@ WAIT_FOR_TUNNEL:
 	if AS.TCPTunnelSocket == nil {
 		time.Sleep(500 * time.Millisecond)
 		goto WAIT_FOR_TUNNEL
+	} else {
+		AS.TCPTunnelSocket.SetReadDeadline(time.Time{})
 	}
 
 	var (
@@ -254,7 +256,6 @@ WAIT_FOR_TUNNEL:
 	ip.TTL = 120
 	ip.DstIP = TUNNEL_ADAPTER_ADDRESS_IP
 	ip.Version = 4
-	AS.TCPTunnelSocket.SetReadDeadline(time.Time{})
 
 	for {
 

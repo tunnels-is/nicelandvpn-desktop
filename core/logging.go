@@ -126,9 +126,9 @@ func CreateLog(Type string, Line ...interface{}) {
 
 func StartLogQueueProcessor(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		MONITOR <- 8
 	}()
+	defer RecoverAndLogToFile()
 
 	var assigned bool = false
 	CreateLog("general", "Logging module started")

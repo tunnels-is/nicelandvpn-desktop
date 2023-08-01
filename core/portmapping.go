@@ -9,10 +9,8 @@ import (
 // }
 
 func GetUDPMapping(ip [4]byte, LP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		UDP_MAP_LOCK.RUnlock()
-	}()
+	defer UDP_MAP_LOCK.RUnlock()
+	defer RecoverAndLogToFile()
 	UDP_MAP_LOCK.RLock()
 
 	IPMap, ok := UDP_MAP[ip]
@@ -43,10 +41,8 @@ func GetUDPMapping(ip [4]byte, LP uint16) *RemotePort {
 }
 
 func GetTCPMapping(ip [4]byte, LP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		TCP_MAP_LOCK.RUnlock()
-	}()
+	defer TCP_MAP_LOCK.RUnlock()
+	defer RecoverAndLogToFile()
 	TCP_MAP_LOCK.RLock()
 
 	IPMap, ok := TCP_MAP[ip]
@@ -78,10 +74,8 @@ func GetTCPMapping(ip [4]byte, LP uint16) *RemotePort {
 }
 
 func GetOutgoingTCPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		TCP_MAP_LOCK.RUnlock()
-	}()
+	defer TCP_MAP_LOCK.RUnlock()
+	defer RecoverAndLogToFile()
 	TCP_MAP_LOCK.RLock()
 
 	XM, ok := TCP_MAP[ip]
@@ -103,10 +97,8 @@ func GetOutgoingTCPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 
 // SYN and NO ACK
 func CreateTCPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		TCP_MAP_LOCK.Unlock()
-	}()
+	defer TCP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	TCP_MAP_LOCK.Lock()
 
 	var i uint16
@@ -153,10 +145,8 @@ func CreateTCPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 }
 
 func GetOutgoingUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		UDP_MAP_LOCK.RUnlock()
-	}()
+	defer UDP_MAP_LOCK.RUnlock()
+	defer RecoverAndLogToFile()
 	UDP_MAP_LOCK.RLock()
 
 	XP, ok := UDP_MAP[ip]
@@ -177,10 +167,8 @@ func GetOutgoingUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 
 // func GetOrCreateUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 func GetOrCreateUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
-	defer func() {
-		RecoverAndLogToFile()
-		UDP_MAP_LOCK.Unlock()
-	}()
+	defer UDP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	UDP_MAP_LOCK.Lock()
 
 	var i uint16
@@ -211,10 +199,8 @@ func GetOrCreateUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 }
 
 func CleanTCPPorts() {
-	defer func() {
-		RecoverAndLogToFile()
-		TCP_MAP_LOCK.Unlock()
-	}()
+	defer TCP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	TCP_MAP_LOCK.Lock()
 
 	for i := range TCP_MAP {
@@ -256,11 +242,8 @@ func CleanTCPPorts() {
 }
 
 func CleanUDPPorts() {
-	defer func() {
-		RecoverAndLogToFile()
-		UDP_MAP_LOCK.Unlock()
-	}()
-
+	defer UDP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	UDP_MAP_LOCK.Lock()
 
 	for i := range UDP_MAP {
@@ -288,10 +271,8 @@ func CleanUDPPorts() {
 }
 
 func InstantlyCleanAllTCPPorts() {
-	defer func() {
-		RecoverAndLogToFile()
-		TCP_MAP_LOCK.Unlock()
-	}()
+	defer TCP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	TCP_MAP_LOCK.Lock()
 
 	CreateLog("", "Cleaning up all TCP ports")
@@ -304,10 +285,8 @@ func InstantlyCleanAllTCPPorts() {
 }
 
 func InstantlyCleanAllUDPPorts() {
-	defer func() {
-		RecoverAndLogToFile()
-		UDP_MAP_LOCK.Unlock()
-	}()
+	defer UDP_MAP_LOCK.Unlock()
+	defer RecoverAndLogToFile()
 	UDP_MAP_LOCK.Lock()
 
 	CreateLog("", "Cleaning up all UDP ports")

@@ -20,13 +20,13 @@ import (
 
 func ReadFromLocalTunnel(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 4
 		} else {
 			CreateErrorLog("", "Adapter reader exiting")
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 	var (
 		waitForTimeout = time.Now()
@@ -213,13 +213,13 @@ WAITFORDEVICE:
 
 func ReadFromRouterSocket(MONITOR chan int) {
 	defer func() {
-		RecoverAndLogToFile()
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 2
 		} else {
 			CreateErrorLog("", "VPN listener exiting")
 		}
 	}()
+	defer RecoverAndLogToFile()
 
 WAIT_FOR_TUNNEL:
 	if GLOBAL_STATE.ActiveRouter == nil {

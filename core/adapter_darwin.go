@@ -74,12 +74,12 @@ func EnablePacketRouting() error {
 	DisableIPv6()
 	CreateLog("connect", "Creating default route")
 
-	err := SetInterfaceStateToUp()
+	err := SetInterfaceStateToUp(TUNNEL_ADAPTER_NAME)
 	if err != nil {
 		return err
 	}
 
-	_, err := exec.Command("route", "delete", "default").Output()
+	_, err = exec.Command("route", "delete", "default").Output()
 	if err != nil {
 		CreateErrorLog("", err, "unable to delete default route")
 		return err
@@ -255,12 +255,12 @@ func LaunchPreperation() (err error) {
 
 	CreateLog("", "Initializing link/up on device "+A.Interface.Name())
 
-	err := SetInterfaceStateToUp()
+	err = SetInterfaceStateToUp(TUNNEL_ADAPTER_NAME)
 	if err != nil {
 		return err
 	}
 
-	ipOut, err = exec.Command("ifconfig", A.Interface.Name(), "mtu", "65535").Output()
+	ipOut, err := exec.Command("ifconfig", A.Interface.Name(), "mtu", "65535").Output()
 	if err != nil {
 		CreateErrorLog("", err, "Unable to change mtu", "STDOUT", string(ipOut))
 		return err

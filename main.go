@@ -17,7 +17,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-const VERSION = "1.1.0"
+const VERSION = "1.1.1"
 const PRODUCTION = true
 const ENABLE_INSTERFACE = true
 

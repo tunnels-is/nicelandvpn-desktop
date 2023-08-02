@@ -13,7 +13,6 @@ const SideBar = (props) => {
     const location = useLocation();
     const [menuTab, setMenuTab] = useState(1)
     const [version, setVersion] = useState("0.0.0")
-    const [needsUpdate, setNeedsUpdate] = useState(false)
 
     let { pathname } = location
     let sp = pathname.split("/")
@@ -30,26 +29,16 @@ const SideBar = (props) => {
         navigate("/login")
     }
 
-    useEffect(() => {
-
-
-        let user = STORE.GetUser()
-        if (user) {
-            if (user.Version !== props.state.Version) {
-                console.log("NEEDS UPDATE")
-                setNeedsUpdate(true)
-            } else {
-
-                setNeedsUpdate(false)
-            }
-        }
-
-    }, [])
 
     let user = STORE.GetUser()
     let hasSub = false
+    let needsUpdate = false
 
     if (user) {
+        if (user.Version !== props.state.Version) {
+            needsUpdate = true
+        }
+
         if (user.SubLevel === 666) {
             hasSub = false
         } else if (user.SubLevel > 0) {
@@ -111,6 +100,10 @@ const SideBar = (props) => {
                 <div className="stats-item">
                     <div className="label">Ready To Connect</div>
                     <div className="value">{props.state.ClientReady + ""}</div>
+                </div>
+                <div className="stats-item">
+                    <div className="label">Version</div>
+                    <div className="value">{props.state.Version + ""}</div>
                 </div>
                 <div className="stats-item">
                     <div className="label">VPN Tunnel ready</div>

@@ -73,7 +73,14 @@ func main() {
 		},
 
 		Mac: &mac.Options{
-			TitleBar:   mac.TitleBarHidden(),
+			TitleBar: &mac.TitleBar{
+				TitlebarAppearsTransparent: true,
+				HideTitle:                  true,
+				HideTitleBar:               false,
+				FullSizeContent:            true,
+				UseToolbar:                 true,
+				HideToolbarSeparator:       false,
+			},
 			Appearance: "NSAppearanceNameDarkAqua",
 			About: &mac.AboutInfo{
 				Title:   "Niceland",

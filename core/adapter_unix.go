@@ -116,9 +116,10 @@ func LaunchPreperation() (err error) {
 }
 
 func ResetAfterFailedConnectionAttempt() {
+	defer RecoverAndLogToFile()
 	CreateLog("connect", "RESETTING EVERYTHING AFTER A FAILED CONNECT")
 	RestoreIPv6()
-	RestoreDNS()
+	// RestoreDNS()
 }
 
 func ChangeDNS() error {
@@ -138,6 +139,8 @@ func ChangeDNSOnTunnelInterface() error {
 
 func EnablePacketRouting() (err error) {
 	defer RecoverAndLogToFile()
+
+	DisableIPv6()
 
 	err = SetInterfaceStateToUp()
 	if err != nil {
@@ -458,25 +461,6 @@ func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, e
 	if lowestMetric == 999999 || defaultName == "" {
 		return nil, errors.New("")
 	}
-
-	return
-}
-
-func DisableAdapter() (err error) {
-	defer RecoverAndLogToFile()
-
-	if A.Interface != nil {
-		err = A.Interface.Close()
-	}
-
-	GLOBAL_STATE.TunnelInitialized = false
-
-	if err != nil {
-		CreateErrorLog("", "Error disabling tunnel interface || msg: ", err)
-		return
-	}
-
-	CreateLog("connect", "Tunnel interface disabled")
 
 	return
 }

@@ -5,8 +5,6 @@ export function CloseApp():Promise<void>;
 
 export function CopyToClipboard(arg1:string):Promise<void>;
 
-export function GetVersion():Promise<string>;
-
 export function IsProduction():Promise<boolean>;
 
 export function OpenURL(arg1:string):Promise<void>;

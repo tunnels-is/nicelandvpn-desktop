@@ -142,6 +142,7 @@ type State struct {
 	DefaultInterface *CONNECTION_SETTINGS `json:"DefaultInterface"`
 	// DefaultRouterIP      string
 	// DefaultInterfaceName string
+	Version string `json:"Version"`
 }
 type FileConfig struct {
 	DNS1           string

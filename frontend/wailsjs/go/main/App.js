@@ -10,10 +10,6 @@ export function CopyToClipboard(arg1) {
   return window['go']['main']['App']['CopyToClipboard'](arg1);
 }
 
-export function GetVersion() {
-  return window['go']['main']['App']['GetVersion']();
-}
-
 export function IsProduction() {
   return window['go']['main']['App']['IsProduction']();
 }

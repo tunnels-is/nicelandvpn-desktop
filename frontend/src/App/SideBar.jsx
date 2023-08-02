@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityLogIcon, BarChartIcon, ChatBubbleIcon, DesktopIcon, EnterIcon, ExitIcon, ExternalLinkIcon, FileTextIcon, GearIcon, GlobeIcon, HamburgerMenuIcon, LinkBreak2Icon, MobileIcon, Share1Icon, } from '@radix-ui/react-icons'
 import Loader from "react-spinners/PacmanLoader";
 
-import { GetVersion, OpenURL } from "../../wailsjs/go/main/App";
+import { OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
 
@@ -31,20 +31,20 @@ const SideBar = (props) => {
     }
 
     useEffect(() => {
-        GetVersion((x) => {
-            let user = STORE.GetUser()
-            setVersion(x)
-            if (user.Version !== x) {
+
+
+        let user = STORE.GetUser()
+        if (user) {
+            if (user.Version !== props.state.Version) {
+                console.log("NEEDS UPDATE")
                 setNeedsUpdate(true)
+            } else {
+
+                setNeedsUpdate(false)
             }
-        }).catch((e) => {
-            console.dir(e)
-            props.toggleError("Unknown error, please try again in a moment")
+        }
 
-        })
-
-
-    })
+    }, [])
 
     let user = STORE.GetUser()
     let hasSub = false

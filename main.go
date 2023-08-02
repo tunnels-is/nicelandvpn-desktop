@@ -38,6 +38,7 @@ func main() {
 
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INSTERFACE
+	core.GLOBAL_STATE.Version = VERSION
 
 	go core.StartService(MONITOR)
 

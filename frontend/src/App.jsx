@@ -36,28 +36,6 @@ window.addEventListener('blur',
   STORE.Cache.Set("focus", false)
 );
 
-window.addEventListener("copy", function (event) {
-  console.dir(event)
-  console.dir("COPY")
-  try {
-    navigator.clipboard.writeText(event.target.value)
-  } catch (error) {
-    console.dir(error)
-  }
-})
-
-window.addEventListener("paste", function (event) {
-  try {
-    console.dir(event)
-    console.dir("PASTE")
-    navigator.clipboard
-      .readText()
-      .then((clipText) => (event.target.value = clipText));
-  } catch (error) {
-    console.dir(error)
-  }
-})
-
 
 const ToggleError = (e) => {
   let lastFetch = STORE.Cache.Get("error-timeout")

@@ -16,7 +16,7 @@ CFRelease(url);
 // char *dirPath = strtok(path, "/launcher");
 int size = strlen(path);
 path[size-9] = '\0';
-char fullPath[550];
+char fullPath[PATH_MAX+12];
 strcpy(fullPath,path);
 strcat(fullPath, "/NicelandVPN");
 printf("DIR:%s\n", fullPath);

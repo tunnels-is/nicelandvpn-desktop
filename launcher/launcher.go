@@ -3,7 +3,6 @@ package main
 /*
 #include <stdlib.h>
 int requestElevatedPrivileges();
-FILE *ExecuteStuff();
 */
 import "C"
 

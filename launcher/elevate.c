@@ -23,31 +23,3 @@ int requestElevatedPrivileges()
     // AuthorizationFree(authRef, kAuthorizationFlagDefaults);
     return (int)status;
 }
-
-FILE *ExecuteStuff()
-{
-
-    FILE *fp;
-    char path[1035];
-
-    /* Open the command for reading. */
-    fp = popen("networksetup", "r");
-    if (fp == NULL)
-    {
-        printf("Failed to run command\n");
-        exit(1);
-    }
-    printf("did run command!\n");
-
-    /* Read the output a line at a time - output it. */
-    // while (fgets(path, sizeof(path), fp) != NULL)
-    // {
-    //     printf("%s", path);
-    // }
-
-    // /* close */
-    // pclose(fp);
-    // (void)strncpy(dst, path, sizeof(path));
-
-    return FILE;
-}

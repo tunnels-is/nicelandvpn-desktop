@@ -37,6 +37,8 @@ window.addEventListener('blur',
 );
 
 window.addEventListener("copy", function (event) {
+  console.dir(event)
+  console.dir("COPY")
   try {
     navigator.clipboard.writeText(event.target.value)
   } catch (error) {
@@ -46,9 +48,11 @@ window.addEventListener("copy", function (event) {
 
 window.addEventListener("paste", function (event) {
   try {
+    console.dir(event)
+    console.dir("PASTE")
     navigator.clipboard
       .readText()
-      .then((clipText) => (event.target.innerText = clipText));
+      .then((clipText) => (event.target.value = clipText));
   } catch (error) {
     console.dir(error)
   }

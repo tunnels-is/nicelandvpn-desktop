@@ -18,8 +18,8 @@ import (
 var assets embed.FS
 
 const VERSION = "1.1.1"
-const PRODUCTION = true
-const ENABLE_INSTERFACE = true
+const PRODUCTION = false
+const ENABLE_INSTERFACE = false
 
 var MONITOR = make(chan int, 200)
 

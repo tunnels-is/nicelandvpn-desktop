@@ -4,15 +4,10 @@ $notification-bg: #050505;
 $body-dark-bg: #0a0b0e;
 $title-shadow: 0px 1px 5px #0003;
 $body-shadow: -2px -2px 5px #0003;
-$body-border-color: #565656fc;
 
 $main-bg-color: #141414;
 
-// PROGRESS
-$animate-bg-color: #8e12fb;
-
 // LOGS
-$log-good: green;
 $log-error: red;
 $log-warning: yellow;
 
@@ -34,32 +29,12 @@ $error-color: #e70808;
 $success-color: rgb(10, 182, 10);
 $text-shadow: 1px 1px 1px #00000029;
 
-// BUTTONS
-$button-shadow: 0 2px 5px #0003;
-$confirm-button-color: white;
-$confirm-button-bg: #0c613a;
-$confirm-button-bg-hover: #27aa6d;
-$neutral-button-color: white;
-$neutral-button-bg: #0e4698;
-$neutral-button-bg-hover: #2c6bc9;
-$cancel-button-color: white;
-$cancel-button-bg: #7a1821;
 
 $cancel-button-bg-hover: #af2a37;
-// $cancel-button-border-radius: 50%;
 $sidebar-width: 190px;
 
 // SIDEBAR / MENU
-$open-sidebar: #6e6e6e;
-$menu-color: white;
-$menu-color-hover: rgb(0, 74, 117);
 $menu-background: $main-bg-color;
-$menu-background-hover: #232931;
-$menu-border-hover: 1px solid #13161B;
-$menu-shadow-hover: 3px 3px 7px rgba(0, 0, 0, 0.13);
-$menu-active-color: blue;
-$logout-button-color: $cancel-button-bg;
-$logout-button-color-hover: $cancel-button-bg-hover;
 
 // POPOVERS
 $popover-color: white;
@@ -67,7 +42,6 @@ $popover-background: black;
 $popover-border: 2px solid $c-orange;
 
 // LISTS
-$list-header-bg: $main-bg-color;
 $list-header-border: 3px solid rgba(255, 255, 255, 0.699);
 $list-item-border: 1px solid rgba(255, 255, 255, 0.411);
 $list-hover: #49ffc827;

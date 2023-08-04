@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tunnels-is/niceland-app/core"
+	"github.com/tunnels-is/nicelandvpn-desktop/core"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"

@@ -55,6 +55,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			core.CleanupOnClose() // THIS FUNCTION NEEDS TO BE CALLED ON EXIT!!
 			log.Println("GRACEFULL QUIT")
+			log.Println("GRACEFULL QUIT")
+			log.Println("GRACEFULL QUIT")
+			log.Println("GRACEFULL QUIT")
+			log.Println("GRACEFULL QUIT")
+			log.Println("GRACEFULL QUIT")
 			return m, tea.Quit
 
 		case "up", "k":

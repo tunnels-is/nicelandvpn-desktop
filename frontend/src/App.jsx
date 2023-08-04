@@ -10,7 +10,6 @@ import "./assets/style/app.scss";
 import { CloseApp, IsProduction } from '../wailsjs/go/main/App';
 import { Disconnect, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
 
-import ResetPassword from "./App/ResetPassword";
 import ScreenLoader from "./App/ScreenLoader";
 import DeviceLogins from "./App/DeviceLogins";
 import Register from "./App/Registration";
@@ -20,7 +19,6 @@ import Settings from "./App/Settings";
 import Routers from "./App/Routers";
 import Support from "./App/Support";
 import SideBar from "./App/SideBar";
-import TopBar from "./App/TopBar";
 import Debug from "./App/debug";
 import Login from "./App/Login";
 import Logs from "./App/Logs";

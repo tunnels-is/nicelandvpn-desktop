@@ -146,8 +146,8 @@ WAITFORDEVICE:
 			AS.TCPHeader.DstIP = parsedIPLayer.DstIP
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
-			buffer = gopacket.NewSerializeBuffer()
 
+			buffer = gopacket.NewSerializeBuffer()
 			if applicationLayer != nil {
 				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedTCPLayer, gopacket.Payload(applicationLayer.LayerContents()))
 

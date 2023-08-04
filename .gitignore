@@ -1,3 +1,7 @@
+cmd/tui/tui.exe
+cmd/tui/NicelandVPN.exe
+cmd/tui/files
+
 build/bin/*
 
 build/windows/installer/tmp

@@ -722,6 +722,30 @@ func PrepareState() {
 
 }
 
+func GetLogsForCLI() (*GeneralLogResponse, error) {
+	defer RecoverAndLogToFile()
+
+	R := &GeneralLogResponse{
+		Content: make([]string, 0),
+		Time:    make([]string, 0),
+		Color:   make([]string, 0),
+	}
+
+	for i := range L.GENERAL {
+		if L.GENERAL[i] == "" {
+			continue
+		}
+
+		splitLine := strings.Split(L.GENERAL[i], " || ")
+
+		R.Content = append(R.Content, strings.Join(splitLine[2:], " "))
+		R.Time = append(R.Time, splitLine[0])
+		R.Function = append(R.Function, splitLine[1])
+	}
+
+	return R, nil
+}
+
 func GetLogs(lengthFromJavascript int) (*GeneralLogResponse, error) {
 	defer RecoverAndLogToFile()
 

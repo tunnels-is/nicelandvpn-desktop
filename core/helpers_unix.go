@@ -4,7 +4,6 @@ package core
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,7 +53,7 @@ func AdminCheck() {
 func getProcessOwner() string {
 	stdout, err := exec.Command("ps", "-o", "user=", "-p", strconv.Itoa(os.Getpid())).Output()
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		return "X"
 	}
 	stdout = bytes.Replace(stdout, []byte{10}, nil, -1)

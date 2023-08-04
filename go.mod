@@ -1,4 +1,4 @@
-module github.com/tunnels-is/niceland-app
+module github.com/tunnels-is/nicelandvpn-desktop
 
 go 1.19
 

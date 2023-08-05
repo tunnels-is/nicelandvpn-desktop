@@ -1,3 +1,6 @@
+cmd/tui/*.exe
+cmd/tui/files
+
 build/bin/*
 
 build/windows/installer/tmp

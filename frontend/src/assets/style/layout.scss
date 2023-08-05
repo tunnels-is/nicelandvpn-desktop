@@ -6,6 +6,7 @@ html {
     text-rendering: optimizeLegibility !important;
     // text-shadow: rgba(0, 0, 0, .01) 0 0 1px !important;
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.004) !important;
+    --wails-draggable: drag;
 }
 
 html,
@@ -197,11 +198,12 @@ body::-webkit-scrollbar {
 
         cursor: pointer;
         width: 95%;
-        margin-top: 20px;
+        margin-top: 27px;
         margin-left: 10px;
 
         .icon {
             float: left;
+            margin-top: 5px;
         }
 
         .text {

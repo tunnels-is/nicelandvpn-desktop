@@ -90,19 +90,28 @@ type LogItem struct {
 	Line string
 }
 
+type LogoutForm struct {
+	Email       string
+	DeviceToken string
+}
+type LoginForm struct {
+	Email       string
+	Password    string
+	DeviceName  string
+	DeviceToken string
+	Digits      string
+	Recovery    string
+}
+
 type State struct {
 	UMbps          int    `json:"UMbps"`
 	DMbps          int    `json:"DMbps"`
 	UMbpsString    string `json:"UMbpsString"`
 	DMbpsString    string `json:"DMbpsString"`
-	ConnectedTimer string `json:"ConnectedTimer"`
-	BufferError    bool   `json:"BufferError"`
 	IngressPackets uint64 `json:"IngressPackets"`
 	EgressPackets  uint64 `json:"EgressPackets"`
+	ConnectedTimer string `json:"ConnectedTimer"`
 
-	// NEW
-
-	// STATES
 	IsAdmin               bool `json:"IsAdmin"`
 	NeedsRouterProbe      bool `json:"NeedsRouterProbe"`
 	BaseFolderInitialized bool `json:"BaseFolderInitialized"`
@@ -110,10 +119,9 @@ type State struct {
 	LogFileInitialized    bool `json:"LogFileInitialized"`
 	ConfigInitialized     bool `json:"ConfigInitialized"`
 	ClientReady           bool `json:"ClientReady"`
-	// ReadyToConnect        bool `json:"ReadyToConnect"`
-	ClientStartupError bool `json:"ClientStartupError"`
+	ClientStartupError    bool `json:"ClientStartupError"`
+	BufferError           bool `json:"BufferError"`
 
-	// NeedsUpdate bool `json:"NeedsUpdate"`
 	Connected  bool `json:"Connected"`
 	Connecting bool `json:"Connecting"`
 	Exiting    bool `json:"Exiting"`
@@ -312,20 +320,13 @@ type ROUTER_STATS struct {
 }
 
 type CONTROLLER_SESSION_REQUEST struct {
-	UserID primitive.ObjectID
-	ID     primitive.ObjectID
-	SLOTID int
-
-	Type string `json:",omitempty"`
-	// AUTH
 	DeviceToken string `json:",omitempty"`
 
-	Permanent bool `json:",omitempty"`
-	Count     int  `json:",omitempty"`
+	SLOTID int
+	Type   string `json:",omitempty"`
 
-	GROUP     uint8 `json:"GROUP"`
-	ROUTERID  uint8 `json:"ROUTERID"`
-	SESSIONID uint8 `json:"SESSIONID"`
+	GROUP    uint8 `json:"GROUP"`
+	ROUTERID uint8 `json:"ROUTERID"`
 
 	XGROUP    uint8 `json:"XGROUP"`
 	XROUTERID uint8 `json:"XROUTERID"`
@@ -333,11 +334,6 @@ type CONTROLLER_SESSION_REQUEST struct {
 
 	// QUICK CONNECT
 	Country string `json:",omitempty"`
-
-	// GENERIC
-	Reclaim bool `json:",omitempty"`
-
-	Response chan *CONTROLLER_SESSION `json:"-"`
 
 	TempKey *OTK_REQUEST
 }

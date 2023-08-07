@@ -11,7 +11,7 @@ import (
 )
 
 const VERSION = "1.1.1"
-const PRODUCTION = true
+const PRODUCTION = false
 const ENABLE_INSTERFACE = false
 
 var MONITOR = make(chan int, 200)
@@ -32,7 +32,6 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
-
 }
 
 func RoutineMonitor() {

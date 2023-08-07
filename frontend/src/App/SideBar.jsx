@@ -12,7 +12,6 @@ const SideBar = (props) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [menuTab, setMenuTab] = useState(1)
-    const [version, setVersion] = useState("0.0.0")
 
     let { pathname } = location
     let sp = pathname.split("/")

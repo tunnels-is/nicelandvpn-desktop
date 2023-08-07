@@ -8,7 +8,7 @@ The TUI competition will run from 7th August 2023 to 7th October 2023.
 
 # Rewards
  - 1st place: 6 months Niclend VPN subscription + Credits on the websites
-	- First place will also receive a budget of 230 USD to order any kind of equipment they want.
+	- First place will also receive a budget of 250 USD to order any kind of equipment they want.
  - 2nd place: 6 months Niceland VPN subscription.
 
 # How to get started

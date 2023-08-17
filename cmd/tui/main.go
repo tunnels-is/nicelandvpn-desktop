@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"runtime/debug"
 	"time"
 
@@ -27,11 +25,7 @@ func main() {
 	go core.StartService(MONITOR)
 	go TimedUIUpdate(MONITOR)
 
-	TUI = tea.NewProgram(initialModel())
-	if _, err := TUI.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
+    StartTui()
 }
 
 func RoutineMonitor() {

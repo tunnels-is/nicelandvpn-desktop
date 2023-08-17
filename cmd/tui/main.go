@@ -8,15 +8,18 @@ import (
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
 
-const VERSION = "1.1.1"
-const PRODUCTION = false
-const ENABLE_INSTERFACE = false
+const (
+	VERSION           = "1.1.1"
+	PRODUCTION        = true
+	ENABLE_INSTERFACE = false
+)
 
-var MONITOR = make(chan int, 200)
-var TUI *tea.Program
+var (
+	MONITOR = make(chan int, 200)
+	TUI     *tea.Program
+)
 
 func main() {
-
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INSTERFACE
 	core.GLOBAL_STATE.Version = VERSION
@@ -25,7 +28,7 @@ func main() {
 	go core.StartService(MONITOR)
 	go TimedUIUpdate(MONITOR)
 
-    StartTui()
+	StartTui()
 }
 
 func RoutineMonitor() {
@@ -57,5 +60,4 @@ func RoutineMonitor() {
 			}
 		}
 	}
-
 }

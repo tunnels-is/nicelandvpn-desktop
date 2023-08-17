@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
@@ -26,41 +27,47 @@ var (
 // table style
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
+	BorderForeground(lipgloss.Color("240")).
+  Width(80).Height(25)
+
 
 // main model
 type model struct {
-	Tabs        []string
-	activeTab   int
-	serverTable table.Model
-	routerTable table.Model
-	logs        []string
-    // setting I have no idea how to handle them yet...
+	Tabs         []string
+	activeTab    int
+	serverTable  table.Model
+	routerTable  table.Model
+	logsViewport viewport.Model
+	logs         []string
+	ready        bool
+	// setting I have no idea how to handle them yet...
 }
 
 func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+  var (
+    servCmd tea.Cmd
+    routCmd tea.Cmd
+    vpCmd   tea.Cmd
+  )
+
+  m.serverTable, servCmd = m.serverTable.Update(msg)
+	m.routerTable, routCmd = m.routerTable.Update(msg)
+  m.logsViewport, vpCmd = m.logsViewport.Update(msg)
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-            core.CleanupOnClose()
-            log.Println("GRACEFULL QUIT!")
-            log.Println("GRACEFULL QUIT!")
-            log.Println("GRACEFULL QUIT!")
-            log.Println("GRACEFULL QUIT!")
-            log.Println("GRACEFULL QUIT!")
+			core.CleanupOnClose()
+			log.Println("GRACEFULL QUIT!")
 			return m, tea.Quit
 		case "right", "l", "tab":
 			m.activeTab = min(m.activeTab+1, len(m.Tabs)-1)
-			// change table too
 			return m, nil
 		case "left", "h", "shift+tab":
 			m.activeTab = max(m.activeTab-1, 0)
-			// change table too
 			return m, nil
 		case "enter":
 			// Handle selection for different tabs differently LUL
@@ -72,10 +79,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Println("Only VPN server list works for now.")
 		}
 		// Probably I'll need to handle more msg types for updates, erros, etc...
-	}
-	m.serverTable, cmd = m.serverTable.Update(msg)
+  default: 
+    LR, err := core.GetLogsForCLI()
+    if LR != nil && err == nil {
+      m.logs = LR.Content
+      for i := range LR.Content {
+        if LR.Content[i] != "" {
+          m.logs[i] = fmt.Sprint(LR.Time[i], "||", LR.Function[i], "||", LR.Content[i]+"\n")
+        }
+      }
+    }
+    m.logsViewport.SetContent(strings.Join(m.logs, ""))
+    if m.logsViewport.ScrollPercent() == 0 {
+      m.logsViewport.GotoBottom()
+    }
 
-	return m, cmd
+    return m, tea.Batch(servCmd, routCmd, vpCmd) 
+	}
+
+	return m, tea.Batch(servCmd, routCmd, vpCmd)
 }
 
 func (m model) View() string {
@@ -103,28 +125,35 @@ func (m model) View() string {
 	doc.WriteString("\n")
 
 	// This where the table view goes, I could not figure out a better way to do this
-    var tabContent string
-    switch m.activeTab {
-    case 0:
-	    tabContent = baseStyle.Render(m.serverTable.View()) 
-    case 1:
-        tabContent = baseStyle.Render(m.routerTable.View())
-    case 2:
-        logs, err := core.GetLogsForCLI()
-        if logs != nil && err == nil {
-            for i := range logs.Content {
-                if logs.Content[i] != "" {
-                    tabContent = fmt.Sprint(logs.Time[i], " || ", logs.Function[i], " || ", logs.Content[i]+"\n") 
-                }
-            }
-        }
-        tabContent = baseStyle.Render(tabContent)
-    default:
-        tabContent = baseStyle.Render("Not implemented yet!")
-    }
-	doc.WriteString(windowStyle.Width(80).Render(tabContent))
+	var tabContent string
+	switch m.activeTab {
+	case 0:
+		tabContent = baseStyle.Render(m.serverTable.View())
+	case 1:
+		tabContent = baseStyle.Render(m.routerTable.View())
+	case 2:
+    tabContent = baseStyle.Render(m.logsViewport.View())
+	default:
+		tabContent = baseStyle.Render("Not implemented yet!")
+	}
+	doc.WriteString(windowStyle.Render(tabContent))
 
 	return docStyle.Render(doc.String())
+}
+
+func TimedUIUpdate(MONITOR chan int) {
+	defer func() {
+		time.Sleep(3 * time.Second)
+		MONITOR <- 3
+	}()
+	defer core.RecoverAndLogToFile()
+
+	for {
+		time.Sleep(3 * time.Second)
+		TUI.Send(&tea.KeyMsg{
+			Type: 0,
+		})
+	}
 }
 
 func StartTui() {
@@ -174,29 +203,20 @@ func StartTui() {
 	t.SetStyles(s)
 	// example table construction end
 
+  // Initialize the viewport for the logs
+  vp := viewport.New(80, 25)
+  vp.MouseWheelEnabled = true // seems not to work ???
+  vp.Style = baseStyle.UnsetBorderStyle()
+
 	// make the model and give some starting values
-	m := model{Tabs: tabs, serverTable: t, routerTable: t}
+	m := model{Tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}
 
 	// This is where it actually starts
-	if _, err := tea.NewProgram(m).Run(); err != nil {
+	TUI = tea.NewProgram(m)
+	if _, err := TUI.Run(); err != nil {
 		fmt.Println("Error running TUI: ", err)
 		os.Exit(1)
 	}
-}
-
-func TimedUIUpdate(MONITOR chan int) {
-    defer func() {
-        time.Sleep(1 * time.Second)
-        MONITOR <- 3
-    }()
-    defer core.RecoverAndLogToFile()
-
-    for {
-        time.Sleep(1 * time.Second)
-        TUI.Send(&tea.KeyMsg{
-            Type: 0,
-        })
-    }
 }
 
 // little helpers

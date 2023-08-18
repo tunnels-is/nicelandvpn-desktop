@@ -38,14 +38,14 @@ var (
 	selectionColor   = orange
 	inactiveTabStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true, true, false, true).UnsetBorderBottom().BorderForeground(highlightColor)
 	activeTabStyle   = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true, true, false, true).UnsetBorderBottom().BorderForeground(highlightColor).Background(selectionColor).Foreground(black)
-	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(0).Border(lipgloss.NormalBorder()).Width(100).Height(28)
+	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(0).Border(lipgloss.NormalBorder())
 )
 
 // generic content style
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(white).
-	Width(100).Height(25).Padding(0, 1)
+	Padding(0, 1)
 
 // table style
 var table_style = table.Styles{

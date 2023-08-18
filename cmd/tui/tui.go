@@ -28,17 +28,24 @@ type model struct {
 func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  var (
-    servCmd tea.Cmd
-    routCmd tea.Cmd
-    vpCmd   tea.Cmd
-  )
+	var (
+		servCmd tea.Cmd
+		routCmd tea.Cmd
+		vpCmd   tea.Cmd
+	)
 
-  m.serverTable, servCmd = m.serverTable.Update(msg)
+	m.serverTable, servCmd = m.serverTable.Update(msg)
 	m.routerTable, routCmd = m.routerTable.Update(msg)
-  m.logsViewport, vpCmd = m.logsViewport.Update(msg)
+	m.logsViewport, vpCmd = m.logsViewport.Update(msg)
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.serverTable.SetWidth(msg.Width - 5)
+		m.serverTable.SetHeight(msg.Height - 10)
+		m.routerTable.SetWidth(msg.Width - 5)
+		m.routerTable.SetHeight(msg.Height - 10)
+		m.logsViewport.Width = max(msg.Width-5, 80)
+		m.logsViewport.Height = max(msg.Height-20, 24)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -53,30 +60,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			// Handle selection for different tabs differently LUL
-			if m.activeTab == 0 {
-				// Do stuff to connect to selection
-				return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[1])
-			}
-
-			return m, tea.Println("Only VPN server list works for now.")
-		}
-		// Probably I'll need to handle more msg types for updates, erros, etc...
-  default: 
-    LR, err := core.GetLogsForCLI()
-    if LR != nil && err == nil {
-      m.logs = LR.Content
-      for i := range LR.Content {
-        if LR.Content[i] != "" {
-          m.logs[i] = fmt.Sprint(LR.Time[i], "||", LR.Function[i], "||", LR.Content[i]+"\n")
-        }
+      switch m.activeTab {
+      case 0:
+        return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
+      default:
+        return m, tea.Println("This thing is still work in progress....")
       }
-    }
-    m.logsViewport.SetContent(strings.Join(m.logs, ""))
-    if m.logsViewport.ScrollPercent() == 0 {
-      m.logsViewport.GotoBottom()
-    }
+		}
+    // update the logs always
+	default:
+		LR, err := core.GetLogsForCLI()
+		if LR != nil && err == nil {
+			m.logs = LR.Content
+			for i := range LR.Content {
+				if LR.Content[i] != "" {
+					m.logs[i] = fmt.Sprint(LR.Time[i], "||", LR.Function[i], "||", LR.Content[i]+"\n")
+				}
+			}
+		}
+		m.logsViewport.SetContent(strings.Join(m.logs, ""))
+		if m.logsViewport.ScrollPercent() == 1 {
+			m.logsViewport.GotoBottom()
+		}
 
-    return m, tea.Batch(servCmd, routCmd, vpCmd) 
+		return m, tea.Batch(servCmd, routCmd, vpCmd)
 	}
 
 	return m, tea.Batch(servCmd, routCmd, vpCmd)
@@ -114,7 +121,7 @@ func (m model) View() string {
 	case 1:
 		tabContent = baseStyle.Render(m.routerTable.View())
 	case 2:
-    tabContent = baseStyle.Render(m.logsViewport.View())
+		tabContent = baseStyle.Render(m.logsViewport.View())
 	default:
 		tabContent = baseStyle.Render("Not implemented yet!")
 	}
@@ -148,16 +155,14 @@ func StartTui() {
 		table.WithColumns(col),
 		table.WithRows(row),
 		table.WithFocused(true),
-		table.WithHeight(10),
+		table.WithHeight(20),
 	)
-
-	t.SetStyles(table_style)
 	// example table construction end
+	t.SetStyles(table_style)
 
-  // Initialize the viewport for the logs
-  vp := viewport.New(80, 20)
-  vp.MouseWheelEnabled = true // seems not to work ???
-  vp.Style = baseStyle.UnsetBorderStyle().Padding(0, 1)
+	// Initialize the viewport for the logs
+	vp := viewport.New(80, 20)
+	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
 	m := model{Tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}

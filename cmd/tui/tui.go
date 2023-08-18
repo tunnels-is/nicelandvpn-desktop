@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -13,23 +12,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
-
-// tab style variables
-var (
-	docStyle         = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	selectionColor   = lipgloss.Color("#20C997")
-	inactiveTabStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true, true, false, true).UnsetBorderBottom().BorderForeground(highlightColor)
-	activeTabStyle   = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true, true, false, true).UnsetBorderBottom().BorderForeground(highlightColor).Background(selectionColor).Foreground(lipgloss.Color("#000000"))
-	windowStyle      = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(0).Border(lipgloss.NormalBorder())
-)
-
-// table style
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240")).
-  Width(80).Height(25)
-
 
 // main model
 type model struct {
@@ -141,21 +123,6 @@ func (m model) View() string {
 	return docStyle.Render(doc.String())
 }
 
-func TimedUIUpdate(MONITOR chan int) {
-	defer func() {
-		time.Sleep(3 * time.Second)
-		MONITOR <- 3
-	}()
-	defer core.RecoverAndLogToFile()
-
-	for {
-		time.Sleep(3 * time.Second)
-		TUI.Send(&tea.KeyMsg{
-			Type: 0,
-		})
-	}
-}
-
 func StartTui() {
 	// Configure tabs and their number
 	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
@@ -184,29 +151,13 @@ func StartTui() {
 		table.WithHeight(10),
 	)
 
-	s := table.DefaultStyles()
-
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#ffffff")).
-		BorderBottom(true).
-		Bold(true).
-		Width(26)
-
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(true)
-
-	s.Cell.Width(26)
-
-	t.SetStyles(s)
+	t.SetStyles(table_style)
 	// example table construction end
 
   // Initialize the viewport for the logs
-  vp := viewport.New(80, 25)
+  vp := viewport.New(80, 20)
   vp.MouseWheelEnabled = true // seems not to work ???
-  vp.Style = baseStyle.UnsetBorderStyle()
+  vp.Style = baseStyle.UnsetBorderStyle().Padding(0, 1)
 
 	// make the model and give some starting values
 	m := model{Tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}
@@ -217,19 +168,4 @@ func StartTui() {
 		fmt.Println("Error running TUI: ", err)
 		os.Exit(1)
 	}
-}
-
-// little helpers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

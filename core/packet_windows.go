@@ -144,7 +144,6 @@ WAITFORDEVICE:
 
 			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
 
-			outgoingPort.LastActivity = time.Now()
 			AS.TCPHeader.DstIP = parsedIPLayer.DstIP
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)

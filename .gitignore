@@ -1,5 +1,4 @@
-cmd/tui/tui.exe
-cmd/tui/NicelandVPN.exe
+cmd/tui/*.exe
 cmd/tui/files
 
 build/bin/*

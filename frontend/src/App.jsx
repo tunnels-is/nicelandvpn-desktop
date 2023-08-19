@@ -10,7 +10,6 @@ import "./assets/style/app.scss";
 import { CloseApp, IsProduction } from '../wailsjs/go/main/App';
 import { Disconnect, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
 
-import ResetPassword from "./App/ResetPassword";
 import ScreenLoader from "./App/ScreenLoader";
 import DeviceLogins from "./App/DeviceLogins";
 import Register from "./App/Registration";
@@ -20,7 +19,6 @@ import Settings from "./App/Settings";
 import Routers from "./App/Routers";
 import Support from "./App/Support";
 import SideBar from "./App/SideBar";
-import TopBar from "./App/TopBar";
 import Debug from "./App/debug";
 import Login from "./App/Login";
 import Logs from "./App/Logs";
@@ -35,7 +33,6 @@ window.addEventListener('focus',
 window.addEventListener('blur',
   STORE.Cache.Set("focus", false)
 );
-
 
 const ToggleError = (e) => {
   let lastFetch = STORE.Cache.Get("error-timeout")
@@ -63,10 +60,6 @@ const LaunchApp = () => {
   const [loading, setLoading] = useState(undefined)
   const [state, setState] = useState({})
 
-  let hash = window.location.hash
-  if (hash.includes("payment")) {
-    return (<Payment></Payment>)
-  }
 
   const ToggleAdvancedMode = () => {
     if (STORE.Config.AdvancedMode === true) {
@@ -113,6 +106,8 @@ const LaunchApp = () => {
 
     try {
 
+      console.dir(state.ActiveRouter)
+      console.log("getting access points")
       if (STORE.ActiveRouterSet(state)) {
         GetRoutersAndAccessPoints().then((x) => {
           if (x.Code === 401) {
@@ -132,13 +127,18 @@ const LaunchApp = () => {
           console.dir(e)
           ToggleError("Unknown error while trying to get VPN list")
         })
-
       }
+    } catch (error) {
+      console.dir(error)
+    }
 
-      await GetState().then((x) => {
+    try {
+
+      GetState().then((x) => {
         console.dir(x)
         if (x.Err) {
           ToggleError(x.Err.Message)
+          setState(newState)
           return
         }
 
@@ -151,15 +151,17 @@ const LaunchApp = () => {
           }
         }
 
+        setState(newState)
+
       }).catch(error => {
         console.dir(error)
         ToggleError("Unknown error, please try again in a moment")
+        setState(newState)
       });
-
-      setState(newState)
 
     } catch (error) {
       console.dir(error)
+      setState(newState)
     }
 
   }
@@ -193,8 +195,8 @@ const LaunchApp = () => {
 
     const to = setTimeout(async () => {
       UpdateAdvancedMode()
-      await GetStateAndUpdateVPNList()
-    }, 1000)
+      GetStateAndUpdateVPNList()
+    }, 1200)
 
     return () => { clearTimeout(to); }
 

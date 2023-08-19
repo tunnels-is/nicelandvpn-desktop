@@ -665,9 +665,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 }
 
 func PrepareState() {
-	defer STATE_LOCK.Unlock()
 	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
 
 	GLOBAL_STATE.EgressPackets = EGRESS_PACKETS
 	GLOBAL_STATE.IngressPackets = INGRESS_PACKETS

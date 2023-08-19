@@ -193,6 +193,7 @@ type Config struct {
 	DebugLogging   bool
 	Version        string `json:"-"`
 	RouterFilePath string
+	// AddBlockLevel  int
 	// Region         string
 	PrevSession *CONTROLLER_SESSION_REQUEST
 
@@ -320,13 +321,20 @@ type ROUTER_STATS struct {
 }
 
 type CONTROLLER_SESSION_REQUEST struct {
+	UserID primitive.ObjectID
+	ID     primitive.ObjectID
+
 	DeviceToken string `json:",omitempty"`
 
 	SLOTID int
 	Type   string `json:",omitempty"`
 
-	GROUP    uint8 `json:"GROUP"`
-	ROUTERID uint8 `json:"ROUTERID"`
+	Permanent bool `json:",omitempty"`
+	Count     int  `json:",omitempty"`
+
+	GROUP     uint8 `json:"GROUP"`
+	ROUTERID  uint8 `json:"ROUTERID"`
+	SESSIONID uint8 `json:"SESSIONID"`
 
 	XGROUP    uint8 `json:"XGROUP"`
 	XROUTERID uint8 `json:"XROUTERID"`

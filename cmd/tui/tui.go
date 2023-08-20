@@ -73,10 +73,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// update the logs always
 	default:
-        logs := GetLogs()
-        if len(m.logs) != len(logs) {
-            m.logs = logs
-        }
+		logs := GetLogs()
+		if len(m.logs) != len(logs) {
+			m.logs = logs
+		}
 		m.logsViewport.SetContent(strings.Join(m.logs, ""))
 		if m.logsViewport.ScrollPercent() == 1 {
 			m.logsViewport.GotoBottom()
@@ -130,6 +130,53 @@ func (m model) View() string {
 }
 
 func StartTui() {
+	// figuring how logging in/out and connect/disconnect working...
+	var FR core.FORWARD_REQUEST
+	var (
+		email  string
+		passw  string
+		twofa  string
+		device string
+	)
+
+	fmt.Print("Email: ")
+	fmt.Scan(&email)
+	fmt.Print("Password: ")
+	fmt.Scan(&passw)
+	fmt.Print("2FA: ")
+	fmt.Scan(&twofa)
+	fmt.Print("DeviceName: ")
+	fmt.Scan(&device)
+
+	FR.Path = "v2/user/login"
+	FR.Method = "POST"
+	FR.Timeout = 20000
+	FR.JSONData = core.LoginForm{
+		Email:    email,
+		Password: passw,
+		Digits:   twofa,
+	}
+
+	data, code, err := core.ForwardToController(&FR)
+	fmt.Println("Loggging in...")
+	fmt.Println(data)
+	fmt.Println(code)
+	fmt.Println(err)
+
+	FR.Path = "v2/user/logout"
+	FR.JSONData = core.LogoutForm{
+		Email:       email,
+		DeviceToken: device,
+	}
+
+	core.Disconnect()
+	data, code, err = core.ForwardToController(&FR)
+	fmt.Println("Logging out...")
+	fmt.Println(data)
+	fmt.Println(code)
+	fmt.Println(err)
+	// ------------------------------------------------------
+
 	// Configure tabs and their number
 	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
 

@@ -40,12 +40,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.serverTable.SetWidth(msg.Width - 5)
-		m.serverTable.SetHeight(msg.Height - 10)
-		m.routerTable.SetWidth(msg.Width - 5)
-		m.routerTable.SetHeight(msg.Height - 10)
-		m.logsViewport.Width = max(msg.Width-5, 80)
-		m.logsViewport.Height = max(msg.Height-20, 24)
+		m.serverTable.SetWidth(max(msg.Width-8, 72))
+		m.serverTable.SetHeight(max(msg.Height-8, 17))
+
+		m.routerTable.SetWidth(max(msg.Width-8, 72))
+		m.routerTable.SetHeight(max(msg.Height-8, 17))
+
+		m.logsViewport.Width = max(msg.Width-8, 72)
+		m.logsViewport.Height = max(msg.Height-6, 19)
+
+		return m, tea.Println("Resized!")
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -60,24 +64,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			// Handle selection for different tabs differently LUL
-      switch m.activeTab {
-      case 0:
-        return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
-      default:
-        return m, tea.Println("This thing is still work in progress....")
-      }
-		}
-    // update the logs always
-	default:
-		LR, err := core.GetLogsForCLI()
-		if LR != nil && err == nil {
-			m.logs = LR.Content
-			for i := range LR.Content {
-				if LR.Content[i] != "" {
-					m.logs[i] = fmt.Sprint(LR.Time[i], "||", LR.Function[i], "||", LR.Content[i]+"\n")
-				}
+			switch m.activeTab {
+			case 0:
+				return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
+			default:
+				return m, tea.Println("This thing is still work in progress....")
 			}
 		}
+		// update the logs always
+	default:
+        logs := GetLogs()
+        if len(m.logs) != len(logs) {
+            m.logs = logs
+        }
 		m.logsViewport.SetContent(strings.Join(m.logs, ""))
 		if m.logsViewport.ScrollPercent() == 1 {
 			m.logsViewport.GotoBottom()
@@ -149,13 +148,42 @@ func StartTui() {
 		{"someserver-01", "GR", "7"},
 		{"serverlet-01", "FR", "8"},
 		{"keybindssecretserver", "IS", "1"},
+		{"server-01", "SW", "10"},
+		{"server-02", "SW", "9"},
+		{"anotherserver-01", "US", "5"},
+		{"someserver-01", "GR", "7"},
+		{"serverlet-01", "FR", "8"},
+		{"keybindssecretserver", "IS", "1"},
+		{"server-01", "SW", "10"},
+		{"server-02", "SW", "9"},
+		{"anotherserver-01", "US", "5"},
+		{"someserver-01", "GR", "7"},
+		{"serverlet-01", "FR", "8"},
+		{"keybindssecretserver", "IS", "1"},
+		{"server-01", "SW", "10"},
+		{"server-02", "SW", "9"},
+		{"anotherserver-01", "US", "5"},
+		{"someserver-01", "GR", "7"},
+		{"serverlet-01", "FR", "8"},
+		{"keybindssecretserver", "IS", "1"},
+		{"server-01", "SW", "10"},
+		{"server-02", "SW", "9"},
+		{"anotherserver-01", "US", "5"},
+		{"someserver-01", "GR", "7"},
+		{"serverlet-01", "FR", "8"},
+		{"keybindssecretserver", "IS", "1"},
+		{"server-01", "SW", "10"},
+		{"server-02", "SW", "9"},
+		{"anotherserver-01", "US", "5"},
+		{"someserver-01", "GR", "7"},
+		{"serverlet-01", "FR", "8"},
+		{"keybindssecretserver", "IS", "1"},
 	}
 
 	t := table.New(
 		table.WithColumns(col),
 		table.WithRows(row),
 		table.WithFocused(true),
-		table.WithHeight(20),
 	)
 	// example table construction end
 	t.SetStyles(table_style)

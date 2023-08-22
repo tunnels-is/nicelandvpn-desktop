@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -15,7 +17,7 @@ import (
 
 // main model
 type model struct {
-	Tabs         []string
+	tabs         []string
 	activeTab    int
 	serverTable  table.Model
 	routerTable  table.Model
@@ -57,7 +59,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("GRACEFULL QUIT!")
 			return m, tea.Quit
 		case "right", "l", "tab":
-			m.activeTab = min(m.activeTab+1, len(m.Tabs)-1)
+			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
 			return m, nil
 		case "left", "h", "shift+tab":
 			m.activeTab = max(m.activeTab-1, 0)
@@ -94,7 +96,7 @@ func (m model) View() string {
 	var renderedTabs []string
 
 	// iterate through Tabs apply the correct style, render them and append them to the renderedTabs slice
-	for i, t := range m.Tabs {
+	for i, t := range m.tabs {
 		var style lipgloss.Style
 		isActive := i == m.activeTab
 
@@ -139,46 +141,76 @@ func StartTui() {
 		device string
 	)
 
+  // Get credentials
 	fmt.Print("Email: ")
 	fmt.Scan(&email)
 	fmt.Print("Password: ")
 	fmt.Scan(&passw)
-	fmt.Print("2FA: ")
-	fmt.Scan(&twofa)
 	fmt.Print("DeviceName: ")
 	fmt.Scan(&device)
+	fmt.Print("2FA: ")
+	fmt.Scan(&twofa)
 
+  // make the login form
+	li := core.LoginForm{
+		Email:      email,
+		Password:   passw,
+		Digits:     twofa,
+		DeviceName: device,
+	}
+
+  // construct the request
 	FR.Path = "v2/user/login"
 	FR.Method = "POST"
 	FR.Timeout = 20000
-	FR.JSONData = core.LoginForm{
-		Email:    email,
-		Password: passw,
-		Digits:   twofa,
+	FR.JSONData = li
+	fmt.Printf("%+v \n", FR)
+
+  // send the request
+	fmt.Println("Loggging in...")
+	// data, code, err := core.ForwardToController(&FR)
+  respBytes, code, err := core.SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
+	if err != nil {
+		fmt.Println("Log in error: ", err)
+    core.CleanupOnClose()
+		os.Exit(1)
 	}
 
-	data, code, err := core.ForwardToController(&FR)
-	fmt.Println("Loggging in...")
-	fmt.Println(data)
-	fmt.Println(code)
-	fmt.Println(err)
+  var us *User
+  err = json.Unmarshal(respBytes, &us)
+  if err != nil {
+    fmt.Println("Response error: ", err)
+    core.CleanupOnClose()
+    os.Exit(1)
+  }
+  fmt.Println("DT: ", us.DeviceToken.DT)
+  fmt.Printf("\n%+v \n", us)
 
+  //  var NS core.CONTROLLER_SESSION_REQUEST
+  //  _, code, err = core.Connect(&NS, true)
+
+  // fmt.Printf("%+v \n\n", core.GLOBAL_STATE)
+
+  // construct the logout form
 	FR.Path = "v2/user/logout"
 	FR.JSONData = core.LogoutForm{
 		Email:       email,
-		DeviceToken: device,
+		DeviceToken: us.DeviceToken.DT,
 	}
 
+	time.Sleep(5 * time.Second)
+
+  // Send logout request
 	core.Disconnect()
-	data, code, err = core.ForwardToController(&FR)
+  data, code, err := core.ForwardToController(&FR)
 	fmt.Println("Logging out...")
-	fmt.Println(data)
+  fmt.Println(data)
 	fmt.Println(code)
 	fmt.Println(err)
 	// ------------------------------------------------------
 
 	// Configure tabs and their number
-	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
+	// tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
 
 	// Example table to have something to show inside the tabs
 	// This will evetnually be constructed and updated(I haven't figured out how yet) with real data later
@@ -240,12 +272,12 @@ func StartTui() {
 	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
-	m := model{Tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}
+	// m := model{tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}
 
 	// This is where it actually starts
-	TUI = tea.NewProgram(m)
-	if _, err := TUI.Run(); err != nil {
-		fmt.Println("Error running TUI: ", err)
-		os.Exit(1)
-	}
+	// TUI = tea.NewProgram(m)
+	// if _, err := TUI.Run(); err != nil {
+	// 	fmt.Println("Error running TUI: ", err)
+	// 	os.Exit(1)
+	// }
 }

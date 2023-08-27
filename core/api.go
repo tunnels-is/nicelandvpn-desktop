@@ -288,9 +288,20 @@ func SendRequestToControllerProxy(method string, route string, data interface{},
 	return x, resp.StatusCode, nil
 }
 
+var LAST_PRIVATE_ACCESS_POINT_UPDATE = time.Now()
+
+func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
+
+	if GLOBAL_STATE.ActiveRouter == nil {
+		return nil, 500, errors.New("active router not found, please wait a moment")
+	}
+
+	return nil, 0, nil
+}
+
 var LAST_ROUTER_AND_ACCESS_POINT_UPDATE = time.Now()
 
-func GetRoutersAndAccessPoints() (interface{}, int, error) {
+func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	defer RecoverAndLogToFile()
 
 	if GLOBAL_STATE.ActiveRouter == nil {
@@ -327,6 +338,25 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
 		CreateErrorLog("", "Could not process forward request: ", err)
 		return nil, 400, errors.New("unknown error, please try again in a moment")
+	}
+
+	responseBytes, code, err = SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
+	if err != nil {
+		CreateLog("", "(ROUTER/CONTROLLER) // code: ", code, " // err:", err)
+		if code != 0 {
+			return nil, code, errors.New(string(responseBytes))
+		} else {
+			return nil, code, errors.New("unable to contact controller")
+		}
+	}
+
+	// CreateLog("", string(responseBytes))
+
+	PrivateAccessPoints := make([]*AccessPoint, 0)
+	err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
+	if err != nil {
+		CreateErrorLog("", "Unable to unmarshal private device list: ", err)
+		return nil, 0, err
 	}
 
 	for ii := range RoutersAndAccessPoints.Routers {
@@ -464,6 +494,21 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 			}
 		}
 	}
+	GLOBAL_STATE.PrivateAccessPoints = PrivateAccessPoints
+	for i := range GLOBAL_STATE.PrivateAccessPoints {
+		A := GLOBAL_STATE.PrivateAccessPoints[i]
+
+		for ii := range GLOBAL_STATE.RoutersList {
+			R := GLOBAL_STATE.RoutersList[ii]
+			if R == nil {
+				continue
+			}
+
+			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
+				GLOBAL_STATE.PrivateAccessPoints[i].Router = GLOBAL_STATE.RoutersList[ii]
+			}
+		}
+	}
 
 	if len(GLOBAL_STATE.AccessPoints) == 0 {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
@@ -477,6 +522,16 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 			return false
 		}
 		return GLOBAL_STATE.AccessPoints[a].Router.Score > GLOBAL_STATE.AccessPoints[b].Router.Score
+	})
+
+	sort.Slice(GLOBAL_STATE.PrivateAccessPoints, func(a, b int) bool {
+		if GLOBAL_STATE.PrivateAccessPoints[a].Router == nil {
+			return false
+		}
+		if GLOBAL_STATE.PrivateAccessPoints[b].Router == nil {
+			return false
+		}
+		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
 	})
 
 	return nil, code, nil

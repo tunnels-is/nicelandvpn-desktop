@@ -17,7 +17,7 @@ export function GetLogs(arg1:number):Promise<main.ReturnObject>;
 
 export function GetQRCode(arg1:core.TWO_FACTOR_CONFIRM):Promise<main.ReturnObject>;
 
-export function GetRoutersAndAccessPoints():Promise<main.ReturnObject>;
+export function GetRoutersAndAccessPoints(arg1:core.FORWARD_REQUEST):Promise<main.ReturnObject>;
 
 export function GetState():Promise<main.ReturnObject>;
 

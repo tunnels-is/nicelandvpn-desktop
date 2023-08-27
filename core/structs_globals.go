@@ -136,6 +136,7 @@ type State struct {
 	RoutersList                   [2000]*ROUTER   `json:"-"`
 	Routers                       []*ROUTER       `json:"Routers"`
 	AccessPoints                  []*AccessPoint  `json:"AccessPoints"`
+	PrivateAccessPoints           []*AccessPoint  `json:"PrivateAccessPoints"`
 	ActiveRouter                  *ROUTER         `json:"ActiveRouter"`
 	ActiveAccessPoint             *AccessPoint    `json:"ActiveAccessPoint"`
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`

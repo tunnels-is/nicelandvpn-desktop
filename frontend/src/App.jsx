@@ -109,24 +109,36 @@ const LaunchApp = () => {
       console.dir(state.ActiveRouter)
       console.log("getting access points")
       if (STORE.ActiveRouterSet(state)) {
-        GetRoutersAndAccessPoints().then((x) => {
-          if (x.Code === 401) {
-            ToggleError(ERROR_LOGIN)
-            STORE.Cache.Clear()
+        let user = STORE.GetUser()
+        if (user) {
+          let FR = {
+            Method: "POST",
+            Path: "devices/private",
+            JSONData: {
+              UID: user._id,
+              DeviceToken: user.DeviceToken.DT
+            },
           }
-
-          if (x.Err) {
-            ToggleError(x.Err)
-          } else {
-            if (x.Code !== 200) {
-              ToggleError(x.Data)
+          GetRoutersAndAccessPoints(FR).then((x) => {
+            if (x.Code === 401) {
+              ToggleError(ERROR_LOGIN)
+              STORE.Cache.Clear()
             }
-          }
 
-        }).catch((e) => {
-          console.dir(e)
-          ToggleError("Unknown error while trying to get VPN list")
-        })
+            if (x.Err) {
+              ToggleError(x.Err)
+            } else {
+              if (x.Code !== 200) {
+                ToggleError(x.Data)
+              }
+            }
+
+          }).catch((e) => {
+            console.dir(e)
+            ToggleError("Unknown error while trying to get VPN list")
+          })
+
+        }
       }
     } catch (error) {
       console.dir(error)

@@ -30,8 +30,8 @@ export function GetQRCode(arg1) {
   return window['go']['main']['Service']['GetQRCode'](arg1);
 }
 
-export function GetRoutersAndAccessPoints() {
-  return window['go']['main']['Service']['GetRoutersAndAccessPoints']();
+export function GetRoutersAndAccessPoints(arg1) {
+  return window['go']['main']['Service']['GetRoutersAndAccessPoints'](arg1);
 }
 
 export function GetState() {

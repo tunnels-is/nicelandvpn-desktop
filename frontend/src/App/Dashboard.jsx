@@ -122,70 +122,76 @@ const Dashboard = (props) => {
 
   const ConnectToVPN = async (a, ar) => {
 
-    if (!STORE.ActiveRouterSet(props.state)) {
-      return
-    }
+    try {
 
-    props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Connecting you to VPN " + a.Tag, includeLogs: true })
+      if (!STORE.ActiveRouterSet(props.state)) {
+        return
+      }
 
-    if (!user.DeviceToken) {
-      LogOut()
-      return
-    }
+      props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Connecting you to VPN " + a.Tag, includeLogs: true })
 
-    let method = undefined
-    if (props.state?.ActiveAccessPoint) {
-      method = Switch
-    } else {
-      method = Connect
-    }
-
-    // console.log("CONNECTING TO:", a.Tag, a.GROUP, a.ROUTERID)
-    // console.log("SECOND ROUTER:", ar.GROUP, ar.ROUTERID)
-
-    let ConnectForm = {
-      UserID: user._id,
-      DeviceToken: user.DeviceToken.DT,
-
-      GROUP: ar.GROUP,
-      ROUTERID: ar.ROUTERID,
-
-      XGROUP: a.Router.GROUP,
-      XROUTERID: a.Router.ROUTERID,
-      DEVICEID: a.DEVICEID,
-    }
-
-    if (a.Networks) {
-      ConnectForm.Networks = a.Networks
-    }
-
-    method(ConnectForm).then((x) => {
-      if (x.Code === 401) {
+      if (!user.DeviceToken) {
         LogOut()
+        return
       }
 
-      if (x.Err) {
-        props.toggleError(x.Err)
+      let method = undefined
+      if (props.state?.ActiveAccessPoint) {
+        method = Switch
       } else {
-        if (x.Code === 200) {
-
-          STORE.Cache.Set("connected_quick", "XX")
-
-          if (a.GEO) {
-            props.showSuccessToast("Connected to VPN " + a.Tag + " @ " + a.GEO.CountryFull, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP + " @ " + a.GEO.CountryFull, TimeoutType: "default" })
-          } else {
-            props.showSuccessToast("Connected to VPN " + a.Tag, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP, TimeoutType: "default" })
-          }
-
-        } else {
-          props.toggleError(x.Data)
-        }
+        method = Connect
       }
 
-    }).catch((e) => {
-      console.dir(e)
-      props.toggleError("Unknown error, please try again in a moment")
-    })
+      // console.log("CONNECTING TO:", a.Tag, a.GROUP, a.ROUTERID)
+      // console.log("SECOND ROUTER:", ar.GROUP, ar.ROUTERID)
+
+      let ConnectForm = {
+        UserID: user._id,
+        DeviceToken: user.DeviceToken.DT,
+
+        GROUP: ar.GROUP,
+        ROUTERID: ar.ROUTERID,
+
+        XGROUP: a.Router.GROUP,
+        XROUTERID: a.Router.ROUTERID,
+        DEVICEID: a.DEVICEID,
+      }
+
+      if (a.Networks) {
+        ConnectForm.Networks = a.Networks
+      }
+
+      method(ConnectForm).then((x) => {
+        if (x.Code === 401) {
+          LogOut()
+        }
+
+        if (x.Err) {
+          props.toggleError(x.Err)
+        } else {
+          if (x.Code === 200) {
+
+            STORE.Cache.Set("connected_quick", "XX")
+
+            if (a.GEO) {
+              props.showSuccessToast("Connected to VPN " + a.Tag + " @ " + a.GEO.CountryFull, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP + " @ " + a.GEO.CountryFull, TimeoutType: "default" })
+            } else {
+              props.showSuccessToast("Connected to VPN " + a.Tag, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP, TimeoutType: "default" })
+            }
+
+          } else {
+            props.toggleError(x.Data)
+          }
+        }
+
+      }).catch((e) => {
+        console.dir(e)
+        props.toggleError("Unknown error, please try again in a moment")
+      })
+
+    } catch (error) {
+      console.dir(error)
+    }
 
     props.toggleLoading(undefined)
 
@@ -443,8 +449,13 @@ const Dashboard = (props) => {
               width={50}
             />
           }
+          {props?.state?.PrivateAccessPoints?.length > 0 &&
+            props.state.PrivateAccessPoints.map(ap => {
+              return RenderServer(ap, activeR, false, false)
+            })
+          }
 
-          {props.state?.AccessPoints?.length > 0 &&
+          {AccessPoints.length > 0 &&
             AccessPoints.map(ap => {
               return RenderServer(ap, activeR, false, false)
             })

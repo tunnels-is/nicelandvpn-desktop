@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -53,3 +55,16 @@ var table_style = table.Styles{
 	Selected: lipgloss.NewStyle().Foreground(black).Background(teal_border).Bold(true),
 	Cell:     lipgloss.NewStyle().Padding(0, 1).Width(26),
 }
+
+// login from styles
+var (
+	focusedStyle        = lipgloss.NewStyle().Foreground(orange)
+	blurredStyle        = lipgloss.NewStyle().Foreground(teal)
+	cursorStyle         = focusedStyle.Copy()
+	noStyle             = lipgloss.NewStyle()
+	helpStyle           = blurredStyle.Copy()
+	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(teal_hover)
+
+	focusedButton = focusedStyle.Copy().Render("1[ Submit ]")
+	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
+)

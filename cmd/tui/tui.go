@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -132,147 +130,73 @@ func (m model) View() string {
 }
 
 func StartTui() {
-	// figuring how logging in/out and connect/disconnect working...
-	var FR core.FORWARD_REQUEST
-	var (
-		email  string
-		passw  string
-		twofa  string
-		device string
-	)
+	// send them to the login form 1st
+	// I do not think I can have 2 completely different models
+	// in bubbletea this is the only way I could figure out
+	// how to do it...
+	login()
+	time.Sleep(3 * time.Second)
 
-  // Get credentials
-	fmt.Print("Email: ")
-	fmt.Scan(&email)
-	fmt.Print("Password: ")
-	fmt.Scan(&passw)
-	fmt.Print("DeviceName: ")
-	fmt.Scan(&device)
-	fmt.Print("2FA: ")
-	fmt.Scan(&twofa)
+	var CSR core.CONTROLLER_SESSION_REQUEST
+	CSR.DeviceToken = user.DeviceToken.DT
+	CSR.GROUP = core.GLOBAL_STATE.ActiveRouter.GROUP
+	CSR.ROUTERID = core.GLOBAL_STATE.ActiveRouter.ROUTERID
 
-  // make the login form
-	li := core.LoginForm{
-		Email:      email,
-		Password:   passw,
-		Digits:     twofa,
-		DeviceName: device,
-	}
-
-  // construct the request
-	FR.Path = "v2/user/login"
-	FR.Method = "POST"
-	FR.Timeout = 20000
-	FR.JSONData = li
-	fmt.Printf("%+v \n", FR)
-
-  // send the request
-	fmt.Println("Loggging in...")
-	// data, code, err := core.ForwardToController(&FR)
-  respBytes, code, err := core.SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
-	if err != nil {
-		fmt.Println("Log in error: ", err)
-    core.CleanupOnClose()
-		os.Exit(1)
-	}
-
-  var us *User
-  err = json.Unmarshal(respBytes, &us)
-  if err != nil {
-    fmt.Println("Response error: ", err)
-    core.CleanupOnClose()
-    os.Exit(1)
-  }
-  fmt.Println("DT: ", us.DeviceToken.DT)
-  fmt.Printf("\n%+v \n", us)
-
-  //  var NS core.CONTROLLER_SESSION_REQUEST
-  //  _, code, err = core.Connect(&NS, true)
-
-  // fmt.Printf("%+v \n\n", core.GLOBAL_STATE)
-
-  // construct the logout form
-	FR.Path = "v2/user/logout"
-	FR.JSONData = core.LogoutForm{
-		Email:       email,
-		DeviceToken: us.DeviceToken.DT,
-	}
-
-	time.Sleep(5 * time.Second)
-
-  // Send logout request
-	core.Disconnect()
-  data, code, err := core.ForwardToController(&FR)
-	fmt.Println("Logging out...")
-  fmt.Println(data)
+	data, code, err := core.Connect(&CSR, true)
+	fmt.Printf("\n%+v\n", data)
 	fmt.Println(code)
-	fmt.Println(err)
-	// ------------------------------------------------------
+	if err != nil {
+		fmt.Println("Error connecting: ", err)
+	}
+
+	time.Sleep(10 * time.Second)
+	logout()
 
 	// Configure tabs and their number
 	// tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
 
-	// Example table to have something to show inside the tabs
-	// This will evetnually be constructed and updated(I haven't figured out how yet) with real data later
-	col := []table.Column{
+	// Initial Sever Table
+	// Columns for server table
+	s_col := []table.Column{
 		{Title: "server", Width: 24},
 		{Title: "country", Width: 8},
 		{Title: "QoS", Width: 4},
 	}
 
-	row := []table.Row{
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-		{"server-01", "SW", "10"},
-		{"server-02", "SW", "9"},
-		{"anotherserver-01", "US", "5"},
-		{"someserver-01", "GR", "7"},
-		{"serverlet-01", "FR", "8"},
-		{"keybindssecretserver", "IS", "1"},
-	}
+	// get the initial values for the servers table
+	s_row := []table.Row{}
 
-	t := table.New(
-		table.WithColumns(col),
-		table.WithRows(row),
+	s_t := table.New(
+		table.WithColumns(s_col),
+		table.WithRows(s_row),
 		table.WithFocused(true),
 	)
-	// example table construction end
-	t.SetStyles(table_style)
+	s_t.SetStyles(table_style)
+
+	// Initial Routers Table
+	// Columns for routers table
+	r_col := []table.Column{
+		{Title: "server", Width: 24},
+		{Title: "country", Width: 8},
+		{Title: "QoS", Width: 4},
+	}
+
+	// get the initial values for the routers table
+	r_row := []table.Row{}
+
+	r_t := table.New(
+		table.WithColumns(r_col),
+		table.WithRows(r_row),
+		table.WithFocused(true),
+	)
+	r_t.SetStyles(table_style)
 
 	// Initialize the viewport for the logs
 	vp := viewport.New(80, 20)
 	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
-	// m := model{tabs: tabs, serverTable: t, routerTable: t, logsViewport: vp}
+	// m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
 
 	// This is where it actually starts
 	// TUI = tea.NewProgram(m)
@@ -280,4 +204,22 @@ func StartTui() {
 	// 	fmt.Println("Error running TUI: ", err)
 	// 	os.Exit(1)
 	// }
+}
+
+func logout() {
+	// construct the logout form
+	var FR core.FORWARD_REQUEST
+	FR.Path = "v2/user/logout"
+	FR.JSONData = core.LogoutForm{
+		Email:       user.Email,
+		DeviceToken: user.DeviceToken.DT,
+	}
+
+	// Send logout request
+	core.Disconnect()
+	data, code, err := core.ForwardToController(&FR)
+	fmt.Println("Logging out...")
+	fmt.Println(data)
+	fmt.Println(code)
+	fmt.Println(err)
 }

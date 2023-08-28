@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -49,30 +50,55 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logsViewport.Width = max(msg.Width-8, 72)
 		m.logsViewport.Height = max(msg.Height-6, 19)
 
-		return m, tea.Println("Resized!")
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+			logout()
 			core.CleanupOnClose()
 			log.Println("GRACEFULL QUIT!")
 			return m, tea.Quit
 		case "right", "l", "tab":
 			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
+      if m.activeTab == 0 {
+        m.serverTable.Focus()
+        m.routerTable.Blur()
+      } else if m.activeTab == 1 {
+        m.serverTable.Blur()
+        m.routerTable.Focus()
+      } else {
+        m.serverTable.Blur()
+        m.routerTable.Blur()
+      }
 			return m, nil
 		case "left", "h", "shift+tab":
 			m.activeTab = max(m.activeTab-1, 0)
+      if m.activeTab == 0 {
+        m.serverTable.Focus()
+        m.routerTable.Blur()
+      } else if m.activeTab == 1 {
+        m.serverTable.Blur()
+        m.routerTable.Focus()
+      } else {
+        m.serverTable.Blur()
+        m.routerTable.Blur()
+      }
 			return m, nil
 		case "enter":
 			// Handle selection for different tabs differently LUL
 			switch m.activeTab {
 			case 0:
+				// connect to access point
 				return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
+			case 1:
+				// change to router
+				return m, tea.Println("Switching to: ", m.routerTable.SelectedRow()[0])
 			default:
-				return m, tea.Println("This thing is still work in progress....")
+				return m, tea.Println("This thing is still work in progress...")
 			}
 		}
-		// update the logs always
 	default:
+		// update the logs and tables
 		logs := GetLogs()
 		if len(m.logs) != len(logs) {
 			m.logs = logs
@@ -81,6 +107,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.logsViewport.ScrollPercent() == 1 {
 			m.logsViewport.GotoBottom()
 		}
+
+		aps := core.GLOBAL_STATE.AccessPoints
+		s_row := []table.Row{}
+		for _, v := range aps {
+			s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
+		}
+
+		routs := core.GLOBAL_STATE.Routers
+		r_row := []table.Row{}
+		for _, v := range routs {
+			r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
+		}
+
+		m.serverTable.SetRows(s_row)
+		m.routerTable.SetRows(r_row)
 
 		return m, tea.Batch(servCmd, routCmd, vpCmd)
 	}
@@ -135,27 +176,15 @@ func StartTui() {
 	// in bubbletea this is the only way I could figure out
 	// how to do it...
 	login()
-	time.Sleep(3 * time.Second)
-
-	var CSR core.CONTROLLER_SESSION_REQUEST
-	CSR.DeviceToken = user.DeviceToken.DT
-	CSR.GROUP = core.GLOBAL_STATE.ActiveRouter.GROUP
-	CSR.ROUTERID = core.GLOBAL_STATE.ActiveRouter.ROUTERID
-
-	data, code, err := core.Connect(&CSR, true)
-	fmt.Printf("\n%+v\n", data)
-	fmt.Println(code)
-	if err != nil {
-		fmt.Println("Error connecting: ", err)
-	}
-
-	time.Sleep(10 * time.Second)
-	logout()
 
 	// Configure tabs and their number
-	// tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
+	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
 
-	// Initial Sever Table
+	// Initial VPNs and Routers tables
+	// I thought it's a good idea to have the
+	// tables ready before I start the TUI
+	core.GetRoutersAndAccessPoints()
+
 	// Columns for server table
 	s_col := []table.Column{
 		{Title: "server", Width: 24},
@@ -163,17 +192,6 @@ func StartTui() {
 		{Title: "QoS", Width: 4},
 	}
 
-	// get the initial values for the servers table
-	s_row := []table.Row{}
-
-	s_t := table.New(
-		table.WithColumns(s_col),
-		table.WithRows(s_row),
-		table.WithFocused(true),
-	)
-	s_t.SetStyles(table_style)
-
-	// Initial Routers Table
 	// Columns for routers table
 	r_col := []table.Column{
 		{Title: "server", Width: 24},
@@ -181,13 +199,31 @@ func StartTui() {
 		{Title: "QoS", Width: 4},
 	}
 
-	// get the initial values for the routers table
+	// rows for server table
+	aps := core.GLOBAL_STATE.AccessPoints
+	fmt.Println(aps)
+	s_row := []table.Row{}
+	for _, v := range aps {
+		s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
+	}
+
+	s_t := table.New(
+		table.WithColumns(s_col),
+		table.WithRows(s_row),
+	)
+	s_t.SetStyles(table_style)
+
+	// rows for router table
+	routs := core.GLOBAL_STATE.Routers
+	fmt.Println(routs)
 	r_row := []table.Row{}
+	for _, v := range routs {
+		r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
+	}
 
 	r_t := table.New(
 		table.WithColumns(r_col),
 		table.WithRows(r_row),
-		table.WithFocused(true),
 	)
 	r_t.SetStyles(table_style)
 
@@ -196,16 +232,19 @@ func StartTui() {
 	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
-	// m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
+	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
 
+  m.serverTable.Focus()
 	// This is where it actually starts
-	// TUI = tea.NewProgram(m)
-	// if _, err := TUI.Run(); err != nil {
-	// 	fmt.Println("Error running TUI: ", err)
-	// 	os.Exit(1)
-	// }
+	TUI = tea.NewProgram(m)
+	go TimedUIUpdate(MONITOR)
+	if _, err := TUI.Run(); err != nil {
+		fmt.Println("Error running TUI: ", err)
+		os.Exit(1)
+	}
 }
 
+// this needs fixing I guess
 func logout() {
 	// construct the logout form
 	var FR core.FORWARD_REQUEST

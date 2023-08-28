@@ -26,7 +26,6 @@ func main() {
 
 	go RoutineMonitor()
 	go core.StartService(MONITOR)
-	go TimedUIUpdate(MONITOR)
 
 	StartTui()
 }

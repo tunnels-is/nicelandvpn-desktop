@@ -8,6 +8,7 @@ import (
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
 
+// Update the accesspoints, routers and logs every 3 seconds
 func TimedUIUpdate(MONITOR chan int) {
 	defer func() {
 		time.Sleep(3 * time.Second)
@@ -17,6 +18,7 @@ func TimedUIUpdate(MONITOR chan int) {
 
 	for {
 		time.Sleep(3 * time.Second)
+    core.GetRoutersAndAccessPoints()
 		TUI.Send(&tea.KeyMsg{
 			Type: 0,
 		})

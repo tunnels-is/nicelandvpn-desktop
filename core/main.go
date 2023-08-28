@@ -43,6 +43,7 @@ func CalculateBandwidth(MONITOR chan int) {
 	defer func() {
 		MONITOR <- 6
 	}()
+
 	defer RecoverAndLogToFile()
 
 	for {

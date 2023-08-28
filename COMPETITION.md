@@ -190,6 +190,7 @@ The connection request is as follows:
 
 ```golang
 type CONTROLLER_SESSION_REQUEST struct {
+	UserID primitive.ObjectID // The ID of the user
 	DeviceToken string `json:",omitempty"`
 
 	SLOTID int // Slot is configured by the core

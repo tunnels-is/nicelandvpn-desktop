@@ -65,10 +65,12 @@ WAITFORDEVICE:
 	}
 
 	for {
-		if packetSize > 0 {
+		// if packetSize > 0 {
+		if packet != nil {
 			A.ReleaseReceivePacket(packet)
 		}
-		packet = nil
+
+		// packet = nil
 		if GLOBAL_STATE.Exiting {
 			CreateLog("", "nicelandVPN is exiting, closing adapter reader")
 			return

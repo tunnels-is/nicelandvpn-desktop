@@ -1,12 +1,4 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 cmd/tui/*.exe
-=======
->>>>>>> 020e84f (boilerplate for TUI competition)
-=======
-cmd/tui/tui.exe
-cmd/tui/NicelandVPN.exe
->>>>>>> a46e1ac99b2ad005772f3d3b4110fe21714adccb
 cmd/tui/files
 
 build/bin/*

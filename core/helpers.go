@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net"
 	"runtime/debug"
+	"strings"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -100,3 +101,76 @@ func SetGlobalStateAsDisconnected() {
 	GLOBAL_STATE.Connected = false
 	GLOBAL_STATE.Connecting = false
 }
+
+func DNSMapping(domain string) net.IP {
+	parts := strings.Split(domain, ".")
+	// parts = parts[:len(parts)-1]
+	var d string
+	var s string
+	if len(parts) == 2 {
+		d = strings.Join(parts[len(parts)-2:], ".")
+	} else if len(parts) > 2 {
+		d = strings.Join(parts[len(parts)-2:], ".")
+		s = strings.Join(parts[:len(parts)-2], ".")
+	} else {
+		return nil
+	}
+
+	if AS.AP == nil {
+		return nil
+	}
+	CreateLog("DNS", "PARTS: ", parts)
+	CreateLog("DNS", "DOMAIN: ", d)
+	CreateLog("DNS", "SUBDOMAIN: ", s)
+	CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
+
+	var m *DeviceDNSRegistration
+	var ok bool
+	if s != "" {
+		m, ok = AS.AP.DNS[s]
+		if ok {
+			return net.ParseIP(m.IP)
+		}
+	}
+
+	m, ok = AS.AP.DNS[d]
+	if ok {
+		if m.Wildcard {
+			return net.ParseIP(m.IP)
+		} else if s == "" {
+			return net.ParseIP(m.IP)
+		}
+	}
+
+	return nil
+}
+
+// func CraftDNSResponse(domain string, ip net.IP) {
+// 	ip4 := ip.To4()
+
+// 	msg := dnsmessage.Message{
+// 		Header: dnsmessage.Header{Response: true, Authoritative: true},
+// 		Questions: []dnsmessage.Question{
+// 			{
+// 				Name:  dnsmessage.MustNewName(domain),
+// 				Type:  dnsmessage.TypeA,
+// 				Class: dnsmessage.ClassINET,
+// 			},
+// 		},
+// 		Answers: []dnsmessage.Resource{
+// 			{
+// 				Header: dnsmessage.ResourceHeader{
+// 					Name:  dnsmessage.MustNewName(domain),
+// 					Type:  dnsmessage.TypeA,
+// 					Class: dnsmessage.ClassINET,
+// 				},
+// 				Body: &dnsmessage.AResource{A: [4]byte{ip4[0], ip4[1], ip4[2], ip4[4]}},
+// 			},
+// 		},
+// 	}
+
+// 	buf, err := msg.Pack()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }

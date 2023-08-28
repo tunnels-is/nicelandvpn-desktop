@@ -44,6 +44,13 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 		parsedUDPLayer   *layers.UDP
 		parsedIPLayer    *layers.IPv4
 
+		parsedDNSLayer *layers.DNS
+		domain         string
+		isCustomDNS    bool
+		domainIP       net.IP
+
+		isDNSLayer bool = false
+
 		destinationIP = [4]byte{}
 		outgoingPort  *RemotePort
 
@@ -162,6 +169,70 @@ WAITFORDEVICE:
 			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
 			applicationLayer = parsedPacket.ApplicationLayer()
 			parsedUDPLayer = parsedPacket.TransportLayer().(*layers.UDP)
+
+			parsedDNSLayer, isDNSLayer = applicationLayer.(*layers.DNS)
+			if isDNSLayer {
+				if parsedDNSLayer.Questions[0].Type != layers.DNSTypeA {
+					goto SKIPDNS
+				}
+
+				for _, v := range parsedDNSLayer.Questions {
+					domain = string(v.Name)
+					CreateLog("DNS", "Question: ", string(v.Name))
+					domainIP = DNSMapping(domain)
+					if domainIP != nil {
+						isCustomDNS = true
+						DR := new(layers.DNSResourceRecord)
+						DR.Name = v.Name
+						DR.Type = v.Type
+						DR.Class = v.Class
+						DR.TTL = 30
+						DR.IP = domainIP
+						CreateLog("DNS", "Answer: ", DR)
+						parsedDNSLayer.Answers = append(parsedDNSLayer.Answers, *DR)
+						parsedDNSLayer.ANCount++
+						// REPLY WITH DNS RESPONSE
+					}
+				}
+
+				if isCustomDNS {
+					isCustomDNS = false
+
+					parsedDNSLayer.QR = true
+					// oldX := parsedIPLayer.DstIP
+					oldIP := parsedIPLayer.DstIP
+
+					parsedIPLayer.DstIP = parsedIPLayer.SrcIP
+					parsedIPLayer.SrcIP = oldIP
+
+					oldPort := parsedUDPLayer.DstPort
+					parsedUDPLayer.DstPort = parsedUDPLayer.SrcPort
+					parsedUDPLayer.SrcPort = oldPort
+
+					parsedUDPLayer.SetNetworkLayerForChecksum(parsedIPLayer)
+					buffer = gopacket.NewSerializeBuffer()
+
+					gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedUDPLayer, parsedDNSLayer)
+					inPacket := buffer.Bytes()
+
+					ingressAllocationBuffer, writeError := A.AllocateSendPacket(len(inPacket))
+					if writeError != nil {
+						BUFFER_ERROR = true
+						CreateErrorLog("", "Send: ", writeError)
+						return
+					}
+
+					copy(ingressAllocationBuffer, inPacket)
+					A.SendPacket(ingressAllocationBuffer)
+					testPacket := gopacket.NewPacket(ingressAllocationBuffer, layers.LayerTypeIPv4, gopacket.Default)
+					CreateLog("DNS", testPacket)
+					continue
+				}
+
+			}
+
+		SKIPDNS:
+			// DNS
 
 			outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
 			if outgoingPort == nil {

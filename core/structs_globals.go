@@ -182,7 +182,10 @@ type AdapterSettings struct {
 	UDPHeader    layers.IPv4
 	TCPHeader    layers.IPv4
 	AEAD         cipher.AEAD
+
+	AP *AccessPoint
 }
+
 type Config struct {
 	AutoReconnect  bool
 	KillSwitch     bool
@@ -388,12 +391,11 @@ type AccessPoint struct {
 	DEVICEID uint8  `json:"DEVICEID" bson:"DID"`
 	IP       string `json:"IP" bson:"IP"`
 
-	Access             []*AP_DEVICE_USER_ACCESS `json:"Access" bson:"A"`
-	Networks           []*AP_DEVICE_NETWORK_MAP `json:"Networks" bson:"N"`
-	Updated            time.Time                `json:"Updated" bson:"U"`
-	InternetAccess     bool                     `json:"InternetAccess" bson:"I"`
-	LocalNetworkAccess bool                     `json:"LocalNetworkAccess" bson:"LA"`
-	Public             bool                     `json:"Public" bson:"P"`
+	Access             []*DeviceUserRegistration `json:"Access" bson:"A"`
+	Updated            time.Time                 `json:"Updated" bson:"U"`
+	InternetAccess     bool                      `json:"InternetAccess" bson:"I"`
+	LocalNetworkAccess bool                      `json:"LocalNetworkAccess" bson:"LA"`
+	Public             bool                      `json:"Public" bson:"P"`
 
 	Online     bool       `json:"Online" bson:"O"`
 	LastOnline time.Time  `json:"LastOnline" bson:"LO"`
@@ -404,18 +406,38 @@ type AccessPoint struct {
 	AvailableMbps  int `json:"AvailableMbps" bson:"ABS"`
 	UserMbps       int `json:"UserMbps" bson:"UB"`
 
+	Country     string `json:"Country" bson:"Country"`
+	CountryFull string `json:"CountryFull" bson:"CountryFull"`
+	// MIGHT USE
+	NAT             []*DeviceNatRegistration          `json:"NAT" bson:"NAT"`
+	BlockedNetworks []string                          `json:"BlockedNetworks" bson:"BlockedNetworks"`
+	DNS             map[string]*DeviceDNSRegistration `json:"DNS" bson:"DNS"`
+
 	Router *ROUTER `json:"Router"`
+
+	// MAPS
+	// key == domain
+	// DNSMapping map[string]*DNSMap
 }
 
-type AP_DEVICE_USER_ACCESS struct {
+// type DNSMap struct {
+// 	IP       string
+// 	Wildcard bool
+// }
+
+type DeviceDNSRegistration struct {
+	IP       string `json:"IP" bson:"IP"`
+	Wildcard bool   `json:"Wildcard" bson:"Wildcard"`
+}
+type DeviceNatRegistration struct {
+	Tag     string `json:"Tag" bson:"T"`
+	Network string `json:"Network" bson:"N"`
+	Nat     string `json:"Nat" bson:"L"`
+}
+
+type DeviceUserRegistration struct {
 	UID primitive.ObjectID `json:"UID" bson:"UID"`
 	Tag string             `json:"Tag" bson:"T"`
-}
-
-type AP_DEVICE_NETWORK_MAP struct {
-	Tag          string `json:"Tag" bson:"T"`
-	Network      string `json:"Network" bson:"N"`
-	LocalNetwork string `json:"LocalNetwork" bson:"L"`
 }
 
 type AP_GEO_DB struct {

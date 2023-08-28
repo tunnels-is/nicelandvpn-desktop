@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { SwitchRouter } from '../../wailsjs/go/main/Service';
 
 import STORE from "../store";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 const Routers = (props) => {
 
@@ -71,16 +71,27 @@ const Routers = (props) => {
         {!s.Tag &&
           <div className="item ip">Unknown</div>
         }
-        <div className="item country-item x3">
-          <img
-            className="flag"
-            src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + s.Country.toLowerCase() + ".svg"}
-          // src={"/src/assets/images/flag/" + s.Country.toLowerCase() + ".svg"}
-          />
-          <span className="name">
-            {s.Country}
-          </span>
-        </div>
+        {s.Country !== "" &&
+          <div className="item country-item x3">
+            <img
+              className="flag"
+              src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + s.Country.toLowerCase() + ".svg"}
+            // src={"/src/assets/images/flag/" + s.Country.toLowerCase() + ".svg"}
+            />
+            <span className="name">
+              {s.Country}
+            </span>
+          </div>
+        }
+        {s.Country === "" &&
+          <div className="item country-item x3">
+            <DesktopIcon className="flag-temp" height={23} width={23}></DesktopIcon>
+            <span className="name">
+              Private
+            </span>
+          </div>
+
+        }
         <div className="item x3">{s.Score}</div>
         <div className="item x3">{s.MS === 999 ? "?" : s.MS}</div>
         <div className="item x3">{(s.AvailableSlots)}</div>

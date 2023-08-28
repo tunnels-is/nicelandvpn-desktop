@@ -494,6 +494,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			}
 		}
 	}
+
 	GLOBAL_STATE.PrivateAccessPoints = PrivateAccessPoints
 	for i := range GLOBAL_STATE.PrivateAccessPoints {
 		A := GLOBAL_STATE.PrivateAccessPoints[i]
@@ -509,6 +510,9 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			}
 		}
 	}
+
+	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	AS.AP = GLOBAL_STATE.ActiveAccessPoint
 
 	if len(GLOBAL_STATE.AccessPoints) == 0 {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
@@ -763,16 +767,44 @@ func PrepareState() {
 		GLOBAL_STATE.ConnectedTimer = fmt.Sprintf("%.0f %s", seconds, label)
 	}
 
+	// if GLOBAL_STATE.ActiveSession != nil {
+	// 	S := GLOBAL_STATE.ActiveSession
+	// 	for i := range GLOBAL_STATE.AccessPoints {
+	// 		A := GLOBAL_STATE.AccessPoints[i]
+	// 		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID {
+	// 			GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+	// 		}
+	// 	}
+	// }
+	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+
+}
+
+func GetActiveAccessPointFromActiveSession() *AccessPoint {
 	if GLOBAL_STATE.ActiveSession != nil {
 		S := GLOBAL_STATE.ActiveSession
+
 		for i := range GLOBAL_STATE.AccessPoints {
 			A := GLOBAL_STATE.AccessPoints[i]
-			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID {
-				GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+				return GLOBAL_STATE.AccessPoints[i]
 			}
 		}
+
+		for i := range GLOBAL_STATE.PrivateAccessPoints {
+			A := GLOBAL_STATE.PrivateAccessPoints[i]
+			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+				return GLOBAL_STATE.PrivateAccessPoints[i]
+			}
+		}
+
 	}
 
+	return nil
 }
 
 func GetLogsForCLI() (*GeneralLogResponse, error) {
@@ -1139,7 +1171,11 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 
 	AS = NewAdapterSettings
 	AS.Session = S
+
 	GLOBAL_STATE.ActiveSession = AS.Session
+	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	AS.AP = GLOBAL_STATE.ActiveAccessPoint
+
 	AS.LastActivity = time.Now()
 	GLOBAL_STATE.Connected = true
 	BUFFER_ERROR = false

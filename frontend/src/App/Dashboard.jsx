@@ -7,7 +7,7 @@ import Loader from "react-spinners/ScaleLoader";
 import { Connect, Switch } from "../../wailsjs/go/main/Service";
 
 import STORE from "../store";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 
 const Dashboard = (props) => {
@@ -246,7 +246,7 @@ const Dashboard = (props) => {
           <div className="item tag"  >{ap.Tag}</div>
 
           <div className="item country" >
-            {ap.GEO &&
+            {(ap.GEO?.Country !== "" && ap.Country == "") &&
               <>
                 <img
                   className="country-flag"
@@ -258,11 +258,28 @@ const Dashboard = (props) => {
                 </div>
               </>
             }
-            {!ap.GEO &&
-              <img
-                className="country-flag"
-                src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/temp.svg"}
-              />
+
+            {(ap.Country !== "") &&
+
+              <>
+                <img
+                  className="country-flag"
+                  src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + ap.Country.toLowerCase() + ".svg"}
+                // src={"/src/assets/images/flag/" + ap.GEO.Country.toLowerCase() + ".svg"}
+                />
+                <div className="text">
+                  {ap.Country}
+                </div>
+              </>
+            }
+
+            {(ap.GEO?.Country === "" && ap.Country === "") &&
+              <>
+                <DesktopIcon className="country-temp" height={23} width={23}></DesktopIcon>
+                <div className="text">
+                  Private
+                </div>
+              </>
             }
           </div>
 
@@ -409,7 +426,7 @@ const Dashboard = (props) => {
 
           <div className="header">
             <div className="title tag">Tag</div>
-            <div className="title country">Country</div>
+            <div className="title country">Location</div>
             <div className="title x3">QoS
               <span className="tooltiptext">{STORE.VPN_Tooltips[0]}</span>
             </div>

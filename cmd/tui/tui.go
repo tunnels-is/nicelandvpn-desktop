@@ -23,6 +23,7 @@ type model struct {
 	logsViewport viewport.Model
 	logs         []string
 	ready        bool
+	status       []string
 	// setting I have no idea how to handle them yet...
 }
 
@@ -173,7 +174,17 @@ func (m model) View() string {
 	}
 	doc.WriteString(windowStyle.Render(tabContent))
 
-	return docStyle.Render(doc.String())
+    ret := docStyle.Render(doc.String()) // tab and it's contents
+
+    // Status line at the bottom
+    var status string
+    if core.GLOBAL_STATE.Connected {
+        status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
+    } else {
+        status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
+    }
+
+	return lipgloss.JoinVertical(lipgloss.Left, ret, status)
 }
 
 func StartTui() {

@@ -68,3 +68,6 @@ var (
 	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
+
+// status line
+var statusStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(0, 2).Bold(true)

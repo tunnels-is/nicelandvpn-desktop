@@ -59,24 +59,16 @@ func (m loginForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
+			// core.CleanupOnClose()
+            sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
 			return m, tea.Quit
-		case "ctrl+r":
-			m.cursorMode++
-			if m.cursorMode > cursor.CursorHide {
-				m.cursorMode = cursor.CursorBlink
-			}
-			cmds := make([]tea.Cmd, len(m.inputs))
-			for i := range m.inputs {
-				cmds[i] = m.inputs[i].Cursor.SetMode(m.cursorMode)
-			}
-			return m, tea.Batch(cmds...)
 		case "tab", "shift-tab", "enter", "up", "down":
 			s := msg.String()
 
 			// if hit enter while the submit button was focused
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-        sendLoginRequest(m.inputs)
+				sendLoginRequest(m.inputs)
 				return m, tea.Quit
 			}
 
@@ -136,10 +128,6 @@ func (m loginForm) View() string {
 	}
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
-	b.WriteString(helpStyle.Render("cursor mode is "))
-	b.WriteString(cursorModeHelpStyle.Render(m.cursorMode.String()))
-	b.WriteString(helpStyle.Render(" (ctrl+r to change style)"))
-
 	return b.String()
 }
 
@@ -147,6 +135,7 @@ func login() {
 	_, err := tea.NewProgram(intialModel()).Run()
 	if err != nil {
 		fmt.Printf("Could not start the login form: %s\n", err)
+		core.CleanupOnClose()
 		os.Exit(1)
 	}
 }
@@ -167,17 +156,17 @@ func sendLoginRequest(creds []textinput.Model) {
 	FR.Method = "POST"
 	FR.Timeout = 20000
 	FR.JSONData = li
-  
-  // send the request with the creds
+
+	// send the request with the creds
 	respBytes, code, err := core.SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
 	if err != nil || code != 200 {
 		fmt.Println("\nCode: ", code)
-    fmt.Println("Log in error: ", err)
+		fmt.Println("Log in error: ", err)
 		core.CleanupOnClose()
 		os.Exit(1)
 	}
 
-  // unfold it in the user global
+	// unfold it in the user global
 	err = json.Unmarshal(respBytes, &user)
 	if err != nil {
 		fmt.Println("Response error: ", err)

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -89,10 +90,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.activeTab {
 			case 0:
 				// connect to access point
+				ConnectToAP(m.serverTable.SelectedRow()[0])
 				return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
 			case 1:
 				// change to router
-				return m, tea.Println("Switching to: ", m.routerTable.SelectedRow()[0])
+				code, err := core.SwitchRouter(m.routerTable.SelectedRow()[0])
+				s := "Switching to " + m.routerTable.SelectedRow()[0]
+				if err != nil {
+					s = fmt.Sprintf("There was an error switching routers: %s\nCode: %d", err, code)
+				}
+				return m, tea.Println(s)
 			default:
 				return m, tea.Println("This thing is still work in progress...")
 			}
@@ -243,7 +250,40 @@ func StartTui() {
 	go TimedUIUpdate(MONITOR)
 	if _, err := TUI.Run(); err != nil {
 		fmt.Println("Error running TUI: ", err)
-        core.CleanupOnClose()
+		core.CleanupOnClose()
 		os.Exit(1)
+	}
+}
+
+func ConnectToAP(Tag string) {
+	var NS core.CONTROLLER_SESSION_REQUEST
+	var AP *core.AccessPoint
+
+	for _, v := range core.GLOBAL_STATE.AccessPoints {
+		if Tag == v.Tag {
+			AP = v
+		}
+	}
+
+	NS.UserID = user.ID
+	NS.DeviceToken = user.DeviceToken.DT
+	NS.GROUP = core.GLOBAL_STATE.ActiveRouter.GROUP
+	NS.ROUTERID = core.GLOBAL_STATE.ActiveRouter.ROUTERID
+	NS.XGROUP = AP.GROUP
+	NS.XROUTERID = AP.ROUTERID
+	NS.DEVICEID = AP.DEVICEID
+
+	if core.GLOBAL_STATE.Connected {
+		_, code, err := core.Connect(&NS, false)
+		if err != nil {
+			fmt.Println("There was an error: ", err)
+			fmt.Println("Code: ", code)
+		}
+	} else {
+		_, code, err := core.Connect(&NS, true)
+		if err != nil {
+			fmt.Println("There was an error: ", err)
+			fmt.Println("Code: ", code)
+		}
 	}
 }

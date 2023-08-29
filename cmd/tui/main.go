@@ -11,7 +11,7 @@ import (
 const (
 	VERSION           = "1.1.3"
 	PRODUCTION        = true
-	ENABLE_INSTERFACE = false
+	ENABLE_INSTERFACE = true
 )
 
 var (

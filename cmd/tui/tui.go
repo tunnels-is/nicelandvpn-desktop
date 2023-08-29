@@ -60,29 +60,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "right", "l", "tab":
 			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
-      if m.activeTab == 0 {
-        m.serverTable.Focus()
-        m.routerTable.Blur()
-      } else if m.activeTab == 1 {
-        m.serverTable.Blur()
-        m.routerTable.Focus()
-      } else {
-        m.serverTable.Blur()
-        m.routerTable.Blur()
-      }
+			if m.activeTab == 0 {
+				m.serverTable.Focus()
+				m.routerTable.Blur()
+			} else if m.activeTab == 1 {
+				m.serverTable.Blur()
+				m.routerTable.Focus()
+			} else {
+				m.serverTable.Blur()
+				m.routerTable.Blur()
+			}
 			return m, nil
 		case "left", "h", "shift+tab":
 			m.activeTab = max(m.activeTab-1, 0)
-      if m.activeTab == 0 {
-        m.serverTable.Focus()
-        m.routerTable.Blur()
-      } else if m.activeTab == 1 {
-        m.serverTable.Blur()
-        m.routerTable.Focus()
-      } else {
-        m.serverTable.Blur()
-        m.routerTable.Blur()
-      }
+			if m.activeTab == 0 {
+				m.serverTable.Focus()
+				m.routerTable.Blur()
+			} else if m.activeTab == 1 {
+				m.serverTable.Blur()
+				m.routerTable.Focus()
+			} else {
+				m.serverTable.Blur()
+				m.routerTable.Blur()
+			}
 			return m, nil
 		case "enter":
 			// Handle selection for different tabs differently LUL
@@ -177,14 +177,15 @@ func StartTui() {
 	// how to do it...
 	login()
 
-	// Configure tabs and their number
-	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
-
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the
 	// tables ready before I start the TUI
 	core.GetRoutersAndAccessPoints()
 
+	// Configure tabs and their number
+	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
+
+	// Initialize the servers and routers tables
 	// Columns for server table
 	s_col := []table.Column{
 		{Title: "server", Width: 24},
@@ -199,33 +200,35 @@ func StartTui() {
 		{Title: "QoS", Width: 4},
 	}
 
-	// rows for server table
+	var s_row []table.Row
+	var r_row []table.Row
+
 	aps := core.GLOBAL_STATE.AccessPoints
-	fmt.Println(aps)
-	s_row := []table.Row{}
+	routs := core.GLOBAL_STATE.Routers
+
+	// rows for server table
 	for _, v := range aps {
 		s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
 	}
 
+	// rows for router table
+	for _, v := range routs {
+		r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
+	}
+
+	// Set tables
 	s_t := table.New(
 		table.WithColumns(s_col),
 		table.WithRows(s_row),
 	)
 	s_t.SetStyles(table_style)
 
-	// rows for router table
-	routs := core.GLOBAL_STATE.Routers
-	fmt.Println(routs)
-	r_row := []table.Row{}
-	for _, v := range routs {
-		r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
-	}
-
 	r_t := table.New(
 		table.WithColumns(r_col),
 		table.WithRows(r_row),
 	)
 	r_t.SetStyles(table_style)
+	// Initial tables finished ---
 
 	// Initialize the viewport for the logs
 	vp := viewport.New(80, 20)
@@ -233,32 +236,14 @@ func StartTui() {
 
 	// make the model and give some starting values
 	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
+	m.serverTable.Focus() // focus on the first table since it starts there
 
-  m.serverTable.Focus()
 	// This is where it actually starts
 	TUI = tea.NewProgram(m)
 	go TimedUIUpdate(MONITOR)
 	if _, err := TUI.Run(); err != nil {
 		fmt.Println("Error running TUI: ", err)
+        core.CleanupOnClose()
 		os.Exit(1)
 	}
-}
-
-// this needs fixing I guess
-func logout() {
-	// construct the logout form
-	var FR core.FORWARD_REQUEST
-	FR.Path = "v2/user/logout"
-	FR.JSONData = core.LogoutForm{
-		Email:       user.Email,
-		DeviceToken: user.DeviceToken.DT,
-	}
-
-	// Send logout request
-	core.Disconnect()
-	data, code, err := core.ForwardToController(&FR)
-	fmt.Println("Logging out...")
-	fmt.Println(data)
-	fmt.Println(code)
-	fmt.Println(err)
 }

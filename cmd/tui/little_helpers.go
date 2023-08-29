@@ -18,7 +18,7 @@ func TimedUIUpdate(MONITOR chan int) {
 
 	for {
 		time.Sleep(3 * time.Second)
-    core.GetRoutersAndAccessPoints()
+		core.GetRoutersAndAccessPoints()
 		TUI.Send(&tea.KeyMsg{
 			Type: 0,
 		})
@@ -38,6 +38,25 @@ func GetLogs() []string {
 	}
 
 	return logs
+}
+
+// this needs fixing I guess ???
+func logout() {
+	// construct the logout form
+	var FR core.FORWARD_REQUEST
+	FR.Path = "v2/user/logout"
+	FR.JSONData = core.LogoutForm{
+		Email:       user.Email,
+		DeviceToken: user.DeviceToken.DT,
+	}
+
+	// Send logout request
+	core.Disconnect()
+	data, code, err := core.ForwardToController(&FR)
+	fmt.Println("Logging out...")
+	fmt.Println(data)
+	fmt.Println(code)
+	fmt.Println(err)
 }
 
 func max(a, b int) int {

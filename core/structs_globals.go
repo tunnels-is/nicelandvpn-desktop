@@ -415,9 +415,8 @@ type AccessPoint struct {
 
 	Router *ROUTER `json:"Router"`
 
-	// MAPS
-	// key == domain
-	// DNSMapping map[string]*DNSMap
+	NAT_CACHE         map[[4]byte][4]byte `json:"-"`
+	REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
 }
 
 // type DNSMap struct {

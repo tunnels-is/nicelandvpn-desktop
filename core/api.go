@@ -499,6 +499,8 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	for i := range GLOBAL_STATE.PrivateAccessPoints {
 		A := GLOBAL_STATE.PrivateAccessPoints[i]
 
+		BUILD_NAT_MAP(A)
+
 		for ii := range GLOBAL_STATE.RoutersList {
 			R := GLOBAL_STATE.RoutersList[ii]
 			if R == nil {

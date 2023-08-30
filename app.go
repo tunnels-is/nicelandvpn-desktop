@@ -48,6 +48,8 @@ func (a *App) startup(ctx context.Context) {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {
 				go core.StartLogQueueProcessor(MONITOR)
+			} else if ID == 9 {
+				go core.CleanPorts(MONITOR)
 			}
 		}
 	}

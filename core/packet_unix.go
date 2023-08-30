@@ -117,14 +117,18 @@ WAITFORDEVICE:
 				continue
 			}
 
-			outgoingPort = GetOutgoingTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-
-			if outgoingPort == nil {
-				outgoingPort = CreateTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
+			OP = CreateOrGetPortMapping(&TCP_o0, destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+			if OP == nil {
+				continue
 			}
+			// outgoingPort = GetOutgoingTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+
+			// if outgoingPort == nil {
+			// 	outgoingPort = CreateTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+			// 	if outgoingPort == nil {
+			// 		continue
+			// 	}
+			// }
 
 			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
 			if natOK {

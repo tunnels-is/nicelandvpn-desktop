@@ -1,6 +1,8 @@
 package core
 
 import (
+	"log"
+	"sync"
 	"time"
 )
 
@@ -199,15 +201,43 @@ func GetOrCreateUDPMapping(ip [4]byte, LP uint16, DP uint16) *RemotePort {
 }
 
 func CleanTCPPorts() {
-	defer TCP_MAP_LOCK.Unlock()
+	// var gotLock bool = false
+	defer func() {
+		// if gotLock {
+		TCP_MAP_LOCK.Unlock()
+		// }
+	}()
 	defer RecoverAndLogToFile()
+
 	TCP_MAP_LOCK.Lock()
+	// gotLock = true
 
 	for i := range TCP_MAP {
 		for ii := range TCP_MAP[i].REMOTE {
 			if TCP_MAP[i].REMOTE[ii] == nil {
 				continue
 			}
+
+			// R := TCP_MAP[i].REMOTE[ii]
+
+			// TCP_MAP_LOCK.Unlock()
+			// gotLock = false
+
+			// found := false
+			// for si := range CurrentOpenSockets {
+			// 	if i == [4]byte{1, 1, 1, 193} {
+			// 		log.Println("COMPARISON: ", CurrentOpenSockets[si].RemoteIP, " >> ", i, " || ", CurrentOpenSockets[si].LocalPort, "-", R.Local, CurrentOpenSockets[si].RemotePort, "-", R.Original, "/", R.Mapped)
+			// 	}
+			// 	if CurrentOpenSockets[si].RemoteIP == i {
+			// 		if CurrentOpenSockets[si].LocalPort == R.Local && CurrentOpenSockets[si].RemotePort == R.Original {
+			// 			log.Println("FOUND PORT!", CurrentOpenSockets[si].RemoteAddress, CurrentOpenSockets[si].LocalPort, CurrentOpenSockets[si].RemotePort)
+			// 			found = true
+			// 		}
+			// 	}
+			// }
+
+			// TCP_MAP_LOCK.Lock()
+			// gotLock = true
 
 			// if TCP_MAP[i].REMOTE[ii].FACK {
 
@@ -227,8 +257,15 @@ func CleanTCPPorts() {
 
 			// }
 
-			if time.Since(TCP_MAP[i].REMOTE[ii].LastActivity).Seconds() > 120 {
-				// log.Println("DEL TCP(A): ", i, "L:", TCP_MAP[i].REMOTE[ii].Local, "O:", TCP_MAP[i].REMOTE[ii].Original, "M:", TCP_MAP[i].REMOTE[ii].Mapped)
+			// if !found {
+			// 	log.Println("DELETING MAPPING: ", i, TCP_MAP[i].REMOTE[ii])
+			// 	delete(TCP_MAP[i].LOCAL, TCP_MAP[i].REMOTE[ii].Local)
+			// 	delete(TCP_MAP[i].REMOTE, ii)
+			// 	continue
+			// }
+
+			if time.Since(TCP_MAP[i].REMOTE[ii].LastActivity).Seconds() > 85 {
+				log.Println("DEL TCP(A): ", i, "L:", TCP_MAP[i].REMOTE[ii].Local, "O:", TCP_MAP[i].REMOTE[ii].Original, "M:", TCP_MAP[i].REMOTE[ii].Mapped)
 				delete(TCP_MAP[i].LOCAL, TCP_MAP[i].REMOTE[ii].Local)
 				delete(TCP_MAP[i].REMOTE, ii)
 				continue
@@ -293,4 +330,217 @@ func InstantlyCleanAllUDPPorts() {
 	}
 
 	UDP_MAP = make(map[[4]byte]*IP)
+}
+
+// ==========================================
+// ==========================================
+// ==========================================
+// ==========================================
+// ==========================================
+// ==========================================
+// ==========================================
+// NEW
+
+var TCP_o0 [256]*O1
+var UDP_o0 [256]*O1
+
+type O1 struct {
+	o1 [256]*O2
+}
+
+type O2 struct {
+	o2 [256]*O3
+}
+
+type O3 struct {
+	o3 [256]*M
+}
+
+type M struct {
+	LOCAL  map[uint16]*RP
+	REMOTE map[uint16]*RP
+	// X []*RemotePort
+	Lock sync.Mutex
+}
+
+type RP struct {
+	Local        uint16
+	Mapped       uint16
+	Remote       uint16
+	LastActivity time.Time
+}
+
+func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport uint16) *RP {
+
+	if protoMap[ip[0]] == nil {
+		protoMap[ip[0]] = new(O1)
+	}
+
+	if protoMap[ip[0]].o1[ip[1]] == nil {
+		protoMap[ip[0]].o1[ip[1]] = new(O2)
+	}
+
+	if protoMap[ip[0]].o1[ip[1]].o2[ip[2]] == nil {
+		protoMap[ip[0]].o1[ip[1]].o2[ip[2]] = new(O3)
+	}
+
+	var m *M
+	if protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]] == nil {
+		protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]] = new(M)
+		m = protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]]
+		m.Lock = sync.Mutex{}
+		m.LOCAL = make(map[uint16]*RP)
+		m.REMOTE = make(map[uint16]*RP)
+	} else {
+		m = protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]]
+	}
+
+	m.Lock.Lock()
+	mapping, ok := m.LOCAL[lport]
+	m.Lock.Unlock()
+	if ok {
+		mapping.LastActivity = time.Now()
+		return mapping
+	}
+
+	for i := AS.StartPort; i <= AS.EndPort; i++ {
+
+		m.Lock.Lock()
+		XR, ok := m.REMOTE[i]
+		m.Lock.Unlock()
+
+		if !ok || XR == nil {
+
+			m.Lock.Lock()
+			m.REMOTE[i] = new(RP)
+			m.REMOTE[i].LastActivity = time.Now()
+			m.REMOTE[i].Local = lport
+			m.REMOTE[i].Mapped = i
+			m.REMOTE[i].Remote = rport
+			m.LOCAL[lport] = m.REMOTE[i]
+			m.Lock.Unlock()
+			// log.Println("CU:", ip, "L:", lport, "R:", rport, "M:", i)
+			return m.REMOTE[i]
+		}
+	}
+
+	CreateLog("", "Unable to create port mapping")
+	// log.Println("", "Create (NO PORTS): ", ip, " L: ", lport, " R: ", rport)
+	return nil
+}
+
+func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port uint16) (mapping *RP) {
+
+	if protoMap[ip[0]] == nil {
+		return nil
+	}
+	if protoMap[ip[0]].o1[ip[1]] == nil {
+		return nil
+	}
+	if protoMap[ip[0]].o1[ip[1]].o2[ip[2]] == nil {
+		return nil
+	}
+	if protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]] == nil {
+		return nil
+	}
+
+	m := protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]]
+
+	m.Lock.Lock()
+	mapping, _ = m.REMOTE[port]
+	if mapping != nil {
+		mapping.LastActivity = time.Now()
+	}
+	m.Lock.Unlock()
+
+	return
+
+}
+
+func CleanPorts(MONITOR chan int) {
+	defer func() {
+		time.Sleep(15 * time.Second)
+		if !GLOBAL_STATE.Exiting {
+			MONITOR <- 9
+		}
+	}()
+
+	defer RecoverAndLogToFile()
+	CleanPortMap(&TCP_o0)
+	CleanPortMap(&UDP_o0)
+}
+
+func CleanPortMap(protoMap *[256]*O1) {
+	start := time.Now()
+	// LOG(WO)
+	// var RP *RemotePort
+	var count int = 0
+
+	for i := 0; i < 256; i++ {
+		// time.Sleep(1 * time.Microsecond)
+		if protoMap[i] == nil {
+			continue
+		}
+
+		for i1 := 0; i1 < 256; i1++ {
+			o1Active := 0
+			if protoMap[i].o1[i1] == nil {
+				continue
+			}
+
+			for i2 := 0; i2 < 256; i2++ {
+				o2Active := 0
+				if protoMap[i].o1[i1].o2[i2] == nil {
+					continue
+				}
+
+				for i3 := 0; i3 < 256; i3++ {
+					o3Active := 0
+					if protoMap[i].o1[i1].o2[i2].o3[i3] == nil {
+						continue
+					}
+					// LOCK /???
+					m := protoMap[i].o1[i1].o2[i2].o3[i3]
+
+					m.Lock.Lock()
+					for ri := range m.REMOTE {
+						if time.Since(m.REMOTE[ri].LastActivity).Seconds() > 85 {
+							// log.Println("DELETING PM: ", m.REMOTE)
+							delete(m.LOCAL, m.REMOTE[ri].Local)
+							delete(m.REMOTE, ri)
+						} else {
+							o1Active++
+							o2Active++
+							o3Active++
+						}
+					}
+					m.Lock.Unlock()
+
+					if o3Active == 0 {
+						// log.Println("DEL OCT 3: ", i1, i2, " > ", i3)
+						protoMap[i].o1[i1].o2[i2].o3[i3] = nil
+					}
+
+					count++
+
+				} // o3
+
+				if o2Active == 0 {
+					// log.Println("DEL OCT 2: ", i1, ">", i2)
+					protoMap[i].o1[i1].o2[i2] = nil
+				}
+
+			} // o2
+
+			if o1Active == 0 {
+				// log.Println("DEL OCT 1: ", i1)
+				protoMap[i].o1[i1] = nil
+			}
+
+		} // o1
+
+	}
+
+	done := time.Since(start).Nanoseconds()
+	log.Println(" @@@@@ WALK >>> Micro @@@@> ", done, " >> count >> ", count)
 }

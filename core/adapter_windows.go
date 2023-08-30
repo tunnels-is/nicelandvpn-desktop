@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -971,6 +972,53 @@ func FindDefaultInterfaceAndGateway() (NEW_DEFAULT *CONNECTION_SETTINGS, err err
 	if lowestMetric == 999999 || defaultIndex == 0 {
 		return nil, errors.New("")
 	}
+
+	return
+}
+
+// Get-NetTCPConnection -LocalAddress 192.168.2.10 | Select-Object RemoteAddress,LocalPort,RemotePort | ConvertTo-Json
+func GetOpenSockets() (err error) {
+
+	TempOpenSockets := make([]*OpenSockets, 0)
+	CurrentOpenSockets = make([]*OpenSockets, 0)
+
+	cmd := exec.Command("powershell", "-NoProfile", "Get-NetTCPConnection | Select-Object RemoteAddress,LocalPort,RemotePort | ConvertTo-Json -Depth 1")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		CreateErrorLog("", "Error fetching open sockets || msg: ", err)
+		return err
+	}
+
+	err = json.Unmarshal(out, &TempOpenSockets)
+	if err != nil {
+		CreateErrorLog("", "Error unmarshaling open sockets || msg: ", err)
+		return err
+	}
+
+	for i := range TempOpenSockets {
+		// log.Println(TempOpenSockets[i].RemoteAddress)
+		ip := net.ParseIP(TempOpenSockets[i].RemoteAddress)
+		ip4 := ip.To4()
+		if ip4 == nil {
+			// log.Println("Not a valid IP")
+			continue
+		}
+		ipString := ip4.String()
+		if ipString == "0.0.0.0" || ipString == "127.0.0.1" {
+			continue
+		}
+
+		// ip := net.IP(CurrentOpenSockets[i].RemoteAddress)
+		// log.Println("PARSED IP:", ip)
+		// ip = ip.To4()
+		TempOpenSockets[i].RemoteIP = [4]byte{ip4[0], ip4[1], ip4[2], ip4[3]}
+
+		CurrentOpenSockets = append(CurrentOpenSockets, TempOpenSockets[i])
+	}
+
+	// log.Println(CurrentOpenSockets)
 
 	return
 }

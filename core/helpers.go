@@ -119,10 +119,10 @@ func DNSMapping(domain string) net.IP {
 	if AS.AP == nil {
 		return nil
 	}
-	CreateLog("DNS", "PARTS: ", parts)
-	CreateLog("DNS", "DOMAIN: ", d)
-	CreateLog("DNS", "SUBDOMAIN: ", s)
-	CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
+	// CreateLog("DNS", "PARTS: ", parts)
+	// CreateLog("DNS", "DOMAIN: ", d)
+	// CreateLog("DNS", "SUBDOMAIN: ", s)
+	// CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
 
 	var m *DeviceDNSRegistration
 	var ok bool

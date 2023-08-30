@@ -34,6 +34,7 @@ func StartService(MONITOR chan int) {
 	go ReadFromLocalTunnel(MONITOR)
 	go ReadFromRouterSocket(MONITOR)
 	go CalculateBandwidth(MONITOR)
+	go CleanPorts(MONITOR)
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")
@@ -66,9 +67,6 @@ func StateMaintenance(MONITOR chan int) {
 		}
 	}()
 	defer RecoverAndLogToFile()
-
-	CleanTCPPorts()
-	CleanUDPPorts()
 
 	InterfaceMaintenenceAndBackup()
 

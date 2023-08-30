@@ -5,7 +5,6 @@ package core
 import (
 	"encoding/binary"
 	"io"
-	"log"
 	"net"
 	"time"
 
@@ -60,7 +59,8 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 		isDNSLayer bool = false
 
 		destinationIP = [4]byte{}
-		outgoingPort  *RemotePort
+		// outgoingPort  *RemotePort
+		OP *RP
 
 		encryptedPacket []byte
 		lengthBytes     = make([]byte, 2)
@@ -149,24 +149,30 @@ WAITFORDEVICE:
 				continue
 			}
 
-			outgoingPort = GetOutgoingTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-			if outgoingPort == nil {
-				outgoingPort = CreateTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
+			OP = CreateOrGetPortMapping(&TCP_o0, destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+			if OP == nil {
+				continue
 			}
+
+			// outgoingPort = GetOutgoingTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+			// if outgoingPort == nil {
+			// 	outgoingPort = CreateTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
+			// 	if outgoingPort == nil {
+			// 		continue
+			// 	}
+			// }
 
 			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
 			if natOK {
-				CreateLog("NAT", "FOUND NAT: ", NAT_IP)
+				// CreateLog("NAT", "FOUND NAT: ", NAT_IP)
 				AS.TCPHeader.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 				parsedIPLayer.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 			} else {
 				AS.TCPHeader.DstIP = parsedIPLayer.DstIP
 			}
 
-			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
+			// parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
+			parsedTCPLayer.SrcPort = layers.TCPPort(OP.Mapped)
 
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
@@ -250,13 +256,17 @@ WAITFORDEVICE:
 		SKIPDNS:
 			// DNS
 
-			outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-			if outgoingPort == nil {
-				outgoingPort = GetOrCreateUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
+			OP = CreateOrGetPortMapping(&UDP_o0, destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+			if OP == nil {
+				continue
 			}
+			// outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+			// if outgoingPort == nil {
+			// 	outgoingPort = GetOrCreateUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+			// 	if outgoingPort == nil {
+			// 		continue
+			// 	}
+			// }
 
 			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
 			if natOK {
@@ -266,7 +276,8 @@ WAITFORDEVICE:
 				AS.UDPHeader.DstIP = parsedIPLayer.DstIP
 			}
 
-			parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
+			// parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
+			parsedUDPLayer.SrcPort = layers.UDPPort(OP.Mapped)
 			parsedIPLayer.SrcIP = AS.UDPHeader.SrcIP
 			parsedUDPLayer.SetNetworkLayerForChecksum(&AS.UDPHeader)
 
@@ -285,16 +296,16 @@ WAITFORDEVICE:
 		if AS.TCPTunnelSocket != nil {
 
 			// var OUT = make([]byte, 0)
-			OUT := buffer.Bytes()
-			//185.186.76.193
-			if destinationIP == [4]byte{185, 186, 76, 193} || destinationIP == [4]byte{184, 186, 76, 193} {
-				log.Println("OUT IP: ", destinationIP)
-				log.Println(AS.AP.NAT_CACHE[destinationIP])
-				testPacket := gopacket.NewPacket(OUT, layers.LayerTypeIPv4, gopacket.Default)
-				CreateLog("DNS", testPacket)
-			}
+			// OUT := buffer.Bytes()
+			// //185.186.76.193
+			// if destinationIP == [4]byte{185, 186, 76, 193} || destinationIP == [4]byte{184, 186, 76, 193} {
+			// 	log.Println("OUT IP: ", destinationIP)
+			// 	log.Println(AS.AP.NAT_CACHE[destinationIP])
+			// 	testPacket := gopacket.NewPacket(OUT, layers.LayerTypeIPv4, gopacket.Default)
+			// 	CreateLog("DNS", testPacket)
+			// }
 
-			encryptedPacket = AS.AEAD.Seal(nil, nonce, OUT, nil)
+			encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
 			// encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
 
 			binary.BigEndian.PutUint16(lengthBytes, uint16(len(encryptedPacket)))
@@ -349,14 +360,15 @@ WAIT_FOR_TUNNEL:
 		ip           = new(layers.IPv4)
 		nonce        = make([]byte, chacha20poly1305.NonceSizeX)
 
-		packet                  []byte
-		ingressPacket           gopacket.Packet
-		buffer                  gopacket.SerializeBuffer
-		serializeOptions        = gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}
-		appLayer                gopacket.ApplicationLayer
-		TCPLayer                *layers.TCP
-		UDPLayer                *layers.UDP
-		incomingPort            *RemotePort
+		packet           []byte
+		ingressPacket    gopacket.Packet
+		buffer           gopacket.SerializeBuffer
+		serializeOptions = gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}
+		appLayer         gopacket.ApplicationLayer
+		TCPLayer         *layers.TCP
+		UDPLayer         *layers.UDP
+		// incomingPort            *RemotePort
+		incP                    *RP
 		inPacket                []byte
 		ingressAllocationBuffer []byte
 		writeError              error
@@ -416,14 +428,14 @@ WAIT_FOR_TUNNEL:
 		sourceIP[2] = packet[14]
 		sourceIP[3] = packet[15]
 
-		if sourceIP == [4]byte{184, 186, 76, 193} || sourceIP == [4]byte{185, 186, 76, 193} {
-			log.Println("IN IP: ", sourceIP)
-			log.Println(AS.AP.REVERSE_NAT_CACHE[sourceIP])
-		}
+		// if sourceIP == [4]byte{184, 186, 76, 193} || sourceIP == [4]byte{185, 186, 76, 193} {
+		// 	log.Println("IN IP: ", sourceIP)
+		// 	log.Println(AS.AP.REVERSE_NAT_CACHE[sourceIP])
+		// }
 
 		NAT_IP, natOK = AS.AP.REVERSE_NAT_CACHE[sourceIP]
 		if natOK {
-			CreateLog("NAT", "FOUND REVERSE NAT: ", NAT_IP)
+			// CreateLog("NAT", "FOUND REVERSE NAT: ", NAT_IP)
 			ip.SrcIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 			sourceIP[0] = NAT_IP[0]
 			sourceIP[1] = NAT_IP[1]
@@ -441,12 +453,17 @@ WAIT_FOR_TUNNEL:
 			ip.Protocol = 6
 			TCPLayer = ingressPacket.TransportLayer().(*layers.TCP)
 
-			incomingPort = GetTCPMapping(sourceIP, uint16(TCPLayer.DstPort))
-			if incomingPort == nil {
+			incP = GetIngressPortMapping(&TCP_o0, sourceIP, uint16(TCPLayer.DstPort))
+			if incP == nil {
 				continue
 			}
+			// incomingPort = GetTCPMapping(sourceIP, uint16(TCPLayer.DstPort))
+			// if incomingPort == nil {
+			// 	continue
+			// }
 
-			TCPLayer.DstPort = layers.TCPPort(incomingPort.Local)
+			// TCPLayer.DstPort = layers.TCPPort(incomingPort.Local)
+			TCPLayer.DstPort = layers.TCPPort(incP.Local)
 			TCPLayer.SetNetworkLayerForChecksum(ip)
 
 			if appLayer != nil {
@@ -460,13 +477,17 @@ WAIT_FOR_TUNNEL:
 			UDPLayer = ingressPacket.TransportLayer().(*layers.UDP)
 			UDPLayer.SetNetworkLayerForChecksum(ip)
 
-			incomingPort = GetUDPMapping(sourceIP, uint16(UDPLayer.DstPort))
-
-			if incomingPort == nil {
+			incP = GetIngressPortMapping(&UDP_o0, sourceIP, uint16(UDPLayer.DstPort))
+			if incP == nil {
 				continue
 			}
+			// incomingPort = GetUDPMapping(sourceIP, uint16(UDPLayer.DstPort))
+			// if incomingPort == nil {
+			// 	continue
+			// }
 
-			UDPLayer.DstPort = layers.UDPPort(incomingPort.Local)
+			// UDPLayer.DstPort = layers.UDPPort(incomingPort.Local)
+			UDPLayer.DstPort = layers.UDPPort(incP.Local)
 
 			if appLayer != nil {
 				gopacket.SerializeLayers(buffer, serializeOptions, ip, UDPLayer, gopacket.Payload(appLayer.LayerContents()))

@@ -56,9 +56,9 @@ var BlockedDomainMap = make(map[string]bool)
 var BlockListLock = sync.Mutex{}
 
 type IP struct {
-	CurrentPort uint16
-	LOCAL       map[uint16]*RemotePort
-	REMOTE      map[uint16]*RemotePort
+	// CurrentPort uint16
+	LOCAL  map[uint16]*RemotePort
+	REMOTE map[uint16]*RemotePort
 }
 
 type RemotePort struct {
@@ -546,4 +546,13 @@ type TWO_FACTOR_CONFIRM struct {
 type QR_CODE struct {
 	Value string
 	// Recovery string
+}
+
+var CurrentOpenSockets []*OpenSockets
+
+type OpenSockets struct {
+	RemoteAddress string  `json:"RemoteAddress"`
+	RemoteIP      [4]byte `json:"-"`
+	LocalPort     uint16  `json:"LocalPort"`
+	RemotePort    uint16  `json:"RemotePort"`
 }

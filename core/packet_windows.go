@@ -177,7 +177,6 @@ WAITFORDEVICE:
 
 			} else {
 				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedTCPLayer)
-
 			}
 			// if destinationIP == [4]byte{184, 186, 76, 193} {
 			// 	testPacket := gopacket.NewPacket(buffer.Bytes(), layers.LayerTypeIPv4, gopacket.Default)

@@ -40,10 +40,19 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 		parsedIPLayer    *layers.IPv4
 		parsedTCPLayer   *layers.TCP
 		parsedUDPLayer   *layers.UDP
-		// parsedDNSLayer    *layers.DNS
+
 		// DNSQuestionDomain string
 		// DomainIsBlocked   bool
-		isDNSLayer bool = false
+		isDNSLayer     bool = false
+		parsedDNSLayer *layers.DNS
+		domain         string
+		isCustomDNS    bool
+		domainIP       net.IP
+		dnsOldIP       net.IP
+		dnsOldPort     layers.UDPPort
+
+		natOK  bool
+		NAT_IP [4]byte
 
 		destinationIP = [4]byte{}
 		outgoingPort  *RemotePort
@@ -139,6 +148,7 @@ WAITFORDEVICE:
 			}
 
 		} else if packet[9] == 17 {
+
 			parsedPacket = gopacket.NewPacket(packet[:packetLength], layers.LayerTypeIPv4, gopacket.Default)
 			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
 			applicationLayer = parsedPacket.ApplicationLayer()
@@ -148,6 +158,7 @@ WAITFORDEVICE:
 			if isDNSLayer {
 				PREVDNS = parsedIPLayer.DstIP
 				parsedIPLayer.DstIP = C.DNSIP
+				// DNS BLOCK LIST PARSING
 				// log.Println(parsedDNSLayer)
 				// if len(parsedDNSLayer.Questions) > 0 {
 				// 	DNSQuestionDomain = string(parsedDNSLayer.Questions[0].Name)
@@ -159,7 +170,58 @@ WAITFORDEVICE:
 				// 		continue
 				// 	}
 				// }
+
+				if parsedDNSLayer.Questions[0].Type != layers.DNSTypeA {
+					goto SKIPDNS
+				}
+
+				for _, v := range parsedDNSLayer.Questions {
+					domain = string(v.Name)
+					// CreateLog("DNS", "Question: ", string(v.Name))
+					domainIP = DNSMapping(domain)
+					if domainIP != nil {
+						isCustomDNS = true
+						parsedDNSLayer.Answers = append(parsedDNSLayer.Answers, layers.DNSResourceRecord{
+							Name:  v.Name,
+							Type:  v.Type,
+							Class: v.Class,
+							TTL:   30,
+							IP:    domainIP,
+						})
+						parsedDNSLayer.ANCount++
+					}
+				}
+
+				if isCustomDNS {
+					isCustomDNS = false
+					parsedDNSLayer.QR = true
+
+					dnsOldIP = parsedIPLayer.DstIP
+					parsedIPLayer.DstIP = parsedIPLayer.SrcIP
+					parsedIPLayer.SrcIP = dnsOldIP
+
+					dnsOldPort = parsedUDPLayer.DstPort
+					parsedUDPLayer.DstPort = parsedUDPLayer.SrcPort
+					parsedUDPLayer.SrcPort = dnsOldPort
+
+					parsedUDPLayer.SetNetworkLayerForChecksum(parsedIPLayer)
+					buffer = gopacket.NewSerializeBuffer()
+
+					gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedUDPLayer, parsedDNSLayer)
+
+					writtenBytes, writeError = AS.TCPTunnelSocket.Write(buffer.Bytes())
+					if writeError != nil {
+						BUFFER_ERROR = true
+						_ = AS.TCPTunnelSocket.Close()
+						return
+					}
+
+					continue
+				}
+
 			}
+
+		SKIPDNS:
 
 			outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
 
@@ -170,8 +232,15 @@ WAITFORDEVICE:
 				}
 			}
 
+			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
+			if natOK {
+				AS.UDPHeader.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
+				parsedIPLayer.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
+			} else {
+				AS.UDPHeader.DstIP = parsedIPLayer.DstIP
+			}
+
 			parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
-			AS.UDPHeader.DstIP = parsedIPLayer.DstIP
 			parsedIPLayer.SrcIP = AS.UDPHeader.SrcIP
 			parsedUDPLayer.SetNetworkLayerForChecksum(&AS.UDPHeader)
 
@@ -259,6 +328,9 @@ WAIT_FOR_TUNNEL:
 		UDPLayer         *layers.UDP
 		incomingPort     *RemotePort
 		sourceIP         = [4]byte{}
+
+		natOK  bool
+		NAT_IP [4]byte
 	)
 
 	ip.TTL = 120
@@ -308,7 +380,18 @@ WAIT_FOR_TUNNEL:
 		sourceIP[1] = packet[13]
 		sourceIP[2] = packet[14]
 		sourceIP[3] = packet[15]
-		ip.SrcIP = net.IP{sourceIP[0], sourceIP[1], sourceIP[2], sourceIP[3]}
+
+		NAT_IP, natOK = AS.AP.REVERSE_NAT_CACHE[sourceIP]
+		if natOK {
+			CreateLog("NAT", "FOUND REVERSE NAT: ", NAT_IP)
+			ip.SrcIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
+			sourceIP[0] = NAT_IP[0]
+			sourceIP[1] = NAT_IP[1]
+			sourceIP[2] = NAT_IP[2]
+			sourceIP[3] = NAT_IP[3]
+		} else {
+			ip.SrcIP = net.IP{sourceIP[0], sourceIP[1], sourceIP[2], sourceIP[3]}
+		}
 
 		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
 		buffer = gopacket.NewSerializeBuffer()

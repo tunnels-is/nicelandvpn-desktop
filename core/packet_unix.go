@@ -55,7 +55,8 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 		NAT_IP [4]byte
 
 		destinationIP = [4]byte{}
-		outgoingPort  *RemotePort
+		OP            *RP
+		// outgoingPort  *RemotePort
 
 		encryptedPacket []byte
 		lengthBytes     = make([]byte, 2)
@@ -140,7 +141,8 @@ WAITFORDEVICE:
 				// AS.TCPHeader.DstIP = parsedIPLayer.DstIP
 			}
 
-			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
+			// parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
+			parsedTCPLayer.SrcPort = layers.TCPPort(OP.Mapped)
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
 
@@ -162,18 +164,6 @@ WAITFORDEVICE:
 			if isDNSLayer {
 				PREVDNS = parsedIPLayer.DstIP
 				parsedIPLayer.DstIP = C.DNSIP
-				// DNS BLOCK LIST PARSING
-				// log.Println(parsedDNSLayer)
-				// if len(parsedDNSLayer.Questions) > 0 {
-				// 	DNSQuestionDomain = string(parsedDNSLayer.Questions[0].Name)
-				// 	// log.Println("Searching in blocklist: ", DNSQuestionDomain)
-				// 	_, DomainIsBlocked = BlockedDomainMap[DNSQuestionDomain]
-				// 	if DomainIsBlocked {
-				// 		log.Println("IS BLOCKED: ", DNSQuestionDomain)
-				// 		// DomainIsBlocked = false
-				// 		continue
-				// 	}
-				// }
 
 				if parsedDNSLayer.Questions[0].Type != layers.DNSTypeA {
 					goto SKIPDNS
@@ -227,14 +217,18 @@ WAITFORDEVICE:
 
 		SKIPDNS:
 
-			outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-
-			if outgoingPort == nil {
-				outgoingPort = GetOrCreateUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
+			OP = CreateOrGetPortMapping(&UDP_o0, destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+			if OP == nil {
+				continue
 			}
+			// outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+
+			// if outgoingPort == nil {
+			// 	outgoingPort = GetOrCreateUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
+			// 	if outgoingPort == nil {
+			// 		continue
+			// 	}
+			// }
 
 			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
 			if natOK {
@@ -244,7 +238,8 @@ WAITFORDEVICE:
 				AS.UDPHeader.DstIP = parsedIPLayer.DstIP
 			}
 
-			parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
+			// parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
+			parsedUDPLayer.SrcPort = layers.UDPPort(OP.Mapped)
 			parsedIPLayer.SrcIP = AS.UDPHeader.SrcIP
 			parsedUDPLayer.SetNetworkLayerForChecksum(&AS.UDPHeader)
 
@@ -330,8 +325,9 @@ WAIT_FOR_TUNNEL:
 		appLayer         gopacket.ApplicationLayer
 		TCPLayer         *layers.TCP
 		UDPLayer         *layers.UDP
-		incomingPort     *RemotePort
-		sourceIP         = [4]byte{}
+		// incomingPort     *RemotePort
+		incP     *RP
+		sourceIP = [4]byte{}
 
 		natOK  bool
 		NAT_IP [4]byte
@@ -405,12 +401,17 @@ WAIT_FOR_TUNNEL:
 			ip.Protocol = 6
 			TCPLayer = ingressPacket.TransportLayer().(*layers.TCP)
 
-			incomingPort = GetTCPMapping(sourceIP, uint16(TCPLayer.DstPort))
-			if incomingPort == nil {
+			incP = GetIngressPortMapping(&TCP_o0, sourceIP, uint16(TCPLayer.DstPort))
+			if incP == nil {
 				continue
 			}
+			// incomingPort = GetTCPMapping(sourceIP, uint16(TCPLayer.DstPort))
+			// if incomingPort == nil {
+			// 	continue
+			// }
 
-			TCPLayer.DstPort = layers.TCPPort(incomingPort.Local)
+			// TCPLayer.DstPort = layers.TCPPort(incomingPort.Local)
+			TCPLayer.DstPort = layers.TCPPort(incP.Local)
 
 			TCPLayer.SetNetworkLayerForChecksum(ip)
 
@@ -425,17 +426,22 @@ WAIT_FOR_TUNNEL:
 			ip.Protocol = 17
 			UDPLayer = ingressPacket.TransportLayer().(*layers.UDP)
 
-			incomingPort = GetUDPMapping(sourceIP, uint16(UDPLayer.DstPort))
-			if incomingPort == nil {
+			incP = GetIngressPortMapping(&UDP_o0, sourceIP, uint16(UDPLayer.DstPort))
+			if incP == nil {
 				continue
 			}
+			// incomingPort = GetUDPMapping(sourceIP, uint16(UDPLayer.DstPort))
+			// if incomingPort == nil {
+			// 	continue
+			// }
 
 			_, isDNSLayer = appLayer.(*layers.DNS)
 			if isDNSLayer {
 				ip.SrcIP = PREVDNS
 			}
 
-			UDPLayer.DstPort = layers.UDPPort(incomingPort.Local)
+			// UDPLayer.DstPort = layers.UDPPort(incomingPort.Local)
+			UDPLayer.DstPort = layers.UDPPort(incP.Local)
 
 			UDPLayer.SetNetworkLayerForChecksum(ip)
 

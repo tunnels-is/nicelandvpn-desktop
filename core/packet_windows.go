@@ -199,6 +199,19 @@ WAITFORDEVICE:
 
 			parsedDNSLayer, isDNSLayer = applicationLayer.(*layers.DNS)
 			if isDNSLayer {
+				// DNS BLOCK LIST PARSING
+				// log.Println(parsedDNSLayer)
+				// if len(parsedDNSLayer.Questions) > 0 {
+				// 	DNSQuestionDomain = string(parsedDNSLayer.Questions[0].Name)
+				// 	// log.Println("Searching in blocklist: ", DNSQuestionDomain)
+				// 	_, DomainIsBlocked = BlockedDomainMap[DNSQuestionDomain]
+				// 	if DomainIsBlocked {
+				// 		log.Println("IS BLOCKED: ", DNSQuestionDomain)
+				// 		// DomainIsBlocked = false
+				// 		continue
+				// 	}
+				// }
+
 				if parsedDNSLayer.Questions[0].Type != layers.DNSTypeA {
 					goto SKIPDNS
 				}

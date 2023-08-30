@@ -117,9 +117,17 @@ WAITFORDEVICE:
 				}
 			}
 
-			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
+			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
+			if natOK {
+				CreateLog("NAT", "FOUND NAT: ", NAT_IP)
+				AS.TCPHeader.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
+				parsedIPLayer.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
+			} else {
+				AS.TCPHeader.DstIP = parsedIPLayer.DstIP
+				// AS.TCPHeader.DstIP = parsedIPLayer.DstIP
+			}
 
-			AS.TCPHeader.DstIP = parsedIPLayer.DstIP
+			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
 

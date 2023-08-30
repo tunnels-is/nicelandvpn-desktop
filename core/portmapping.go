@@ -216,8 +216,7 @@ func CleanTCPPorts() {
 			// 	delete(TCP_MAP[i].REMOTE, ii)
 			// 	continue
 
-			// } else
-			// if !TCP_MAP[i].REMOTE[ii].FINStarted.IsZero() {
+			// } else if !TCP_MAP[i].REMOTE[ii].FINStarted.IsZero() {
 
 			// 	if time.Since(TCP_MAP[i].REMOTE[ii].FINStarted).Seconds() > 30 {
 			// 		log.Println("DEL TCP(FS): ", i, "L:", TCP_MAP[i].REMOTE[ii].Local, "O:", TCP_MAP[i].REMOTE[ii].Original, "M:", TCP_MAP[i].REMOTE[ii].Mapped)
@@ -228,13 +227,11 @@ func CleanTCPPorts() {
 
 			// }
 
-			if time.Since(TCP_MAP[i].REMOTE[ii].LastActivity).Seconds() > 60 {
-
+			if time.Since(TCP_MAP[i].REMOTE[ii].LastActivity).Seconds() > 120 {
 				// log.Println("DEL TCP(A): ", i, "L:", TCP_MAP[i].REMOTE[ii].Local, "O:", TCP_MAP[i].REMOTE[ii].Original, "M:", TCP_MAP[i].REMOTE[ii].Mapped)
 				delete(TCP_MAP[i].LOCAL, TCP_MAP[i].REMOTE[ii].Local)
 				delete(TCP_MAP[i].REMOTE, ii)
 				continue
-
 			}
 
 		}

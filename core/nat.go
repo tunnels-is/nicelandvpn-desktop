@@ -21,7 +21,7 @@ func BUILD_NAT_MAP(AP *AccessPoint) (err error) {
 	// firstLog := false
 	for _, v := range AP.NAT {
 		// c := PCIDR(v.LocalNetwork)
-		ip2, _, err := net.ParseCIDR(v.Nat)
+		ip2, ip2net, err := net.ParseCIDR(v.Nat)
 		if err != nil {
 			return err
 		}
@@ -29,22 +29,37 @@ func BUILD_NAT_MAP(AP *AccessPoint) (err error) {
 		if err != nil {
 			return err
 		}
-		firstNetworkByte := ip2.To4()[0]
+		// firstNetworkByte := ip2.To4()[0]
 		// log.Println(ip.To4()[0])
 		// log.Println(ipnet)
-		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 
-			AP.NAT_CACHE[[4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}] = [4]byte{ip[0], ip[1], ip[2], ip[3]}
+		ip = ip.Mask(ipnet.Mask)
+		ip2 = ip2.Mask(ip2net.Mask)
 
-			AP.REVERSE_NAT_CACHE[[4]byte{ip[0], ip[1], ip[2], ip[3]}] = [4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}
+		for ipnet.Contains(ip) && ip2net.Contains(ip2) {
 
-			// if !firstLog {
-			// log.Println("NAT", "E: >>", [4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}, ">", ip[0], ip[1], ip[2], ip[3])
+			AP.NAT_CACHE[[4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}] = [4]byte{ip[0], ip[1], ip[2], ip[3]}
+			AP.REVERSE_NAT_CACHE[[4]byte{ip[0], ip[1], ip[2], ip[3]}] = [4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}
 
-			// log.Println("NAT", "I: >>", [4]byte{ip[0], ip[1], ip[2], ip[3]}, ">", firstNetworkByte, ip[1], ip[2], ip[3])
-			// }
-			// firstLog = true
+			// fmt.Println("E: >>", [4]byte{ip[0], ip[1], ip[2], ip[3]}, ">", ip2[0], ip2[1], ip2[2], ip2[3])
+
+			inc(ip)
+			inc(ip2)
 		}
+
+		// for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+
+		// 	AP.NAT_CACHE[[4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}] = [4]byte{ip[0], ip[1], ip[2], ip[3]}
+
+		// AP.REVERSE_NAT_CACHE[[4]byte{ip[0], ip[1], ip[2], ip[3]}] = [4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}
+
+		// if !firstLog {
+		// log.Println("NAT", "E: >>", [4]byte{firstNetworkByte, ip[1], ip[2], ip[3]}, ">", ip[0], ip[1], ip[2], ip[3])
+
+		// log.Println("NAT", "I: >>", [4]byte{ip[0], ip[1], ip[2], ip[3]}, ">", firstNetworkByte, ip[1], ip[2], ip[3])
+		// }
+		// firstLog = true
+		// }
 
 	}
 	return

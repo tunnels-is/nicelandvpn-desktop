@@ -5,7 +5,11 @@ import {main} from '../models';
 
 export function Connect(arg1:core.CONTROLLER_SESSION_REQUEST):Promise<main.ReturnObject>;
 
+export function DisableDNSWhitelist():Promise<void>;
+
 export function Disconnect():Promise<main.ReturnObject>;
+
+export function EnableDNSWhitelist():Promise<void>;
 
 export function ForwardToController(arg1:core.FORWARD_REQUEST):Promise<main.ReturnObject>;
 
@@ -26,6 +30,10 @@ export function OpenFileDialogForRouterFile(arg1:boolean):Promise<string>;
 export function ResetEverything():Promise<main.ReturnObject>;
 
 export function SetConfig(arg1:core.CONFIG_FORM):Promise<main.ReturnObject>;
+
+export function StartDNSCapture():Promise<void>;
+
+export function StopDNSCapture():Promise<string>;
 
 export function Switch(arg1:core.CONTROLLER_SESSION_REQUEST):Promise<main.ReturnObject>;
 

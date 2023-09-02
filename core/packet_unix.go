@@ -110,7 +110,7 @@ WAITFORDEVICE:
 		destinationIP[3] = packet[19]
 
 		if packet[9] == 6 {
-			parsedPacket = gopacket.NewPacket(packet[:packetLength], layers.LayerTypeIPv4, gopacket.Default)
+			parsedPacket = gopacket.NewPacket(packet[:packetLength], layers.LayerTypeIPv4, gopacket.NoCopy)
 			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
 			applicationLayer = parsedPacket.ApplicationLayer()
 			parsedTCPLayer = parsedPacket.TransportLayer().(*layers.TCP)
@@ -133,7 +133,7 @@ WAITFORDEVICE:
 
 			NAT_IP, natOK = AS.AP.NAT_CACHE[destinationIP]
 			if natOK {
-				CreateLog("NAT", "FOUND NAT: ", NAT_IP)
+				// CreateLog("NAT", "FOUND NAT: ", NAT_IP)
 				AS.TCPHeader.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 				parsedIPLayer.DstIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 			} else {
@@ -383,7 +383,7 @@ WAIT_FOR_TUNNEL:
 
 		NAT_IP, natOK = AS.AP.REVERSE_NAT_CACHE[sourceIP]
 		if natOK {
-			CreateLog("NAT", "FOUND REVERSE NAT: ", NAT_IP)
+			// CreateLog("NAT", "FOUND REVERSE NAT: ", NAT_IP)
 			ip.SrcIP = net.IP{NAT_IP[0], NAT_IP[1], NAT_IP[2], NAT_IP[3]}
 			sourceIP[0] = NAT_IP[0]
 			sourceIP[1] = NAT_IP[1]
@@ -393,7 +393,7 @@ WAIT_FOR_TUNNEL:
 			ip.SrcIP = net.IP{sourceIP[0], sourceIP[1], sourceIP[2], sourceIP[3]}
 		}
 
-		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.NoCopy)
 		buffer = gopacket.NewSerializeBuffer()
 		appLayer = ingressPacket.ApplicationLayer()
 

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -28,6 +29,7 @@ func StartService(MONITOR chan int) {
 	CreateBaseFolder()
 	InitLogfile()
 	LoadConfig()
+	LoadDNSWhitelist()
 
 	go StartLogQueueProcessor(MONITOR)
 	go StateMaintenance(MONITOR)
@@ -237,6 +239,7 @@ func SaveConfig() (err error) {
 	FC.RouterFilePath = C.RouterFilePath
 	FC.AutoReconnect = C.AutoReconnect
 	FC.KillSwitch = C.KillSwitch
+	FC.DomainWhitelist = C.DomainWhitelist
 
 	cb, err := json.Marshal(FC)
 	if err != nil {
@@ -367,6 +370,41 @@ func LoadConfig() {
 	CreateLog("loader", "Configurations loaded")
 	GLOBAL_STATE.C = C
 	GLOBAL_STATE.ConfigInitialized = true
+}
+
+func LoadDNSWhitelist() (err error) {
+	defer RecoverAndLogToFile()
+
+	if C.DomainWhitelist == "" {
+		return nil
+	}
+
+	WFile, err := os.OpenFile(C.DomainWhitelist, os.O_RDWR|os.O_CREATE, 0777)
+	if err != nil {
+		return err
+	}
+	defer WFile.Close()
+
+	scanner := bufio.NewScanner(WFile)
+
+	WhitelistMap := make(map[string]bool)
+	for scanner.Scan() {
+		domain := scanner.Text()
+		if domain == "" {
+			continue
+		}
+		WhitelistMap[domain] = true
+	}
+
+	err = scanner.Err()
+	if err != nil {
+		CreateErrorLog("loader", "Unable to load domain whitelist: ", err)
+		return err
+	}
+
+	GLOBAL_STATE.DNSWhitelist = WhitelistMap
+
+	return nil
 }
 
 func CleanupOnClose() {

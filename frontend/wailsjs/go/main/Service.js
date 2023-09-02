@@ -6,8 +6,16 @@ export function Connect(arg1) {
   return window['go']['main']['Service']['Connect'](arg1);
 }
 
+export function DisableDNSWhitelist() {
+  return window['go']['main']['Service']['DisableDNSWhitelist']();
+}
+
 export function Disconnect() {
   return window['go']['main']['Service']['Disconnect']();
+}
+
+export function EnableDNSWhitelist() {
+  return window['go']['main']['Service']['EnableDNSWhitelist']();
 }
 
 export function ForwardToController(arg1) {
@@ -48,6 +56,14 @@ export function ResetEverything() {
 
 export function SetConfig(arg1) {
   return window['go']['main']['Service']['SetConfig'](arg1);
+}
+
+export function StartDNSCapture() {
+  return window['go']['main']['Service']['StartDNSCapture']();
+}
+
+export function StopDNSCapture() {
+  return window['go']['main']['Service']['StopDNSCapture']();
 }
 
 export function Switch(arg1) {

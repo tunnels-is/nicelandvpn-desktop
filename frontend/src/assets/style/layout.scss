@@ -1711,7 +1711,11 @@ button {
   }
 
   .other-panel {
-    width: 500px;
+    width: 80%;
+  }
+
+  .capture-panel {
+    width: 80%;
   }
 
   .text {
@@ -1741,7 +1745,7 @@ button {
       height: 30px;
       text-align: left;
       margin-left: 11px;
-      font-size: 1em;
+      font-size: 1.2em;
       margin-top: 10px;
     }
 
@@ -1814,7 +1818,7 @@ button {
 
     .value {
       font-size: 0.9em;
-      color: white;
+      color: rgba(255, 255, 255, 0.744);
     }
   }
 

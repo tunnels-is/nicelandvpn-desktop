@@ -208,7 +208,7 @@ const LaunchApp = () => {
     const to = setTimeout(async () => {
       UpdateAdvancedMode()
       GetStateAndUpdateVPNList()
-    }, 1200)
+    }, 1100)
 
     return () => { clearTimeout(to); }
 

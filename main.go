@@ -17,7 +17,7 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-const VERSION = "1.1.4"
+const VERSION = "1.1.3"
 const PRODUCTION = false
 const ENABLE_INSTERFACE = true
 
@@ -72,7 +72,6 @@ func main() {
 			WebviewGpuPolicy:    linux.WebviewGpuPolicy(WebViewGPUPolicy),
 			WindowIsTranslucent: false,
 		},
-
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
 				TitlebarAppearsTransparent: true,

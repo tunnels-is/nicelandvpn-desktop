@@ -102,17 +102,25 @@ func SetGlobalStateAsDisconnected() {
 	GLOBAL_STATE.Connecting = false
 }
 
-func DNSMapping(domain string) net.IP {
+func GetDomainAndSubDomain(domain string) (d, s string) {
+
 	parts := strings.Split(domain, ".")
 	// parts = parts[:len(parts)-1]
-	var d string
-	var s string
 	if len(parts) == 2 {
 		d = strings.Join(parts[len(parts)-2:], ".")
 	} else if len(parts) > 2 {
 		d = strings.Join(parts[len(parts)-2:], ".")
 		s = strings.Join(parts[:len(parts)-2], ".")
 	} else {
+		return "", ""
+	}
+
+	return
+}
+
+func DNSAMapping(domain string) (IPS []net.IP) {
+	d, s := GetDomainAndSubDomain(domain)
+	if d == "" {
 		return nil
 	}
 
@@ -124,25 +132,70 @@ func DNSMapping(domain string) net.IP {
 	// CreateLog("DNS", "SUBDOMAIN: ", s)
 	// CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
 
+	// DNS A RECORD
 	var m *DeviceDNSRegistration
 	var ok bool
 	if s != "" {
-		m, ok = AS.AP.DNS[s]
+		m, ok = AS.AP.DNS[s+"."+d]
 		if ok {
-			return net.ParseIP(m.IP)
+			CreateLog("DNS", "IPS FOUND: ", m.IP)
+			for _, v := range m.IP {
+				IPS = append(IPS, net.ParseIP(v))
+			}
+			return
 		}
 	}
 
 	m, ok = AS.AP.DNS[d]
 	if ok {
-		if m.Wildcard {
-			return net.ParseIP(m.IP)
-		} else if s == "" {
-			return net.ParseIP(m.IP)
+		if m.Wildcard || s == "" {
+			for _, v := range m.IP {
+				IPS = append(IPS, net.ParseIP(v))
+			}
 		}
 	}
 
-	return nil
+	return
+}
+
+func DNSTXTMapping(domain string) (TXTS []string) {
+	d, s := GetDomainAndSubDomain(domain)
+	if d == "" {
+		return nil
+	}
+
+	if AS.AP == nil {
+		return nil
+	}
+	// CreateLog("DNS", "PARTS: ", parts)
+	// CreateLog("DNS", "DOMAIN: ", d)
+	// CreateLog("DNS", "SUBDOMAIN: ", s)
+	// CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
+
+	// DNS A RECORD
+	var m *DeviceDNSRegistration
+	var ok bool
+	if s != "" {
+		m, ok = AS.AP.DNS[s+"."+d]
+		if ok {
+			// CreateLog("DNS", "TXT FOUND: ", m.TXT)
+			for _, v := range m.TXT {
+				TXTS = append(TXTS, v)
+			}
+			return
+		}
+	}
+
+	m, ok = AS.AP.DNS[d]
+	if ok {
+		if m.Wildcard || s == "" {
+			for _, v := range m.TXT {
+				TXTS = append(TXTS, v)
+			}
+		}
+	}
+
+	return
 }
 
 // func CraftDNSResponse(domain string, ip net.IP) {

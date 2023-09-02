@@ -3,13 +3,16 @@
 package core
 
 import (
+	"encoding/base64"
 	"encoding/binary"
 	"io"
+	"log"
 	"net"
 	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	packets "github.com/tunnels-is/nicelandvpn-desktop/packet"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/sys/windows"
 )
@@ -47,11 +50,14 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 		parsedDNSLayer      *layers.DNS
 		domain              string
 		isCustomDNS         bool
-		domainIP            net.IP
+		domainIPS           []net.IP
+		domainTXTS          []string
 		dnsOldIP            net.IP
 		dnsOldPort          layers.UDPPort
 		dnsPacket           []byte
 		dnsAllocationBuffer []byte
+
+		shouldDropDNS bool
 
 		natOK  bool
 		NAT_IP [4]byte
@@ -141,7 +147,13 @@ WAITFORDEVICE:
 		destinationIP[3] = packet[19]
 
 		if packet[9] == 6 {
-			parsedPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+
+			parsedPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.NoCopy)
+
+			if destinationIP == [4]byte{22, 22, 22, 22} {
+				log.Println(parsedPacket)
+			}
+
 			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
 			applicationLayer = parsedPacket.ApplicationLayer()
 			parsedTCPLayer = parsedPacket.TransportLayer().(*layers.TCP)
@@ -171,10 +183,15 @@ WAITFORDEVICE:
 				AS.TCPHeader.DstIP = parsedIPLayer.DstIP
 			}
 
+			if destinationIP == [4]byte{22, 22, 22, 22} {
+				packets.ParsePacket(packet, OP.Mapped, AS.TCPHeader.SrcIP, NAT_IP)
+			}
+
 			// parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
 			parsedTCPLayer.SrcPort = layers.TCPPort(OP.Mapped)
 
 			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
+
 			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
 
 			buffer = gopacket.NewSerializeBuffer()
@@ -199,6 +216,7 @@ WAITFORDEVICE:
 
 			parsedDNSLayer, isDNSLayer = applicationLayer.(*layers.DNS)
 			if isDNSLayer {
+				shouldDropDNS = false
 				// DNS BLOCK LIST PARSING
 				// log.Println(parsedDNSLayer)
 				// if len(parsedDNSLayer.Questions) > 0 {
@@ -212,25 +230,67 @@ WAITFORDEVICE:
 				// 	}
 				// }
 
-				if parsedDNSLayer.Questions[0].Type != layers.DNSTypeA {
-					goto SKIPDNS
-				}
-
 				for _, v := range parsedDNSLayer.Questions {
 					domain = string(v.Name)
-					// CreateLog("DNS", "Question: ", string(v.Name))
-					domainIP = DNSMapping(domain)
-					if domainIP != nil {
-						isCustomDNS = true
-						parsedDNSLayer.Answers = append(parsedDNSLayer.Answers, layers.DNSResourceRecord{
-							Name:  v.Name,
-							Type:  v.Type,
-							Class: v.Class,
-							TTL:   30,
-							IP:    domainIP,
-						})
-						parsedDNSLayer.ANCount++
+					if GLOBAL_STATE.DNSWhitelistEnabled {
+						if !IsDomainAllowed(domain) {
+							// TODO .. reply with bogus IP
+							shouldDropDNS = true
+							goto DROP
+						}
 					}
+
+					if v.Type == 28 { // AAA RECORD
+
+						// CreateLog("DNS", "Question AAAA Record: ", string(v.Name))
+						if GLOBAL_STATE.DNSCaptureEnabled {
+							CaptureDNS(string(v.Name))
+						}
+
+					} else if v.Type == 1 { // A RECORD
+						if GLOBAL_STATE.DNSCaptureEnabled {
+							CaptureDNS(string(v.Name))
+						}
+
+						// CreateLog("DNS", "Question A Record: ", string(v.Name))
+						domainIPS = DNSAMapping(domain)
+						for _, ip := range domainIPS {
+							isCustomDNS = true
+							parsedDNSLayer.Answers = append(parsedDNSLayer.Answers, layers.DNSResourceRecord{
+								Name:  v.Name,
+								Type:  v.Type,
+								Class: v.Class,
+								TTL:   30,
+								IP:    ip,
+							})
+							parsedDNSLayer.ANCount++
+						}
+
+					} else if v.Type == 16 { // TXT RECORD
+						// CreateLog("DNS", "Question TXT Record: ", string(v.Name))
+						domainTXTS = DNSTXTMapping(domain)
+						for _, txt := range domainTXTS {
+							// txtb := make([][]byte, 1)
+							// txtb[0] = []byte(txt)
+							isCustomDNS = true
+							parsedDNSLayer.Answers = append(parsedDNSLayer.Answers, layers.DNSResourceRecord{
+								Name:  v.Name,
+								Type:  v.Type,
+								Class: v.Class,
+								TTL:   30,
+								TXTs:  [][]byte{[]byte(txt)},
+								TXT:   []byte(base64.StdEncoding.EncodeToString([]byte(txt))),
+							})
+							parsedDNSLayer.ANCount++
+						}
+
+					}
+
+				}
+
+			DROP:
+				if shouldDropDNS {
+					continue
 				}
 
 				if isCustomDNS {
@@ -265,9 +325,6 @@ WAITFORDEVICE:
 				}
 
 			}
-
-		SKIPDNS:
-			// DNS
 
 			OP = CreateOrGetPortMapping(&UDP_o0, destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
 			if OP == nil {
@@ -309,17 +366,17 @@ WAITFORDEVICE:
 		if AS.TCPTunnelSocket != nil {
 
 			// var OUT = make([]byte, 0)
-			// OUT := buffer.Bytes()
+			OUT := buffer.Bytes()
 			// //185.186.76.193
-			// if destinationIP == [4]byte{185, 186, 76, 193} || destinationIP == [4]byte{184, 186, 76, 193} {
-			// 	log.Println("OUT IP: ", destinationIP)
-			// 	log.Println(AS.AP.NAT_CACHE[destinationIP])
-			// 	testPacket := gopacket.NewPacket(OUT, layers.LayerTypeIPv4, gopacket.Default)
-			// 	CreateLog("DNS", testPacket)
-			// }
+			if destinationIP == [4]byte{22, 22, 22, 22} {
+				// log.Println("OUT IP: ", destinationIP)
+				// log.Println(AS.AP.NAT_CACHE[destinationIP])
+				testPacket := gopacket.NewPacket(OUT, layers.LayerTypeIPv4, gopacket.Default)
+				log.Println(testPacket)
+			}
 
-			encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
 			// encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
+			encryptedPacket = AS.AEAD.Seal(nil, nonce, OUT, nil)
 
 			binary.BigEndian.PutUint16(lengthBytes, uint16(len(encryptedPacket)))
 
@@ -458,7 +515,7 @@ WAIT_FOR_TUNNEL:
 			ip.SrcIP = net.IP{sourceIP[0], sourceIP[1], sourceIP[2], sourceIP[3]}
 		}
 
-		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.NoCopy)
 		buffer = gopacket.NewSerializeBuffer()
 		appLayer = ingressPacket.ApplicationLayer()
 

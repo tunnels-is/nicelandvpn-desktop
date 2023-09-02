@@ -142,30 +142,36 @@ type State struct {
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
 
 	// FILE PATHS
-	LogFileName string `json:"LogFileName"`
-	LogPath     string `json:"LogPath"`
-	ConfigPath  string `json:"ConfigPath"`
-	BackupPath  string `json:"BackupPath"`
-	BasePath    string `json:"BasePath"`
+	LogFileName         string          `json:"LogFileName"`
+	LogPath             string          `json:"LogPath"`
+	ConfigPath          string          `json:"ConfigPath"`
+	BackupPath          string          `json:"BackupPath"`
+	BasePath            string          `json:"BasePath"`
+	DNSWhitelist        map[string]bool `json:"DNSWhitelist"`
+	DNSWhitelistEnabled bool            `json:"DNSWhitelistEnabled"`
+	DNSCaptureEnabled   bool            `json:"DNSCaptureEnabled"`
 
 	DefaultInterface *CONNECTION_SETTINGS `json:"DefaultInterface"`
 	// DefaultRouterIP      string
 	// DefaultInterfaceName string
 	Version string `json:"Version"`
 }
+
 type FileConfig struct {
-	DNS1           string
-	DNS1Bytes      [4]byte
-	DNSIP          net.IP
-	DNS2           string
-	ManualRouter   bool
-	Region         string
-	DebugLogging   bool
-	Version        string
-	RouterFilePath string
-	AutoReconnect  bool
-	KillSwitch     bool
+	DNS1            string
+	DNS1Bytes       [4]byte
+	DNSIP           net.IP
+	DNS2            string
+	ManualRouter    bool
+	Region          string
+	DebugLogging    bool
+	Version         string
+	RouterFilePath  string
+	AutoReconnect   bool
+	KillSwitch      bool
+	DomainWhitelist string
 }
+
 type AdapterSettings struct {
 	// SleepTrigger bool
 	Session *CLIENT_SESSION
@@ -199,7 +205,8 @@ type Config struct {
 	RouterFilePath string
 	// AddBlockLevel  int
 	// Region         string
-	PrevSession *CONTROLLER_SESSION_REQUEST
+	PrevSession     *CONTROLLER_SESSION_REQUEST
+	DomainWhitelist string `json:",omitempty"`
 
 	CLI bool `json:"-"`
 }
@@ -412,6 +419,7 @@ type AccessPoint struct {
 	NAT             []*DeviceNatRegistration          `json:"NAT" bson:"NAT"`
 	BlockedNetworks []string                          `json:"BlockedNetworks" bson:"BlockedNetworks"`
 	DNS             map[string]*DeviceDNSRegistration `json:"DNS" bson:"DNS"`
+	DNSWhiteList    bool                              `json:"DNSWhiteList" bson:"DNSWhiteList"`
 
 	Router *ROUTER `json:"Router"`
 
@@ -425,8 +433,9 @@ type AccessPoint struct {
 // }
 
 type DeviceDNSRegistration struct {
-	IP       string `json:"IP" bson:"IP"`
-	Wildcard bool   `json:"Wildcard" bson:"Wildcard"`
+	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
+	IP       []string `json:"IP" bson:"IP"`
+	TXT      []string `json:"TXT" bson:"TXT"`
 }
 type DeviceNatRegistration struct {
 	Tag     string `json:"Tag" bson:"T"`

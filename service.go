@@ -185,3 +185,42 @@ func (s *Service) OpenFileDialogForRouterFile(clearFile bool) string {
 
 	return path
 }
+
+func (s *Service) EnableDNSWhitelist() {
+	core.GLOBAL_STATE.DNSWhitelistEnabled = true
+}
+
+func (s *Service) DisableDNSWhitelist() {
+	core.GLOBAL_STATE.DNSWhitelistEnabled = false
+}
+
+func (s *Service) StartDNSCapture() {
+	core.StartCapturing()
+	return
+}
+
+func (s *Service) StopDNSCapture() string {
+	core.CreateLog("START", "")
+
+	path := ""
+	var err error
+	path, err = runtime.SaveFileDialog(APP.ctx, runtime.SaveDialogOptions{
+		Title:                "Create A File",
+		DefaultFilename:      "allowed_websites",
+		ShowHiddenFiles:      true,
+		CanCreateDirectories: true,
+	})
+
+	if err != nil {
+		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+		return err.Error()
+	}
+
+	err = core.StopCapturing(path)
+	if err != nil {
+		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+		return err.Error()
+	}
+
+	return ""
+}

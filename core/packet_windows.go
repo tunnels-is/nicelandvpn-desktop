@@ -31,12 +31,6 @@ func ReadFromLocalTunnel_NEW(MONITOR chan int) {
 		packet         []byte
 		packetSize     uint16 = 0
 
-		// fullData         []byte
-		// buffer gopacket.SerializeBuffer
-
-		// destinationIP = [4]byte{}
-		// outgoingPort  *RemotePort
-
 		encryptedPacket []byte
 		lengthBytes     = make([]byte, 2)
 		nonce           = make([]byte, chacha20poly1305.NonceSizeX)

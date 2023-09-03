@@ -2,7 +2,13 @@ package core
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log"
+)
+
+var (
+	PREV_DNS_IP [4]byte
+	IS_UNIX     bool = false
 )
 
 var (
@@ -22,6 +28,8 @@ var (
 	EP_NAT_IP [4]byte
 	EP_NAT_OK bool
 
+	EP_RST byte
+
 	// This IP gets over-written on connect
 	EP_VPNSrcIP [4]byte
 )
@@ -38,20 +46,24 @@ func ProcessEgressPacket(packet []byte) bool {
 		return false
 	}
 
-	// TODO: Check for reset flag
-	// TODO: Check for reset flag
-	// TODO: Check for reset flag
-
-	EP_DstIP[0] = packet[16]
-	EP_DstIP[1] = packet[17]
-	EP_DstIP[2] = packet[18]
-	EP_DstIP[3] = packet[19]
-
 	// Get the full IPv4Header length in bytes
 	EP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
 
 	EP_IPv4Header = packet[:EP_IPv4HeaderLength]
 	EP_TPHeader = packet[EP_IPv4HeaderLength:]
+
+	// Ignore RST packets
+	EP_RST = EP_TPHeader[13] & 0x7 >> 2
+	fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
+	if EP_RST == 1 {
+		log.Println("RST PACKET")
+		return false
+	}
+
+	EP_DstIP[0] = packet[16]
+	EP_DstIP[1] = packet[17]
+	EP_DstIP[2] = packet[18]
+	EP_DstIP[3] = packet[19]
 
 	EP_SrcPort[0] = EP_TPHeader[0]
 	EP_SrcPort[1] = EP_TPHeader[1]
@@ -61,15 +73,30 @@ func ProcessEgressPacket(packet []byte) bool {
 
 	// CUSTOM DNS
 	// https://stackoverflow.com/questions/7565300/identifying-dns-packets
-	if EP_DstPort[1] == 53 {
-		// log.Println("IS DNS ????", EP_DstIP, EP_DstPort)
-		if ProcessDNSQuery(EP_TPHeader) {
-			// ????
-			// Flip Ports
-			// Flip IPs
-			// Write packet back to local interface
-			// log.Println("RETURNING CUSTOM DNS RESPONSE")
-			return false
+	if EP_Protocol == 17 {
+		if IsDNSQuery(EP_TPHeader[8:]) {
+			if ProcessEgressDNSQuery(EP_TPHeader) {
+				// Flip Ports
+				// Flip IPs
+				// Write packet back to local interface
+				// log.Println("RETURNING CUSTOM DNS RESPONSE")
+				return false
+			} else {
+
+				if IS_UNIX {
+					PREV_DNS_IP[0] = EP_IPv4Header[16]
+					PREV_DNS_IP[1] = EP_IPv4Header[17]
+					PREV_DNS_IP[2] = EP_IPv4Header[18]
+					PREV_DNS_IP[3] = EP_IPv4Header[19]
+
+					EP_IPv4Header[16] = C.DNS1Bytes[0]
+					EP_IPv4Header[17] = C.DNS1Bytes[1]
+					EP_IPv4Header[18] = C.DNS1Bytes[2]
+					EP_IPv4Header[19] = C.DNS1Bytes[3]
+				}
+
+			}
+
 		}
 	}
 
@@ -191,19 +218,62 @@ func ProcessIngressPacket(packet []byte) bool {
 	IP_IPv4Header[18] = IP_InterfaceIP[2]
 	IP_IPv4Header[19] = IP_InterfaceIP[3]
 
+	if EP_Protocol == 17 {
+		if IsDNSQuery(EP_TPHeader[8:]) {
+			IP_IPv4Header[16] = PREV_DNS_IP[0]
+			IP_IPv4Header[17] = PREV_DNS_IP[1]
+			IP_IPv4Header[18] = PREV_DNS_IP[2]
+			IP_IPv4Header[19] = PREV_DNS_IP[3]
+		}
+	}
+
 	RecalculateAndReplaceIPv4HeaderChecksum(IP_IPv4Header)
 	RecalculateAndReplaceTransportChecksum(IP_IPv4Header, IP_TPHeader)
 
 	return true
 }
 
-func ProcessDNSQuery(TPHeader []byte) (shouldSend bool) {
+func IsDNSQuery(UDPData []byte) bool {
+
+	log.Println("UDP DATA:", UDPData)
+	if len(UDPData) < 12 {
+		log.Println("NOT ENOUGH UDP DATA")
+		return false
+	}
+
+	// QR == 0 when making a DNS Query
+	QR := UDPData[2] >> 7
+	if QR != 0 {
+		return false
+	}
+
+	// AN Count is always 0 for queries
+	if UDPData[6] != 0 || UDPData[7] != 0 {
+		log.Println("AN COUNT OFF", UDPData[6:8])
+		return false
+	}
+
+	// NS Count is always 0 for queries
+	if UDPData[8] != 0 || UDPData[9] != 0 {
+		log.Println("NS COUNT OFF", UDPData[8:10])
+		return false
+	}
+
+	return true
+}
+func ProcessEgressDNSQuery(TPHeader []byte) bool {
+
 	// x := dns.Msg{}
 	// x.Unpack(TPHeader)
 	// // x.String()
 	// log.Println("DNS:", x.String())
 
-	return
+	return true
+}
+
+func ProcessIngressDNSQuery(TPHeader []byte) bool {
+
+	return true
 }
 
 func RecalculateAndReplaceIPv4HeaderChecksum(bytes []byte) {

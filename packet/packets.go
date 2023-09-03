@@ -87,15 +87,6 @@ func ParsePacket(packet []byte, NP uint16, SRCIP []byte, NIP [4]byte) {
 
 	// Src IP for new check is always the same, can we save it somewhere ?
 
-	// 1. Get Port Mapping
-	// 2. Replace source port
-	// 3. Get Network Nat
-	// 4. Replace destination IP with NAT IP
-	// 5. Replace source IP with VPN IP
-
-	// 5. Recalculate IP header checksum -- current function also replaces the checksum
-	// 6. Recalculate TCP Header cheksum
-
 	packet2 := CopySlice(packet)
 
 	// packet2[16] = NIP[0]

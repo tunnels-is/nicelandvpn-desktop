@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/binary"
 	"log"
 	"sync"
 	"time"
@@ -357,20 +358,20 @@ type O3 struct {
 }
 
 type M struct {
-	LOCAL  map[uint16]*RP
-	REMOTE map[uint16]*RP
+	LOCAL  map[[2]byte]*RP
+	REMOTE map[[2]byte]*RP
 	// X []*RemotePort
 	Lock sync.Mutex
 }
 
 type RP struct {
-	Local        uint16
-	Mapped       uint16
-	Remote       uint16
+	Local        [2]byte
+	Mapped       [2]byte
+	Remote       [2]byte
 	LastActivity time.Time
 }
 
-func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport uint16) *RP {
+func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport [2]byte) *RP {
 
 	if protoMap[ip[0]] == nil {
 		protoMap[ip[0]] = new(O1)
@@ -389,8 +390,8 @@ func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport uint16)
 		protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]] = new(M)
 		m = protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]]
 		m.Lock = sync.Mutex{}
-		m.LOCAL = make(map[uint16]*RP)
-		m.REMOTE = make(map[uint16]*RP)
+		m.LOCAL = make(map[[2]byte]*RP)
+		m.REMOTE = make(map[[2]byte]*RP)
 	} else {
 		m = protoMap[ip[0]].o1[ip[1]].o2[ip[2]].o3[ip[3]]
 	}
@@ -403,24 +404,26 @@ func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport uint16)
 		return mapping
 	}
 
+	var newPort = [2]byte{}
 	for i := AS.StartPort; i <= AS.EndPort; i++ {
 
+		binary.BigEndian.PutUint16(newPort[:], i)
 		m.Lock.Lock()
-		XR, ok := m.REMOTE[i]
+		XR, ok := m.REMOTE[newPort]
 		m.Lock.Unlock()
 
 		if !ok || XR == nil {
 
 			m.Lock.Lock()
-			m.REMOTE[i] = new(RP)
-			m.REMOTE[i].LastActivity = time.Now()
-			m.REMOTE[i].Local = lport
-			m.REMOTE[i].Mapped = i
-			m.REMOTE[i].Remote = rport
-			m.LOCAL[lport] = m.REMOTE[i]
+			m.REMOTE[newPort] = new(RP)
+			m.REMOTE[newPort].LastActivity = time.Now()
+			m.REMOTE[newPort].Local = lport
+			m.REMOTE[newPort].Mapped = newPort
+			m.REMOTE[newPort].Remote = rport
+			m.LOCAL[lport] = m.REMOTE[newPort]
 			m.Lock.Unlock()
 			// log.Println("CU:", ip, "L:", lport, "R:", rport, "M:", i)
-			return m.REMOTE[i]
+			return m.REMOTE[newPort]
 		}
 	}
 
@@ -429,7 +432,7 @@ func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport uint16)
 	return nil
 }
 
-func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port uint16) (mapping *RP) {
+func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port [2]byte) (mapping *RP) {
 
 	if protoMap[ip[0]] == nil {
 		return nil

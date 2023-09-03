@@ -33,10 +33,11 @@ func StartService(MONITOR chan int) {
 
 	go StartLogQueueProcessor(MONITOR)
 	go StateMaintenance(MONITOR)
-	go ReadFromLocalTunnel(MONITOR)
-	go ReadFromRouterSocket(MONITOR)
 	go CalculateBandwidth(MONITOR)
 	go CleanPorts(MONITOR)
+
+	go ReadFromLocalTunnel_NEW(MONITOR)
+	go ReadFromRouterSocket_NEW(MONITOR)
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")

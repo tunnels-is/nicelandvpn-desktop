@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-ping/ping"
-	"github.com/google/gopacket/layers"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -181,13 +180,10 @@ type AdapterSettings struct {
 	RoutingBuffer [8]byte
 	PingBuffer    [8]byte
 
-	LastActivity time.Time
-	StartPort    uint16
-	EndPort      uint16
-	VPNIP        net.IP
-	UDPHeader    layers.IPv4
-	TCPHeader    layers.IPv4
-	AEAD         cipher.AEAD
+	StartPort uint16
+	EndPort   uint16
+
+	AEAD cipher.AEAD
 
 	AP *AccessPoint
 }

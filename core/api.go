@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/gopacket/layers"
 	"github.com/xlzd/gotp"
 )
 
@@ -1100,22 +1099,17 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 
 	NewAdapterSettings.EndPort = S.EndPort
 	NewAdapterSettings.StartPort = S.StartPort
-	NewAdapterSettings.VPNIP = net.IP{S.VPNIP[0], S.VPNIP[1], S.VPNIP[2], S.VPNIP[3]}
-	NewAdapterSettings.TCPHeader = layers.IPv4{
-		SrcIP:    NewAdapterSettings.VPNIP,
-		DstIP:    net.IP{0, 0, 0, 0},
-		Version:  4,
-		TTL:      64,
-		Protocol: layers.IPProtocolTCP,
-	}
+	// NewAdapterSettings.VPNIP = net.IP{S.VPNIP[0], S.VPNIP[1], S.VPNIP[2], S.VPNIP[3]}
 
-	NewAdapterSettings.UDPHeader = layers.IPv4{
-		SrcIP:    NewAdapterSettings.VPNIP,
-		DstIP:    net.IP{0, 0, 0, 0},
-		Version:  4,
-		TTL:      64,
-		Protocol: layers.IPProtocolUDP,
-	}
+	EP_VPNSrcIP[0] = S.VPNIP[0]
+	EP_VPNSrcIP[1] = S.VPNIP[1]
+	EP_VPNSrcIP[2] = S.VPNIP[2]
+	EP_VPNSrcIP[3] = S.VPNIP[3]
+
+	IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
+	IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
+	IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
+	IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
 
 	NewAdapterSettings.RoutingBuffer = CreateMETABuffer(
 		CODE_CLIENT_connect_tunnel_with_handshake,
@@ -1178,7 +1172,7 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
 	AS.AP = GLOBAL_STATE.ActiveAccessPoint
 
-	AS.LastActivity = time.Now()
+	// AS.LastActivity = time.Now()
 	GLOBAL_STATE.Connected = true
 	BUFFER_ERROR = false
 	C.PrevSession = NS

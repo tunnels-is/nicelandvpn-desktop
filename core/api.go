@@ -58,8 +58,7 @@ func CleanupWithStateLock() {
 
 	RestoreIPv6()
 	RestoreDNS()
-	InstantlyCleanAllTCPPorts()
-	InstantlyCleanAllUDPPorts()
+	InstantlyClearPortMaps()
 
 	SetGlobalStateAsDisconnected()
 }

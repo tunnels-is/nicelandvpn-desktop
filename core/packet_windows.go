@@ -3,10 +3,15 @@
 package core
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
+	"log"
 	"time"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/sys/windows"
 )
@@ -101,14 +106,39 @@ WAITFORDEVICE:
 
 		// log.Println(" BEFORE ==========================================")
 		// fmt.Println(packet)
-		if !ProcessEgressPacket(packet) {
-			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+
+		sendRemote, sendLocal := ProcessEgressPacket(&packet)
+		if !sendLocal && !sendRemote {
+			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+			continue
+		} else if sendLocal {
+
+			ingressPacketLength := len(packet)
+
+			testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+			log.Println(" DNS TEST ==========================================")
+			fmt.Println(testPacket)
+			log.Println(" ==========================================")
+			ingressAllocationBuffer, writeError := A.AllocateSendPacket(ingressPacketLength)
+			if writeError != nil {
+				CreateErrorLog("", "Send: ", writeError)
+				return
+			}
+
+			copy(ingressAllocationBuffer, packet)
+			A.SendPacket(ingressAllocationBuffer)
+
 			continue
 		}
-		// log.Println(" AFTER ==========================================")
-		// fmt.Println(packet)
 
 		if AS.TCPTunnelSocket != nil {
+
+			// if bytes.Contains(packet, []byte{11, 11, 11, 193}) || bytes.Contains(packet, []byte{185, 186, 76, 193}) {
+			// 	testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+			// 	log.Println(" NAT TEST ==========================================")
+			// 	fmt.Println(testPacket)
+			// 	log.Println(" ==========================================")
+			// }
 
 			// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
 			// log.Println(" EGRESS ==========================================")
@@ -220,10 +250,12 @@ WAIT_FOR_TUNNEL:
 			continue
 		}
 
-		// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-		// log.Println(" INGRESS ==========================================")
-		// fmt.Println(testPacket)
-		// log.Println(" INGRESS ==========================================")
+		if bytes.Contains(packet, []byte{11, 11, 11, 193}) {
+			testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+			log.Println(" INGRESS ==========================================")
+			fmt.Println(testPacket)
+			log.Println(" INGRESS ==========================================")
+		}
 
 		ingressPacketLength = len(packet)
 

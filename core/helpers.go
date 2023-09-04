@@ -138,7 +138,7 @@ func DNSAMapping(domain string) (IPS []net.IP) {
 	if s != "" {
 		m, ok = AS.AP.DNS[s+"."+d]
 		if ok {
-			CreateLog("DNS", "IPS FOUND: ", m.IP)
+			CreateLog("", "IPS FOUND: ", m.IP)
 			for _, v := range m.IP {
 				IPS = append(IPS, net.ParseIP(v))
 			}
@@ -149,6 +149,7 @@ func DNSAMapping(domain string) (IPS []net.IP) {
 	m, ok = AS.AP.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
+			CreateLog("", "IPS FOUND: ", m.IP)
 			for _, v := range m.IP {
 				IPS = append(IPS, net.ParseIP(v))
 			}

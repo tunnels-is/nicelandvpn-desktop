@@ -2,8 +2,9 @@ package core
 
 import (
 	"encoding/binary"
-	"fmt"
 	"log"
+
+	"github.com/miekg/dns"
 )
 
 var (
@@ -30,20 +31,27 @@ var (
 
 	EP_RST byte
 
+	EP_DNS_Response         []byte
+	EP_DNS_OK               bool
+	EP_DNS_Port_Placeholder [2]byte
+	EP_DNS_Packet           []byte
+
 	// This IP gets over-written on connect
 	EP_VPNSrcIP [4]byte
 )
 
-func ProcessEgressPacket(packet []byte) bool {
+func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
+
+	packet := *p
 
 	EP_Version = packet[0] >> 4
 	if EP_Version != 4 {
-		return false
+		return false, false
 	}
 
 	EP_Protocol = packet[9]
 	if EP_Protocol != 6 && EP_Protocol != 17 {
-		return false
+		return false, false
 	}
 
 	// Get the full IPv4Header length in bytes
@@ -52,18 +60,25 @@ func ProcessEgressPacket(packet []byte) bool {
 	EP_IPv4Header = packet[:EP_IPv4HeaderLength]
 	EP_TPHeader = packet[EP_IPv4HeaderLength:]
 
-	// Ignore RST packets
-	EP_RST = EP_TPHeader[13] & 0x7 >> 2
-	fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
-	if EP_RST == 1 {
-		log.Println("RST PACKET")
-		return false
+	// DROP RST packets
+	if EP_Protocol == 6 {
+		EP_RST = EP_TPHeader[13] & 0x7 >> 2
+		// fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
+		if EP_RST == 1 {
+			log.Println("RST PACKET")
+			return false, false
+		}
 	}
 
 	EP_DstIP[0] = packet[16]
 	EP_DstIP[1] = packet[17]
 	EP_DstIP[2] = packet[18]
 	EP_DstIP[3] = packet[19]
+
+	// This drops NETBIOS DNS packets to the VPN interface
+	if EP_DstIP == [4]byte{10, 4, 3, 255} {
+		return false, false
+	}
 
 	EP_SrcPort[0] = EP_TPHeader[0]
 	EP_SrcPort[1] = EP_TPHeader[1]
@@ -75,12 +90,47 @@ func ProcessEgressPacket(packet []byte) bool {
 	// https://stackoverflow.com/questions/7565300/identifying-dns-packets
 	if EP_Protocol == 17 {
 		if IsDNSQuery(EP_TPHeader[8:]) {
-			if ProcessEgressDNSQuery(EP_TPHeader) {
-				// Flip Ports
-				// Flip IPs
-				// Write packet back to local interface
-				// log.Println("RETURNING CUSTOM DNS RESPONSE")
-				return false
+			// log.Println("UDP HEADER:", EP_TPHeader[:8])
+			// log.Println("UDP DATA:", EP_TPHeader[8:])
+			// log.Println("UDP HEADER:", EP_TPHeader[:8], EP_DstIP, EP_DstPort)
+			EP_DNS_Response, EP_DNS_OK = ProcessEgressDNSQuery(EP_TPHeader[8:])
+			if EP_DNS_OK {
+				// Replace Source IP
+				EP_IPv4Header[12] = EP_IPv4Header[16]
+				EP_IPv4Header[13] = EP_IPv4Header[17]
+				EP_IPv4Header[14] = EP_IPv4Header[18]
+				EP_IPv4Header[15] = EP_IPv4Header[19]
+
+				// Replace Destination IP
+				EP_IPv4Header[16] = IP_InterfaceIP[0]
+				EP_IPv4Header[17] = IP_InterfaceIP[1]
+				EP_IPv4Header[18] = IP_InterfaceIP[2]
+				EP_IPv4Header[19] = IP_InterfaceIP[3]
+
+				// Replace Source Port
+				EP_DNS_Port_Placeholder[0] = EP_TPHeader[0]
+				EP_DNS_Port_Placeholder[1] = EP_TPHeader[1]
+
+				EP_TPHeader[0] = EP_TPHeader[2]
+				EP_TPHeader[1] = EP_TPHeader[3]
+
+				EP_TPHeader[2] = EP_DNS_Port_Placeholder[0]
+				EP_TPHeader[3] = EP_DNS_Port_Placeholder[1]
+
+				///
+				EP_DNS_Packet = append(packet[:EP_IPv4HeaderLength+8], EP_DNS_Response...)
+				// Modify the total Length of the IP Header
+				binary.BigEndian.PutUint16(EP_DNS_Packet[2:4], uint16(int(EP_IPv4HeaderLength)+8+len(EP_DNS_Response)))
+
+				// Modify the length of the Transport Header
+				binary.BigEndian.PutUint16(EP_DNS_Packet[EP_IPv4HeaderLength+4:EP_IPv4HeaderLength+6], uint16(len(EP_DNS_Response))+8)
+
+				RecalculateAndReplaceIPv4HeaderChecksum(EP_DNS_Packet[:EP_IPv4HeaderLength])
+				RecalculateAndReplaceTransportChecksum(EP_DNS_Packet[:EP_IPv4HeaderLength], EP_DNS_Packet[EP_IPv4HeaderLength:])
+
+				*p = EP_DNS_Packet
+
+				return false, true
 			} else {
 
 				if IS_UNIX {
@@ -105,7 +155,7 @@ func ProcessEgressPacket(packet []byte) bool {
 		EP_MappedPort = CreateOrGetPortMapping(&TCP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
 		if EP_MappedPort == nil {
 			log.Println("NO TCP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
-			return false
+			return false, false
 		}
 
 	} else if EP_Protocol == 17 {
@@ -113,22 +163,22 @@ func ProcessEgressPacket(packet []byte) bool {
 		EP_MappedPort = CreateOrGetPortMapping(&UDP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
 		if EP_MappedPort == nil {
 			log.Println("NO UDP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
-			return false
+			return false, false
 		}
 
 	}
 
-	EP_TPHeader[0] = EP_MappedPort.Mapped[0]
-	EP_TPHeader[1] = EP_MappedPort.Mapped[1]
-
 	EP_NAT_IP, EP_NAT_OK = AS.AP.NAT_CACHE[EP_DstIP]
 	if EP_NAT_OK {
-		// log.Println("FOUND NAT", EP_DstIP, EP_NAT_IP)
+		log.Println("FOUND NAT", EP_DstIP, EP_NAT_IP)
 		EP_IPv4Header[16] = EP_NAT_IP[0]
 		EP_IPv4Header[17] = EP_NAT_IP[1]
 		EP_IPv4Header[18] = EP_NAT_IP[2]
 		EP_IPv4Header[19] = EP_NAT_IP[3]
 	}
+
+	EP_TPHeader[0] = EP_MappedPort.Mapped[0]
+	EP_TPHeader[1] = EP_MappedPort.Mapped[1]
 
 	EP_IPv4Header[12] = EP_VPNSrcIP[0]
 	EP_IPv4Header[13] = EP_VPNSrcIP[1]
@@ -138,7 +188,7 @@ func ProcessEgressPacket(packet []byte) bool {
 	RecalculateAndReplaceIPv4HeaderChecksum(EP_IPv4Header)
 	RecalculateAndReplaceTransportChecksum(EP_IPv4Header, EP_TPHeader)
 
-	return true
+	return true, false
 }
 
 var (
@@ -171,11 +221,6 @@ func ProcessIngressPacket(packet []byte) bool {
 	IP_SrcIP[2] = packet[14]
 	IP_SrcIP[3] = packet[15]
 
-	IP_DstIP[0] = packet[16]
-	IP_DstIP[1] = packet[17]
-	IP_DstIP[2] = packet[18]
-	IP_DstIP[3] = packet[19]
-
 	IP_Protocol = packet[9]
 
 	IP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
@@ -187,17 +232,23 @@ func ProcessIngressPacket(packet []byte) bool {
 
 	IP_NAT_IP, IP_NAT_OK = AS.AP.REVERSE_NAT_CACHE[IP_SrcIP]
 	if IP_NAT_OK {
-		// log.Println("FOUND INGRESS NAT", IP_DstIP, IP_NAT_IP)
+		log.Println("FOUND INGRESS NAT", IP_SrcIP, IP_NAT_IP)
 		IP_IPv4Header[12] = IP_NAT_IP[0]
 		IP_IPv4Header[13] = IP_NAT_IP[1]
 		IP_IPv4Header[14] = IP_NAT_IP[2]
 		IP_IPv4Header[15] = IP_NAT_IP[3]
+
+		IP_SrcIP[0] = IP_NAT_IP[0]
+		IP_SrcIP[1] = IP_NAT_IP[1]
+		IP_SrcIP[2] = IP_NAT_IP[2]
+		IP_SrcIP[3] = IP_NAT_IP[3]
 	}
 
 	if IP_Protocol == 6 {
 
 		IP_MappedPort = GetIngressPortMapping(&TCP_o0, IP_SrcIP, IP_DstPort)
 		if IP_MappedPort == nil {
+			log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
 
@@ -205,6 +256,7 @@ func ProcessIngressPacket(packet []byte) bool {
 
 		IP_MappedPort = GetIngressPortMapping(&UDP_o0, IP_SrcIP, IP_DstPort)
 		if IP_MappedPort == nil {
+			log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
 
@@ -219,7 +271,8 @@ func ProcessIngressPacket(packet []byte) bool {
 	IP_IPv4Header[19] = IP_InterfaceIP[3]
 
 	if EP_Protocol == 17 {
-		if IsDNSQuery(EP_TPHeader[8:]) {
+		if IP_SrcIP == C.DNS1Bytes && IS_UNIX {
+			// if IsDNSQuery(EP_TPHeader[8:]) && IS_UNIX {
 			IP_IPv4Header[16] = PREV_DNS_IP[0]
 			IP_IPv4Header[17] = PREV_DNS_IP[1]
 			IP_IPv4Header[18] = PREV_DNS_IP[2]
@@ -235,9 +288,8 @@ func ProcessIngressPacket(packet []byte) bool {
 
 func IsDNSQuery(UDPData []byte) bool {
 
-	log.Println("UDP DATA:", UDPData)
 	if len(UDPData) < 12 {
-		log.Println("NOT ENOUGH UDP DATA")
+		// log.Println("NOT ENOUGH UDP DATA")
 		return false
 	}
 
@@ -249,26 +301,68 @@ func IsDNSQuery(UDPData []byte) bool {
 
 	// AN Count is always 0 for queries
 	if UDPData[6] != 0 || UDPData[7] != 0 {
-		log.Println("AN COUNT OFF", UDPData[6:8])
+		// log.Println("AN COUNT OFF", UDPData[6:8])
 		return false
 	}
 
 	// NS Count is always 0 for queries
 	if UDPData[8] != 0 || UDPData[9] != 0 {
-		log.Println("NS COUNT OFF", UDPData[8:10])
+		// log.Println("NS COUNT OFF", UDPData[8:10])
 		return false
 	}
 
 	return true
 }
-func ProcessEgressDNSQuery(TPHeader []byte) bool {
+func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bool) {
 
-	// x := dns.Msg{}
-	// x.Unpack(TPHeader)
-	// // x.String()
+	q := new(dns.Msg)
+	q.Unpack(UDPData)
+
+	x := new(dns.Msg)
+	x.SetReply(q)
+	x.Authoritative = true
+	x.Compress = true
+
 	// log.Println("DNS:", x.String())
+	isCustomDNS := false
+	for i := range x.Question {
+		log.Println(x.Question[i].Name)
+		if x.Question[i].Qtype != dns.TypeA {
+			continue
+		}
 
-	return true
+		IPS := DNSAMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+		if IPS != nil {
+			isCustomDNS = true
+
+			for ii := range IPS {
+				x.Answer = append(x.Answer, &dns.A{
+					Hdr: dns.RR_Header{
+						Class:  dns.TypeA,
+						Rrtype: dns.ClassINET,
+						Name:   x.Question[i].Name,
+						Ttl:    30,
+					},
+					A: IPS[ii].To4(),
+				})
+			}
+		}
+	}
+
+	if isCustomDNS {
+
+		var err error
+		DNSResponse, err = x.Pack()
+		if err != nil {
+			log.Println("UNABLE TO PICK DNS RESPONSE: ", err)
+			return
+		}
+
+		shouldProcess = true
+		return
+	}
+
+	return
 }
 
 func ProcessIngressDNSQuery(TPHeader []byte) bool {

@@ -6,6 +6,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/go-ping/ping v1.1.0
 	github.com/google/gopacket v1.1.19
+	github.com/miekg/dns v1.1.55
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/wailsapp/wails/v2 v2.5.1
 	github.com/xlzd/gotp v0.1.0
@@ -44,8 +45,10 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
+	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 )

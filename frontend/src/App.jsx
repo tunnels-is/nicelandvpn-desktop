@@ -26,13 +26,13 @@ import STORE from "./store";
 
 const root = createRoot(document.getElementById('app'));
 
-window.addEventListener('focus',
-  STORE.Cache.Set("focus", true)
-);
+// window.addEventListener('focus',
+//   STORE.Cache.Set("focus", true)
+// );
 
-window.addEventListener('blur',
-  STORE.Cache.Set("focus", false)
-);
+// window.addEventListener('blur',
+//   STORE.Cache.Set("focus", false)
+// );
 
 const ToggleError = (e) => {
   let lastFetch = STORE.Cache.Get("error-timeout")
@@ -208,7 +208,7 @@ const LaunchApp = () => {
     const to = setTimeout(async () => {
       UpdateAdvancedMode()
       GetStateAndUpdateVPNList()
-    }, 1100)
+    }, 1000)
 
     return () => { clearTimeout(to); }
 
@@ -304,7 +304,7 @@ class ErrorBoundary extends React.Component {
   }
 
   reloadAll() {
-    STORE.Cache.Clear()
+    // STORE.Cache.Clear()
     window.location.reload()
   }
 

@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/binary"
 	"log"
+	"net"
 
 	"github.com/miekg/dns"
 )
@@ -90,6 +91,8 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 	// https://stackoverflow.com/questions/7565300/identifying-dns-packets
 	if EP_Protocol == 17 {
 		if IsDNSQuery(EP_TPHeader[8:]) {
+			// log.Println("DNS FOUND!!!!!!")
+
 			// log.Println("UDP HEADER:", EP_TPHeader[:8])
 			// log.Println("UDP DATA:", EP_TPHeader[8:])
 			// log.Println("UDP HEADER:", EP_TPHeader[:8], EP_DstIP, EP_DstPort)
@@ -323,19 +326,18 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 	x.Authoritative = true
 	x.Compress = true
 
-	// log.Println("DNS:", x.String())
 	isCustomDNS := false
 	for i := range x.Question {
-		log.Println(x.Question[i].Name)
-		if x.Question[i].Qtype != dns.TypeA {
-			continue
-		}
 
-		IPS := DNSAMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
-		if IPS != nil {
-			isCustomDNS = true
+		if x.Question[i].Qtype == dns.TypeA {
+			domain := x.Question[i].Name[0 : len(x.Question[i].Name)-1]
 
-			for ii := range IPS {
+			_, ok := GLOBAL_BLOCK_LIST[domain]
+			// CreateLog("", "DNS Q: ", domain, len(GLOBAL_BLOCK_LIST), ok)
+			if ok {
+
+				CreateLog("", "Domain blocked:", domain)
+				isCustomDNS = true
 				x.Answer = append(x.Answer, &dns.A{
 					Hdr: dns.RR_Header{
 						Class:  dns.TypeA,
@@ -343,10 +345,79 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 						Name:   x.Question[i].Name,
 						Ttl:    30,
 					},
-					A: IPS[ii].To4(),
+					A: net.ParseIP("127.0.0.1"),
+				})
+
+			} else {
+
+				IPS, CNAME := DNSAMapping(domain)
+				if CNAME != "" {
+
+					isCustomDNS = true
+					x.Answer = append(x.Answer, &dns.CNAME{
+						Hdr: dns.RR_Header{
+							Class:  dns.ClassNONE,
+							Rrtype: dns.TypeCNAME,
+							Name:   x.Question[i].Name,
+							Ttl:    30,
+						},
+						Target: CNAME + ".",
+					})
+
+				} else if IPS != nil {
+					isCustomDNS = true
+
+					for ii := range IPS {
+						x.Answer = append(x.Answer, &dns.A{
+							Hdr: dns.RR_Header{
+								Class:  dns.TypeA,
+								Rrtype: dns.ClassINET,
+								Name:   x.Question[i].Name,
+								Ttl:    30,
+							},
+							A: IPS[ii].To4(),
+						})
+					}
+				}
+
+			}
+
+		} else if x.Question[i].Qtype == dns.TypeTXT {
+
+			TXTS := DNSTXTMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			if TXTS != nil {
+				isCustomDNS = true
+				for ii := range TXTS {
+					x.Answer = append(x.Answer, &dns.TXT{
+						Hdr: dns.RR_Header{
+							Class:  dns.ClassNONE,
+							Rrtype: dns.TypeTXT,
+							Name:   x.Question[i].Name,
+							Ttl:    30,
+						},
+						Txt: []string{TXTS[ii]},
+					})
+				}
+			}
+
+		} else if x.Question[i].Qtype == dns.TypeCNAME {
+
+			CNAME := DNSCNameMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			if CNAME != "" {
+				isCustomDNS = true
+				x.Answer = append(x.Answer, &dns.CNAME{
+					Hdr: dns.RR_Header{
+						Class:  dns.ClassNONE,
+						Rrtype: dns.TypeCNAME,
+						Name:   x.Question[i].Name,
+						Ttl:    30,
+					},
+					Target: CNAME + ".",
 				})
 			}
+
 		}
+
 	}
 
 	if isCustomDNS {

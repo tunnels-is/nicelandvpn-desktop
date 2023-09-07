@@ -118,14 +118,46 @@ func GetDomainAndSubDomain(domain string) (d, s string) {
 	return
 }
 
-func DNSAMapping(domain string) (IPS []net.IP) {
+func DNSCNameMapping(domain string) (CNAME string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
-		return nil
+		return ""
 	}
 
 	if AS.AP == nil {
-		return nil
+		return ""
+	}
+
+	var m *DeviceDNSRegistration
+	var ok bool
+	if s != "" {
+		m, ok = AS.AP.DNS[s+"."+d]
+		if ok {
+			CreateLog("", "CNAME FOUND: ", m.CNAME)
+			return m.CNAME
+		}
+	}
+
+	m, ok = AS.AP.DNS[d]
+	if ok {
+		if m.Wildcard || s == "" {
+			CreateLog("", "CNAME FOUND: ", m.CNAME)
+			return m.CNAME
+		}
+	}
+
+	return ""
+
+}
+
+func DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
+	d, s := GetDomainAndSubDomain(domain)
+	if d == "" {
+		return nil, ""
+	}
+
+	if AS.AP == nil {
+		return nil, ""
 	}
 	// CreateLog("DNS", "PARTS: ", parts)
 	// CreateLog("DNS", "DOMAIN: ", d)
@@ -138,6 +170,10 @@ func DNSAMapping(domain string) (IPS []net.IP) {
 	if s != "" {
 		m, ok = AS.AP.DNS[s+"."+d]
 		if ok {
+			CreateLog("", "CNAME FOUND: ", m.CNAME)
+			if m.CNAME != "" {
+				return nil, m.CNAME
+			}
 			CreateLog("", "IPS FOUND: ", m.IP)
 			for _, v := range m.IP {
 				IPS = append(IPS, net.ParseIP(v))
@@ -149,14 +185,19 @@ func DNSAMapping(domain string) (IPS []net.IP) {
 	m, ok = AS.AP.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
+			CreateLog("", "CNAME FOUND: ", m.CNAME)
+			if m.CNAME != "" {
+				return nil, m.CNAME
+			}
 			CreateLog("", "IPS FOUND: ", m.IP)
 			for _, v := range m.IP {
 				IPS = append(IPS, net.ParseIP(v))
 			}
+			return
 		}
 	}
 
-	return
+	return nil, ""
 }
 
 func DNSTXTMapping(domain string) (TXTS []string) {
@@ -193,10 +234,11 @@ func DNSTXTMapping(domain string) (TXTS []string) {
 			for _, v := range m.TXT {
 				TXTS = append(TXTS, v)
 			}
+			return
 		}
 	}
 
-	return
+	return nil
 }
 
 // func CraftDNSResponse(domain string, ip net.IP) {

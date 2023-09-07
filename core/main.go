@@ -26,10 +26,12 @@ func StartService(MONITOR chan int) {
 	GLOBAL_STATE.NeedsRouterProbe = true
 
 	AdminCheck()
+	InitPaths()
 	CreateBaseFolder()
 	InitLogfile()
 	LoadConfig()
-	LoadDNSWhitelist()
+	// LoadDNSWhitelist()
+	LoadBlockLists()
 
 	go StartLogQueueProcessor(MONITOR)
 	go StateMaintenance(MONITOR)
@@ -403,7 +405,7 @@ func LoadDNSWhitelist() (err error) {
 		return err
 	}
 
-	GLOBAL_STATE.DNSWhitelist = WhitelistMap
+	DNSWhitelist = WhitelistMap
 
 	return nil
 }

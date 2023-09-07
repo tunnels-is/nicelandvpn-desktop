@@ -21,16 +21,20 @@ func GenerateBaseFolderPath() string {
 	return base + string(os.PathSeparator) + "files" + string(os.PathSeparator)
 }
 
+func InitPaths() {
+	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
+	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
+	GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
+}
+
 func CreateBaseFolder() {
 	defer RecoverAndLogToFile()
 
-	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
-	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
 	CreateLog("loader", "Verifying configurations and logging folder")
 
 	_, err := os.Stat(GLOBAL_STATE.BasePath)
 	if err != nil {
-		err = os.Mkdir(GLOBAL_STATE.BasePath, os.ModeDir)
+		err = os.Mkdir(GLOBAL_STATE.BasePath, 0777)
 		if err != nil {
 			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to create base folder: ", err)

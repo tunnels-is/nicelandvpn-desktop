@@ -7,7 +7,7 @@ import Loader from "react-spinners/ScaleLoader";
 import { Connect, Switch } from "../../wailsjs/go/main/Service";
 
 import STORE from "../store";
-import { DesktopIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, EnterFullScreenIcon, EnterIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 
 const Dashboard = (props) => {
@@ -106,7 +106,7 @@ const Dashboard = (props) => {
       } else {
         if (x.Code === 200) {
           STORE.Cache.Set("connected_quick", country)
-          props.showSuccessToast("Connected", { Title: "CONNECTED", Body: "You have been connected to a country by code: " + country, TimeoutType: "default" })
+          props.showSuccessToast("Connected to " + country, undefined)
         } else {
           props.toggleError(x.Data)
         }
@@ -173,11 +173,7 @@ const Dashboard = (props) => {
 
             STORE.Cache.Set("connected_quick", "XX")
 
-            if (a.GEO) {
-              props.showSuccessToast("Connected to VPN " + a.Tag + " @ " + a.GEO.CountryFull, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP + " @ " + a.GEO.CountryFull, TimeoutType: "default" })
-            } else {
-              props.showSuccessToast("Connected to VPN " + a.Tag, { Title: "CONNECTED", Body: "Connected to VPN with IP: " + a.IP, TimeoutType: "default" })
-            }
+            props.showSuccessToast("Connected to VPN " + a.Tag, undefined)
 
           } else {
             props.toggleError(x.Data)
@@ -217,6 +213,11 @@ const Dashboard = (props) => {
       method = ConfirmConnect
     }
 
+    let connected = false
+    if (props.state?.ActiveAccessPoint?._id == ap._id) {
+      connected = true
+    }
+
     if (!ap.Online) {
       return (
         <>
@@ -243,7 +244,16 @@ const Dashboard = (props) => {
       <>
         <div className={`server ${isConnected ? `is-connected` : ``}`} onClick={() => method(ap, ar)} >
 
-          <div className="item tag"  >{ap.Tag}</div>
+          {connected &&
+            <div className="item tag"  >
+              <EnterIcon className="icon"></EnterIcon>
+              {ap.Tag}
+            </div>
+          }
+          {!connected &&
+            <div className="item tag"  >
+              {ap.Tag}</div>
+          }
 
           <div className="item country" >
             {(ap.GEO?.Country !== "" && ap.Country == "") &&

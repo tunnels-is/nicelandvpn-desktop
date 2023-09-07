@@ -6,7 +6,6 @@ html {
   text-rendering: optimizeLegibility !important;
   // text-shadow: rgba(0, 0, 0, .01) 0 0 1px !important;
   text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.004) !important;
-  --wails-draggable: drag;
 }
 
 html,
@@ -209,6 +208,7 @@ body::-webkit-scrollbar {
     .text {
       float: left;
       margin-left: 10px;
+      margin-top: 3px;
     }
   }
 
@@ -320,6 +320,7 @@ body::-webkit-scrollbar {
   }
 
   .logo {
+    --wails-draggable: drag;
     position: relative;
     width: 120px;
     height: 127px;
@@ -992,7 +993,7 @@ button {
 
   .simple-stats-bar {
     position: fixed;
-    top: 43px;
+    top: 38px;
     left: 500px;
     text-align: left;
     color: $c-teal;
@@ -1281,6 +1282,16 @@ button {
         float: left;
         font-size: 0.9em;
 
+        .icon {
+          color: $c-teal;
+          height: 20px;
+          width: auto;
+          margin-bottom: -2px;
+          margin-right: 5px;
+          margin-left: -10px;
+
+        }
+
         .flag {
           float: left;
           width: 40px;
@@ -1305,7 +1316,6 @@ button {
       }
 
       .tag {
-        color: $c-teal;
         width: auto;
         // height: 36px;
         min-width: 180px;
@@ -1519,7 +1529,7 @@ button {
         min-width: 180px;
         max-width: 180px;
 
-        color: $c-teal;
+        // color: $c-teal;
         text-align: left;
         padding-left: 20px;
 
@@ -1714,6 +1724,10 @@ button {
     width: 80%;
   }
 
+  .block-panel {
+    width: 80%;
+  }
+
   .capture-panel {
     width: 80%;
   }
@@ -1721,7 +1735,7 @@ button {
   .text {
     position: relative;
     left: 58px;
-    top: -18px;
+    top: -23px;
     color: $c-orange;
 
   }
@@ -1816,10 +1830,43 @@ button {
       color: white;
     }
 
+    .subtitle {
+      font-size: 0.9em;
+    }
+
     .value {
       font-size: 0.9em;
       color: rgba(255, 255, 255, 0.744);
+
+      select {
+        margin-top: 10px;
+        margin-bottom: 25px;
+        padding: 5px;
+        padding-left: 10px;
+        padding-right: 10px;
+        border: 3px solid #484848;
+        font-weight: bold;
+        background: none;
+        // background-color: rgb(27, 27, 27);
+        color: white;
+        // padding-right: 10px;
+        color: #FF922D;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        text-indent: 1px;
+        text-overflow: '';
+        font-size: 1.2em;
+        border-radius: 0px;
+        cursor: pointer;
+
+        option {
+          padding-left: 30px !important;
+          background: #2b2929;
+          cursor: pointer;
+        }
+      }
     }
+
   }
 
   .link-color {

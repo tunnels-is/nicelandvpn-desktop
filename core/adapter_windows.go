@@ -457,8 +457,10 @@ func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) 
 	GetIPv6Settings(PotentialDefault)
 
 	if PotentialDefault.DNS1 == "" || PotentialDefault.DNS1 == TUNNEL_ADAPTER_ADDRESS {
-		return errors.New("")
+		PotentialDefault.DNS1 = "1.1.1.1"
+		PotentialDefault.DNS2 = "8.8.8.8"
 	}
+
 	return
 }
 
@@ -621,9 +623,9 @@ func RestoreIPv6() {
 
 		cmd := exec.Command("powershell", "-NoProfile", "Enable-NetAdapterBinding -Name '"+GLOBAL_STATE.DefaultInterface.IFName+"' -ComponentID ms_tcpip6")
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		_, err := cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			CreateErrorLog("", "Error restoring IPv6 settings on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
+			CreateErrorLog("", "Error restoring IPv6 settings on interface: ", GLOBAL_STATE.DefaultInterface.IFName, "|| error: ", err, " || output: ", string(out))
 		}
 
 		CreateLog("", "IPv6 Restored on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
@@ -651,11 +653,20 @@ func RestoreDNS() error {
 		return errors.New("NO PRIMARY DNS FOUND IN BACKUP SETTINGS")
 	}
 
-	_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS1, "1")
+	if GLOBAL_STATE.DefaultInterface.DNS1 == "" || GLOBAL_STATE.DefaultInterface.DNS1 == TUNNEL_ADAPTER_ADDRESS {
+		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, "1.1.1.1", "1")
+	} else {
+		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS1, "1")
+	}
 
 	if GLOBAL_STATE.DefaultInterface.DNS2 != "" {
-		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS2, "2")
+		if GLOBAL_STATE.DefaultInterface.DNS2 == TUNNEL_ADAPTER_ADDRESS {
+			_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, "8.8.8.8", "2")
+		} else {
+			_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS2, "2")
+		}
 	}
+
 	CreateLog("", "DNS Restored on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
 
 	return nil
@@ -859,7 +870,7 @@ func ClearDNS(Interface string) error {
 		CreateErrorLog("", "NETSH || Error clearing DNS on interface: ", Interface, " || msg: ", err, " || output: ", string(out))
 		return err
 	}
-	CreateLog("file", "DNS cleared on interface: ", Interface, " || out: ", string(out))
+	CreateLog("file", "DNS cleared on interface: ", Interface)
 	return nil
 
 }
@@ -876,7 +887,7 @@ func SetDNS(Interface, IP string, index string) error {
 		return err
 	}
 
-	CreateLog("file", "DNS set on interface: ", Interface, " ", IP, " ", index, " || out: ", string(out))
+	CreateLog("file", "DNS set on interface: ", Interface, " ", IP, " ", index)
 	return nil
 }
 
@@ -893,7 +904,7 @@ func FindDefaultInterfaceAndGateway() (NEW_DEFAULT *CONNECTION_SETTINGS, err err
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		CreateErrorLog("", "Error fetching default routes || msg: ", err)
+		CreateErrorLog("", "Error fetching default routes || msg: ", err, " || output: ", string(out))
 		return nil, err
 	}
 
@@ -987,7 +998,7 @@ func GetOpenSockets() (err error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		CreateErrorLog("", "Error fetching open sockets || msg: ", err)
+		CreateErrorLog("", "Error fetching open sockets || msg: ", err, " || output: ", string(out))
 		return err
 	}
 

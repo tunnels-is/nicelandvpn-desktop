@@ -51,11 +51,11 @@ var TCP_MAP_LOCK = sync.RWMutex{}
 var UDP_MAP = make(map[[4]byte]*IP)
 var UDP_MAP_LOCK = sync.RWMutex{}
 
-var BlockedDomainMap = make(map[string]bool)
-var BlockListLock = sync.Mutex{}
+var DNSWhitelist = make(map[string]bool)
+
+var GLOBAL_BLOCK_LIST = make(map[string]bool)
 
 type IP struct {
-	// CurrentPort uint16
 	LOCAL  map[uint16]*RemotePort
 	REMOTE map[uint16]*RemotePort
 }
@@ -125,10 +125,11 @@ type State struct {
 	Connecting bool `json:"Connecting"`
 	Exiting    bool `json:"Exiting"`
 
-	C                             *Config   `json:"C"`
-	LastRouterPing                time.Time `json:"LastRouterPing"`
-	PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
-	SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
+	C                             *Config              `json:"C"`
+	DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
+	LastRouterPing                time.Time            `json:"LastRouterPing"`
+	PingReceivedFromRouter        time.Time            `json:"PingReceivedFromRouter"`
+	SecondsSincePingFromRouter    string               `json:"SecondsSincePingFromRouter"`
 	LastAccessPointUpdate         time.Time
 	SecondsUntilAccessPointUpdate int
 	AvailableCountries            []string        `json:"AvailableCountries"`
@@ -141,20 +142,56 @@ type State struct {
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
 
 	// FILE PATHS
-	LogFileName         string          `json:"LogFileName"`
-	LogPath             string          `json:"LogPath"`
-	ConfigPath          string          `json:"ConfigPath"`
-	BackupPath          string          `json:"BackupPath"`
-	BasePath            string          `json:"BasePath"`
-	DNSWhitelist        map[string]bool `json:"DNSWhitelist"`
-	DNSWhitelistEnabled bool            `json:"DNSWhitelistEnabled"`
-	DNSCaptureEnabled   bool            `json:"DNSCaptureEnabled"`
+	LogFileName       string `json:"LogFileName"`
+	LogPath           string `json:"LogPath"`
+	ConfigPath        string `json:"ConfigPath"`
+	BackupPath        string `json:"BackupPath"`
+	BlockListPath     string `json:"BlockListPath"`
+	BasePath          string `json:"BasePath"`
+	DNSCaptureEnabled bool   `json:"DNSCaptureEnabled"`
 
-	DefaultInterface *CONNECTION_SETTINGS `json:"DefaultInterface"`
+	// BLOCKING AND PARENTAL CONTROLS
+	DNSWhitelistEnabled bool   `json:"DNSWhitelistEnabled"`
+	DomainBlockLevel    string `json:"DomainBlockLevel"`
+	PornBlock           bool   `json:"PornBlock"`
+	SocialBlock         bool   `json:"SocialBlock"`
+	GamblingBlock       bool   `json:"GamblingBlock"`
+	FakeNewsBlock       bool   `json:"FakeNewsBlock"`
+
 	// DefaultRouterIP      string
 	// DefaultInterfaceName string
 	Version string `json:"Version"`
+
+	// NEW BLOCKING STUFF
+	BLists []*List `json:"BlockLists"`
 }
+
+type List struct {
+	FullPath string
+	Tag      string
+	Enabled  bool
+	Domains  string
+}
+
+// type BlockConfig struct {
+// 	Abuse      bool
+// 	Ads        bool
+// 	Crypto     bool
+// 	Drugs      bool
+// 	Fraud      bool
+// 	Gambling   bool
+// 	Malware    bool
+
+// 	Phising    bool
+// 	Piracy     bool
+// 	Porn       bool
+// 	Ransomware bool
+// 	Redirect   bool
+// 	Scam       bool
+// 	TikTok     bool
+// 	Torrent    bool
+// 	Tracking   bool
+// }
 
 type FileConfig struct {
 	DNS1            string
@@ -432,7 +469,9 @@ type DeviceDNSRegistration struct {
 	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
 	IP       []string `json:"IP" bson:"IP"`
 	TXT      []string `json:"TXT" bson:"TXT"`
+	CNAME    string   `json:"CNAME" bson:"CNAME"`
 }
+
 type DeviceNatRegistration struct {
 	Tag     string `json:"Tag" bson:"T"`
 	Network string `json:"Network" bson:"N"`

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 
 import { ActivityLogIcon, BarChartIcon, ChatBubbleIcon, DesktopIcon, EnterIcon, ExitIcon, ExternalLinkIcon, FileTextIcon, GearIcon, GlobeIcon, HamburgerMenuIcon, LinkBreak2Icon, MobileIcon, Share1Icon, } from '@radix-ui/react-icons'
 import Loader from "react-spinners/PacmanLoader";
+import toast from 'react-hot-toast';
 
 import { OpenURL } from "../../wailsjs/go/main/App";
 
@@ -28,6 +29,51 @@ const SideBar = (props) => {
     navigate("/login")
   }
 
+  const ConfirmLogout = () => {
+
+    toast.error((t) =>
+    (
+      <div className="exit-confirm">
+        <div className="text">
+          Are you sure you want to
+        </div>
+        <div className="text-big">
+          Logout
+        </div>
+        <button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
+        <button className="cancel" onClick={() => {
+          toast.dismiss(t.id)
+          HandleLogout()
+        }
+        }>Confirm</button>
+      </div>
+
+    ), { id: "logout", duration: 999999 }
+    )
+  }
+
+  const ConfirmDisconnect = () => {
+
+    toast.error((t) =>
+    (
+      <div className="exit-confirm">
+        <div className="text">
+          Are you sure you want to
+        </div>
+        <div className="text-big">
+          Disconnect
+        </div>
+        <button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
+        <button className="cancel" onClick={() => {
+          toast.dismiss(t.id)
+          props.disconnectFromVPN()
+        }
+        }>Confirm</button>
+      </div>
+
+    ), { id: "logout", duration: 999999 }
+    )
+  }
 
   let user = STORE.GetUser()
   let hasSub = false
@@ -281,16 +327,6 @@ const SideBar = (props) => {
             </div>
 
           }
-          {props.state?.ActiveAccessPoint &&
-            <div className={`menu-link`}
-              onClick={() => props.disconnectFromVPN()} >
-              <ExternalLinkIcon width={30} height={30} color={"#d00707"} className="menu-list-icon"></ExternalLinkIcon>
-              <div className="menu-text disconnect" >
-                Disconnect
-              </div>
-            </div>
-          }
-
           {user &&
             <div className={`menu-link  ${sp[1] == "" ? "menu-active" : ""}`}
               onClick={() => clickHandler("/")} >
@@ -344,9 +380,20 @@ const SideBar = (props) => {
             </div>
           </div>
 
+          {props.state?.ActiveAccessPoint &&
+            <div className={`menu-link`}
+              onClick={() => ConfirmDisconnect()} >
+              <ExternalLinkIcon width={30} height={30} color={"#d00707"} className="menu-list-icon"></ExternalLinkIcon>
+              <div className="menu-text disconnect" >
+                Disconnect
+              </div>
+            </div>
+          }
+
+
           {user &&
             <div className={`menu-link`}
-              onClick={() => HandleLogout()} >
+              onClick={() => ConfirmLogout()} >
               <ExitIcon width={30} height={30} color={"#d00707"} className="menu-list-icon"></ExitIcon>
               <div className="menu-text logout">
                 Logout

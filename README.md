@@ -90,8 +90,12 @@ $ cd [PROJECT_ROOT]
 Pull requests should have a short descriptive title and a long description when needed, listing everything that has been modified or added, but more importantly why it was modified or added. 
 
 
-# AdBlock sources
+# blocklist sources
  - https://github.com/badmojr/1Hosts
+ - https://firebog.net/
+ - https://github.com/hagezi/dns-blocklists#light-edition-
+ - https://github.com/StevenBlack/hosts
+ - https://oisd.nl/setup
 
 [forks-shield]: https://img.shields.io/github/forks/tunnels-is/nicelandvpn-desktop?style=for-the-badge&logo=github
 [forks-url]: https://github.com/tunnels-is/nicelandvpn-desktop/network/members

@@ -5,9 +5,13 @@ import {main} from '../models';
 
 export function Connect(arg1:core.CONTROLLER_SESSION_REQUEST):Promise<main.ReturnObject>;
 
+export function DisableBlocklist(arg1:string):Promise<void>;
+
 export function DisableDNSWhitelist():Promise<void>;
 
 export function Disconnect():Promise<main.ReturnObject>;
+
+export function EnableBlocklist(arg1:string):Promise<void>;
 
 export function EnableDNSWhitelist():Promise<void>;
 
@@ -26,6 +30,8 @@ export function GetRoutersAndAccessPoints(arg1:core.FORWARD_REQUEST):Promise<mai
 export function GetState():Promise<main.ReturnObject>;
 
 export function OpenFileDialogForRouterFile(arg1:boolean):Promise<string>;
+
+export function RebuildDomainBlocklist():Promise<void>;
 
 export function ResetEverything():Promise<main.ReturnObject>;
 

@@ -6,12 +6,20 @@ export function Connect(arg1) {
   return window['go']['main']['Service']['Connect'](arg1);
 }
 
+export function DisableBlocklist(arg1) {
+  return window['go']['main']['Service']['DisableBlocklist'](arg1);
+}
+
 export function DisableDNSWhitelist() {
   return window['go']['main']['Service']['DisableDNSWhitelist']();
 }
 
 export function Disconnect() {
   return window['go']['main']['Service']['Disconnect']();
+}
+
+export function EnableBlocklist(arg1) {
+  return window['go']['main']['Service']['EnableBlocklist'](arg1);
 }
 
 export function EnableDNSWhitelist() {
@@ -48,6 +56,10 @@ export function GetState() {
 
 export function OpenFileDialogForRouterFile(arg1) {
   return window['go']['main']['Service']['OpenFileDialogForRouterFile'](arg1);
+}
+
+export function RebuildDomainBlocklist() {
+  return window['go']['main']['Service']['RebuildDomainBlocklist']();
 }
 
 export function ResetEverything() {

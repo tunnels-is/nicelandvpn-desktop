@@ -10,7 +10,7 @@ var DNSCapturMap = make(map[string]bool)
 
 func IsDomainAllowed(domain string) bool {
 
-	_, ok := GLOBAL_STATE.DNSWhitelist[domain]
+	_, ok := DNSWhitelist[domain]
 	if ok {
 		return true
 	} else {
@@ -51,7 +51,7 @@ func StopCapturing(path string) (err error) {
 	_ = DNSCaptureFile.Close()
 
 	C.DomainWhitelist = path
-	GLOBAL_STATE.DNSWhitelist = DNSCapturMap
+	DNSWhitelist = DNSCapturMap
 
 	err = SaveConfig()
 	if err != nil {

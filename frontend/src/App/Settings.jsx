@@ -5,10 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import dayjs from "dayjs";
 import { DesktopIcon, FileTextIcon, LockClosedIcon, Pencil2Icon, PersonIcon } from '@radix-ui/react-icons'
 
-import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, StartDNSCapture, StopDNSCapture, DisableDNSWhitelist, EnableDNSWhitelist } from "../../wailsjs/go/main/Service";
+import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist } from "../../wailsjs/go/main/Service";
 import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
+
 
 const useForm = (props) => {
 
@@ -16,29 +17,63 @@ const useForm = (props) => {
   const [user, setUser] = useState();
   const [autoLogout, setAutoLogout] = useState(STORE.Cache.GetBool("auto-logout"))
   const navigate = useNavigate();
+  const [blockList, setBlockList] = useState([])
 
-  const [capture, setCapture] = useState(false)
-  const [whitelist, setWhitelist] = useState(true)
+  // const [capture, setCapture] = useState(false)
+  // const [whitelist, setWhitelist] = useState(true)
 
-  const EnableWhitelist = () => {
-    setWhitelist(true)
-    EnableDNSWhitelist()
+
+  const ApplyBlocklistConfigurations = async () => {
+    props.toggleLoading({ logTag: "", tag: "DOMAIN-BLOCK", show: true, msg: "Creating a new combined blocklist..", includeLogs: false })
+    try {
+      await RebuildDomainBlocklist()
+    } catch (error) {
+      console.dir(error)
+    }
+    props.toggleLoading(undefined)
   }
 
-  const DisableWhitelist = () => {
-    setWhitelist(false)
-    DisableDNSWhitelist()
+  const ToggleBlockList = async (tag) => {
+
+    blockList.forEach((item, index) => {
+      if (item.Tag === tag) {
+        if (item.Enabled) {
+          DisableBlocklist(tag)
+          blockList[index].Enabled = false
+        } else {
+          EnableBlocklist(tag)
+          blockList[index].Enabled = true
+        }
+      }
+    })
+
+    // let newList = { ...blockList }
+    // console.log("NEW LIST")
+    // console.dir(blockList)
+    setBlockList([...blockList])
+
   }
 
-  const StartCapture = () => {
-    setCapture(true)
-    StartDNSCapture()
-  }
 
-  const StopCapture = () => {
-    setCapture(false)
-    StopDNSCapture()
-  }
+  // const EnableWhitelist = () => {
+  //   setWhitelist(true)
+  //   EnableDNSWhitelist()
+  // }
+
+  // const DisableWhitelist = () => {
+  //   setWhitelist(false)
+  //   DisableDNSWhitelist()
+  // }
+
+  // const StartCapture = () => {
+  //   setCapture(true)
+  //   StartDNSCapture()
+  // }
+
+  // const StopCapture = () => {
+  //   setCapture(false)
+  //   StopDNSCapture()
+  // }
 
 
   const ToggleAutoLogout = () => {
@@ -361,14 +396,23 @@ const useForm = (props) => {
     ToggleSubscription,
     autoLogout,
     ToggleAutoLogout,
-    StartCapture,
-    StopCapture,
-    capture,
-    setCapture,
-    whitelist,
-    setWhitelist,
-    EnableWhitelist,
-    DisableWhitelist,
+    // StartCapture,
+    // StopCapture,
+    // capture,
+    // setCapture,
+    // whitelist,
+    // setWhitelist,
+    // EnableWhitelist,
+    // DisableWhitelist,
+    // blockLevel,
+    // setBlockLevel,
+    // ChangeBlockLevel,
+    // blockObject,
+    // setBlockObject,
+    ToggleBlockList,
+    ApplyBlocklistConfigurations,
+    setBlockList,
+    blockList
   }
 }
 
@@ -376,7 +420,7 @@ const Settings = (props) => {
 
   const navigate = useNavigate();
 
-  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, StartCapture, StopCapture, capture, setCapture, whitelist, setWhitelist, EnableWhitelist, DisableWhitelist } = useForm(props);
+  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, ToggleBlockList, ApplyBlocklistConfigurations, setBlockList, blockList } = useForm(props);
 
   const inputFile = useRef(null)
 
@@ -394,17 +438,42 @@ const Settings = (props) => {
 
   useEffect(() => {
 
-    if (props.state?.DNSCaptureEnabled) {
-      setCapture(true)
-    } else {
-      setCapture(false)
+    if (props.state?.BlockLists?.length > 0) {
+      setBlockList(props.state.BlockLists)
     }
+    // if (props.state?.DNSCaptureEnabled) {
+    //   setCapture(true)
+    // } else {
+    //   setCapture(false)
+    // }
 
-    if (props.state?.DNSWhitelistEnabled) {
-      setWhitelist(true)
-    } else {
-      setWhitelist(false)
-    }
+    // setBlockObject({
+    //   FakeNews: props.state?.FakeNewsBlock,
+    //   Porn: props.state?.PornBlock,
+    //   Gamling: props.state?.GamblingBlock,
+    //   Social: props.state?.SocialBlock,
+    // })
+
+    // if (props.state?.DNSWhitelistEnabled) {
+    //   setWhitelist(true)
+    // } else {
+    //   setWhitelist(false)
+    // }
+
+    // if (props.state?.DomainBlockLevel !== "") {
+    //   blockLevels[0].selected = false
+    //   blockLevels.forEach((l, i) => {
+    //     if (l.level == props.state.DomainBlockLevel) {
+    //       blockLevels[i].selected = true
+    //     }
+    //   })
+    //   setBlockLevel(props.state.DomainBockLevel)
+    // } else {
+    //   setBlockLevel("0")
+    // }
+
+
+
 
     let i = {}
     i["Email"] = {}
@@ -674,21 +743,7 @@ const Settings = (props) => {
           </div>
         </div>
 
-        {/* <div className="item less-space">
-                    <div className="am toggle-button">
-                        <label className="switch">
-                            <input checked={(autoLogout && autoLogout) ? true : false} type="checkbox" onClick={() => ToggleAutoLogout()} />
-                            <span className="slider"></span>
-                        </label>
-                        <div className="text">
-                            Auto-Logout On Exit
-                        </div>
-                    </div>
-                </div> */}
 
-        {/* <div className="item ">
-                    <div className="title neutral-color" onClick={() => NavigateToDebug()} >Debug Network Settings</div>
-                </div> */}
 
         <div className="item">
           <div className="title neutral-color" onClick={() => NavigateToTokens()} >Device Logins</div>
@@ -707,6 +762,78 @@ const Settings = (props) => {
         </div>
 
       </div>
+      <div className="panel block-panel">
+        <div className="header">
+          <LockClosedIcon className="icon"></LockClosedIcon>
+          <div className="title">Domain Blocking</div>
+          <div className="save-config title neutral-color" onClick={() => ApplyBlocklistConfigurations()}>Save</div>
+        </div>
+
+
+        <div className="item">
+          <div className="subtitle">Enabling blocklists will increase memory usage</div>
+        </div>
+        <div className="item extra-space">
+        </div>
+
+        {blockList?.map((item) => {
+          return (
+
+            <div className="item less-space">
+              <div className="am toggle-button">
+                <label className="switch">
+                  <input checked={item.Enabled} type="checkbox" onChange={() => ToggleBlockList(item.Tag)} />
+                  <span className="slider"></span>
+                </label>
+                <div className="text">
+                  Block {item.Tag}  {' - '}  {item.Domains}{' Domains'}
+                </div>
+              </div>
+            </div>
+          )
+
+
+        })}
+
+
+      </div>
+
+
+      {/* <div className="panel capture-panel">
+
+        <div className="header">
+          <LockClosedIcon className="icon"></LockClosedIcon>
+          <div className="title">Prental Controls</div>
+        </div>
+
+        <div className="item">
+          {!whitelist &&
+            <div className="title  neutral-color" onClick={() => EnableWhitelist()} >Enable Domain Blocking</div>
+          }
+          {whitelist &&
+            <div className="title  neutral-color" onClick={() => DisableWhitelist()} >Disable Domain Blocking</div>
+          }
+        </div>
+
+        {(props.state?.C && props.state.C?.DomainWhitelist !== "") &&
+          <div className="item extra-space">
+            <div className="title">Allowed Domains List</div>
+            <div className="value">
+              {props.state?.C?.DomainWhitelist}
+            </div>
+          </div>
+        }
+
+        <div className="item extra-space">
+          {!capture &&
+            <div className="title  neutral-color" onClick={() => StartCapture()} >Start Capturing Allowed Domains</div>
+          }
+          {capture &&
+            <div className="title  neutral-color" onClick={() => StopCapture()} >Stop Capturing</div>
+          }
+        </div>
+
+      </div> */}
 
       <div className="panel other-panel">
 
@@ -776,41 +903,6 @@ const Settings = (props) => {
 
       </div>
 
-      <div className="panel capture-panel">
-
-        <div className="header">
-          <LockClosedIcon className="icon"></LockClosedIcon>
-          <div className="title">Domain Blocking</div>
-        </div>
-
-        <div className="item">
-          {!whitelist &&
-            <div className="title  neutral-color" onClick={() => EnableWhitelist()} >Enable Domain Blocking</div>
-          }
-          {whitelist &&
-            <div className="title  neutral-color" onClick={() => DisableWhitelist()} >Disable Domain Blocking</div>
-          }
-        </div>
-
-        {props.state?.C &&
-          <div className="item extra-space">
-            <div className="title">Allowed Domains List</div>
-            <div className="value">
-              {props.state?.C?.DomainWhitelist}
-            </div>
-          </div>
-        }
-
-        <div className="item extra-space">
-          {!capture &&
-            <div className="title  neutral-color" onClick={() => StartCapture()} >Start Capturing Allowed Domains</div>
-          }
-          {capture &&
-            <div className="title  neutral-color" onClick={() => StopCapture()} >Stop Capturing</div>
-          }
-        </div>
-
-      </div>
 
     </div >
   )

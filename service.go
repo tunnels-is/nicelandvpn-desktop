@@ -122,16 +122,6 @@ func (s *Service) GetLogs(lengthFromJavascript int) (OUT *ReturnObject) {
 	return
 }
 
-// func (s *Service) GetPrivateAccessPoints(FR *core.FORWARD_REQUEST) (OUT *ReturnObject) {
-// 	Data, code, err := core.GetPrivateAccessPoints(FR)
-// 	if err != nil {
-// 		OUT = CreateReturnError(code, err.Error())
-// 		return
-// 	}
-// 	OUT = CreateReturnData(code, Data)
-// 	return
-// }
-
 func (s *Service) GetRoutersAndAccessPoints(FR *core.FORWARD_REQUEST) (OUT *ReturnObject) {
 	Data, code, err := core.GetRoutersAndAccessPoints(FR)
 	if err != nil {
@@ -223,4 +213,28 @@ func (s *Service) StopDNSCapture() string {
 	}
 
 	return ""
+}
+
+func (s *Service) RebuildDomainBlocklist() {
+	core.BuildDomainBlocklist()
+}
+
+func (s *Service) DisableBlocklist(tag string) {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Tag == tag {
+			core.GLOBAL_STATE.BLists[i].Enabled = false
+		}
+	}
+
+}
+
+func (s *Service) EnableBlocklist(tag string) {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Tag == tag {
+			core.GLOBAL_STATE.BLists[i].Enabled = true
+		}
+	}
+
 }

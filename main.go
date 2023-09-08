@@ -72,6 +72,7 @@ func main() {
 			WebviewGpuPolicy:    linux.WebviewGpuPolicy(WebViewGPUPolicy),
 			WindowIsTranslucent: false,
 		},
+
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
 				TitlebarAppearsTransparent: true,

@@ -115,10 +115,10 @@ WAITFORDEVICE:
 
 			ingressPacketLength := len(packet)
 
-			testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			log.Println(" DNS TEST ==========================================")
-			fmt.Println(testPacket)
-			log.Println(" ==========================================")
+			// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+			// log.Println(" DNS TEST ==========================================")
+			// fmt.Println(testPacket)
+			// log.Println(" ==========================================")
 			ingressAllocationBuffer, writeError := A.AllocateSendPacket(ingressPacketLength)
 			if writeError != nil {
 				CreateErrorLog("", "Send: ", writeError)
@@ -133,19 +133,6 @@ WAITFORDEVICE:
 
 		if AS.TCPTunnelSocket != nil {
 
-			// if bytes.Contains(packet, []byte{11, 11, 11, 193}) || bytes.Contains(packet, []byte{185, 186, 76, 193}) {
-			// 	testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			// 	log.Println(" NAT TEST ==========================================")
-			// 	fmt.Println(testPacket)
-			// 	log.Println(" ==========================================")
-			// }
-
-			// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			// log.Println(" EGRESS ==========================================")
-			// fmt.Println(testPacket)
-			// log.Println(" EGRESS ==========================================")
-
-			// encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
 			encryptedPacket = AS.AEAD.Seal(nil, nonce, packet, nil)
 
 			binary.BigEndian.PutUint16(lengthBytes, uint16(len(encryptedPacket)))

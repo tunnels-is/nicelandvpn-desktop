@@ -18,6 +18,12 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
+func InitPaths() {
+	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
+	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
+	GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
+}
+
 func RecoverAndLogToFile() {
 	if r := recover(); r != nil {
 		if LogFile != nil {

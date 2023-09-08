@@ -21,11 +21,6 @@ func GenerateBaseFolderPath() string {
 	return base + string(os.PathSeparator) + "files" + string(os.PathSeparator)
 }
 
-func InitPaths() {
-	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
-	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
-	GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
-}
 
 func CreateBaseFolder() {
 	defer RecoverAndLogToFile()

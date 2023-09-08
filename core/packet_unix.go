@@ -5,6 +5,7 @@ package core
 import (
 	"encoding/binary"
 	"io"
+	"log"
 	"net"
 	"time"
 
@@ -37,6 +38,9 @@ func ReadFromLocalTunnel_NEW(MONITOR chan int) {
 		nonce           = make([]byte, chacha20poly1305.NonceSizeX)
 		writeError      error
 		writtenBytes    int
+
+		sendLocal  bool
+		sendRemote bool
 	)
 
 WAITFORDEVICE:
@@ -73,8 +77,17 @@ WAITFORDEVICE:
 
 		EGRESS_PACKETS++
 
-		if !ProcessEgressPacket(packet) {
-			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+		sendRemote, sendLocal = ProcessEgressPacket(&packet)
+		if !sendLocal && !sendRemote {
+			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+			continue
+		} else if sendLocal {
+
+			writtenBytes, writeError = A.Interface.Write(packet)
+			if writeError != nil {
+				CreateErrorLog("", "Send: ", writeError)
+			}
+
 			continue
 		}
 
@@ -126,10 +139,9 @@ WAIT_FOR_TUNNEL:
 		writeErr     error
 		readErr      error
 		writtenBytes int
-		// MIDL         int = MIDBufferLength
-		lengthBytes = make([]byte, 2)
-		DL          uint16
-		readBytes   int
+		lengthBytes  = make([]byte, 2)
+		DL           uint16
+		readBytes    int
 
 		tunnelBuffer = CreateTunnelBuffer()
 		nonce        = make([]byte, chacha20poly1305.NonceSizeX)

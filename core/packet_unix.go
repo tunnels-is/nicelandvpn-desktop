@@ -67,7 +67,7 @@ WAITFORDEVICE:
 			continue
 		}
 
-		if AS == nil || !GLOBAL_STATE.Connected {
+		if AS == nil || AS.AP == nil || !GLOBAL_STATE.Connected {
 			if time.Since(waitFortimeout).Seconds() > 120 {
 				CreateLog("", "ADAPTER: received packet while disconnected. This is most likely a probe packet")
 				waitFortimeout = time.Now()

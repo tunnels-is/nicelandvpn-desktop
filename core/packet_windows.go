@@ -41,6 +41,9 @@ func ReadFromLocalTunnel_NEW(MONITOR chan int) {
 		nonce           = make([]byte, chacha20poly1305.NonceSizeX)
 		writtenBytes    int
 		writeError      error
+
+		ingressAllocationBuffer []byte
+		ingressPacketLength     int
 	)
 
 WAITFORDEVICE:
@@ -104,22 +107,19 @@ WAITFORDEVICE:
 
 		EGRESS_PACKETS++
 
-		// log.Println(" BEFORE ==========================================")
-		// fmt.Println(packet)
-
 		sendRemote, sendLocal := ProcessEgressPacket(&packet)
 		if !sendLocal && !sendRemote {
 			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
 			continue
 		} else if sendLocal {
 
-			ingressPacketLength := len(packet)
-
 			// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
 			// log.Println(" DNS TEST ==========================================")
 			// fmt.Println(testPacket)
 			// log.Println(" ==========================================")
-			ingressAllocationBuffer, writeError := A.AllocateSendPacket(ingressPacketLength)
+
+			ingressPacketLength = len(packet)
+			ingressAllocationBuffer, writeError = A.AllocateSendPacket(ingressPacketLength)
 			if writeError != nil {
 				CreateErrorLog("", "Send: ", writeError)
 				return

@@ -672,6 +672,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 	C.DebugLogging = SF.DebugLogging
 	C.AutoReconnect = SF.AutoReconnect
 	C.KillSwitch = SF.KillSwitch
+	C.DisableIPv6OnConnect = SF.DisableIPv6OnConnect
 
 	if SF.PrevSession != nil {
 		C.PrevSession = SF.PrevSession

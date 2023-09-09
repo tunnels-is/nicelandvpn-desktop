@@ -60,7 +60,6 @@ func CalculateBandwidth(MONITOR chan int) {
 		CURRENT_DBBS = 0
 		CURRENT_UBBS = 0
 	}
-
 }
 
 func StateMaintenance(MONITOR chan int) {
@@ -228,21 +227,20 @@ func SaveConfig() (err error) {
 	}()
 	defer RecoverAndLogToFile()
 
-	// _ = os.Remove(GLOBAL_STATE.ConfigPath)
-
 	FC := new(FileConfig)
 	FC.DNS1 = C.DNS1
 	FC.DNS1Bytes = C.DNS1Bytes
 	FC.DNSIP = C.DNSIP
 	FC.DNS2 = C.DNS2
 	FC.ManualRouter = C.ManualRouter
-	// FC.Region = C.Region
 	FC.DebugLogging = C.DebugLogging
 	FC.Version = C.Version
 	FC.RouterFilePath = C.RouterFilePath
 	FC.AutoReconnect = C.AutoReconnect
 	FC.KillSwitch = C.KillSwitch
 	FC.DomainWhitelist = C.DomainWhitelist
+	FC.EnabledBlockLists = C.EnabledBlockLists
+	FC.DisableIPv6OnConnect = C.DisableIPv6OnConnect
 
 	cb, err := json.Marshal(FC)
 	if err != nil {
@@ -304,6 +302,7 @@ func LoadConfig() {
 		NC.RouterFilePath = ""
 		NC.AutoReconnect = true
 		NC.KillSwitch = false
+		NC.DisableIPv6OnConnect = true
 
 		var cb []byte
 		cb, err = json.Marshal(NC)

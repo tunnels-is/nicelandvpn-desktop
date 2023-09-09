@@ -3,15 +3,11 @@
 package core
 
 import (
-	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/sys/windows"
 )
@@ -237,12 +233,12 @@ WAIT_FOR_TUNNEL:
 			continue
 		}
 
-		if bytes.Contains(packet, []byte{11, 11, 11, 193}) {
-			testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			log.Println(" INGRESS ==========================================")
-			fmt.Println(testPacket)
-			log.Println(" INGRESS ==========================================")
-		}
+		// if bytes.Contains(packet, []byte{11, 11, 11, 193}) {
+		// 	testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+		// 	log.Println(" INGRESS ==========================================")
+		// 	fmt.Println(testPacket)
+		// 	log.Println(" INGRESS ==========================================")
+		// }
 
 		ingressPacketLength = len(packet)
 

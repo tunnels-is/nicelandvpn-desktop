@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
 
@@ -118,10 +116,10 @@ func ProcessEgressPacket(p *[]byte) {
 
 func PrintPacket(packet []byte, label string) {
 
-	testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-	log.Println(label, " ==========================================")
-	fmt.Println(testPacket)
-	log.Println(" =================================================")
+	// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+	// log.Println(label, " ==========================================")
+	// fmt.Println(testPacket)
+	// log.Println(" =================================================")
 }
 
 // QDCOUNT := binary.BigEndian.Uint16(UDPData[4:6])

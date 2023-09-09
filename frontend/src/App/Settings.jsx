@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import dayjs from "dayjs";
 import { DesktopIcon, FileTextIcon, LockClosedIcon, Pencil2Icon, PersonIcon } from '@radix-ui/react-icons'
 
-import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist } from "../../wailsjs/go/main/Service";
+import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist, EnableAllBlocklists, DisableAllBlocklists } from "../../wailsjs/go/main/Service";
 import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
@@ -21,6 +21,28 @@ const useForm = (props) => {
 
   // const [capture, setCapture] = useState(false)
   // const [whitelist, setWhitelist] = useState(true)
+
+  const ToggleAllBlocking = (enabled) => {
+    console.log("TOGGLE ALL")
+
+    if (enabled) {
+      EnableAllBlocklists()
+
+      blockList.forEach((item, index) => {
+        blockList[index].Enabled = true
+      })
+
+    } else {
+      DisableAllBlocklists()
+
+      blockList.forEach((item, index) => {
+        blockList[index].Enabled = false
+      })
+
+    }
+
+    setBlockList([...blockList])
+  }
 
 
   const ApplyBlocklistConfigurations = async () => {
@@ -47,11 +69,7 @@ const useForm = (props) => {
       }
     })
 
-    // let newList = { ...blockList }
-    // console.log("NEW LIST")
-    // console.dir(blockList)
     setBlockList([...blockList])
-
   }
 
 
@@ -178,6 +196,7 @@ const useForm = (props) => {
     newConfig.DebugLogging = inputs["DB"].DB
     newConfig.AutoReconnect = inputs["AR"].AR
     newConfig.KillSwitch = inputs["KS"].KS
+    newConfig.DisableIPv6OnConnect = inputs["IP6"].IP6
 
     SetConfig(newConfig).then((x) => {
       if (x.Err) {
@@ -332,6 +351,16 @@ const useForm = (props) => {
     setInputs(i)
   }
 
+  const ToggleIP6 = () => {
+    let i = { ...inputs }
+    if (i["IP6"].IP6 === true) {
+      i["IP6"].IP6 = false
+    } else {
+      i["IP6"].IP6 = true
+    }
+    setInputs(i)
+  }
+
   const ToggleAR = () => {
     let i = { ...inputs }
     if (i["AR"].AR === true) {
@@ -396,23 +425,12 @@ const useForm = (props) => {
     ToggleSubscription,
     autoLogout,
     ToggleAutoLogout,
-    // StartCapture,
-    // StopCapture,
-    // capture,
-    // setCapture,
-    // whitelist,
-    // setWhitelist,
-    // EnableWhitelist,
-    // DisableWhitelist,
-    // blockLevel,
-    // setBlockLevel,
-    // ChangeBlockLevel,
-    // blockObject,
-    // setBlockObject,
     ToggleBlockList,
     ApplyBlocklistConfigurations,
     setBlockList,
-    blockList
+    blockList,
+    ToggleIP6,
+    ToggleAllBlocking,
   }
 }
 
@@ -420,7 +438,7 @@ const Settings = (props) => {
 
   const navigate = useNavigate();
 
-  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, ToggleBlockList, ApplyBlocklistConfigurations, setBlockList, blockList } = useForm(props);
+  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, ToggleBlockList, ApplyBlocklistConfigurations, setBlockList, blockList, ToggleIP6, ToggleAllBlocking } = useForm(props);
 
   const inputFile = useRef(null)
 
@@ -441,39 +459,6 @@ const Settings = (props) => {
     if (props.state?.BlockLists?.length > 0) {
       setBlockList(props.state.BlockLists)
     }
-    // if (props.state?.DNSCaptureEnabled) {
-    //   setCapture(true)
-    // } else {
-    //   setCapture(false)
-    // }
-
-    // setBlockObject({
-    //   FakeNews: props.state?.FakeNewsBlock,
-    //   Porn: props.state?.PornBlock,
-    //   Gamling: props.state?.GamblingBlock,
-    //   Social: props.state?.SocialBlock,
-    // })
-
-    // if (props.state?.DNSWhitelistEnabled) {
-    //   setWhitelist(true)
-    // } else {
-    //   setWhitelist(false)
-    // }
-
-    // if (props.state?.DomainBlockLevel !== "") {
-    //   blockLevels[0].selected = false
-    //   blockLevels.forEach((l, i) => {
-    //     if (l.level == props.state.DomainBlockLevel) {
-    //       blockLevels[i].selected = true
-    //     }
-    //   })
-    //   setBlockLevel(props.state.DomainBockLevel)
-    // } else {
-    //   setBlockLevel("0")
-    // }
-
-
-
 
     let i = {}
     i["Email"] = {}
@@ -510,6 +495,9 @@ const Settings = (props) => {
     i["KS"] = {}
     i["KS"].Errors = {}
 
+    i["IP6"] = {}
+    i["IP6"].Errors = {}
+
     i["AR"] = {}
     i["AR"].Errors = {}
 
@@ -526,6 +514,7 @@ const Settings = (props) => {
       i["DB"].DB = config.DebugLogging
       i["KS"].KS = config.KillSwitch
       i["AR"].AR = config.AutoReconnect
+      i["IP6"].IP6 = config.DisableIPv6OnConnect
     } else {
       i["DNS"].DNS0 = "1.1.1.1"
       i["DNS"].DNS2 = "8.8.8.8"
@@ -547,7 +536,6 @@ const Settings = (props) => {
   const NavigateTo2fa = () => {
     navigate("/twofactor")
   }
-
 
   const NavigateToLogs = () => {
     navigate("/logs")
@@ -731,6 +719,19 @@ const Settings = (props) => {
           </div>
         </div>
 
+
+        <div className="item less-space">
+          <div className="am toggle-button">
+            <label className="switch">
+              <input checked={(inputs["IP6"] && inputs["IP6"].IP6) ? true : false} type="checkbox" onClick={() => ToggleIP6()} />
+              <span className="slider"></span>
+            </label>
+            <div className="text">
+              Disable IPv6
+            </div>
+          </div>
+        </div>
+
         <div className="item less-space">
           <div className="am toggle-button">
             <label className="switch">
@@ -773,6 +774,11 @@ const Settings = (props) => {
         <div className="item">
           <div className="subtitle">Enabling blocklists will increase memory usage</div>
         </div>
+
+        <div className="item extra-space">
+          <div className="title neutral-color" onClick={() => ToggleAllBlocking(true)} >Enable All</div>
+          <div className="title neutral-color" onClick={() => ToggleAllBlocking(false)} >Disable All</div>
+        </div>
         <div className="item extra-space">
         </div>
 
@@ -786,7 +792,7 @@ const Settings = (props) => {
                   <span className="slider"></span>
                 </label>
                 <div className="text">
-                  Block {item.Tag}  {' - '}  {item.Domains}{' Domains'}
+                  {item.Tag} <span className="subtext">  ( {item.Domains}{' Domains'} )</span>
                 </div>
               </div>
             </div>

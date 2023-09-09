@@ -5,11 +5,15 @@ import {main} from '../models';
 
 export function Connect(arg1:core.CONTROLLER_SESSION_REQUEST):Promise<main.ReturnObject>;
 
+export function DisableAllBlocklists():Promise<void>;
+
 export function DisableBlocklist(arg1:string):Promise<void>;
 
 export function DisableDNSWhitelist():Promise<void>;
 
 export function Disconnect():Promise<main.ReturnObject>;
+
+export function EnableAllBlocklists():Promise<void>;
 
 export function EnableBlocklist(arg1:string):Promise<void>;
 

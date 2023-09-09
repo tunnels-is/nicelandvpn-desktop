@@ -5,14 +5,13 @@ go 1.19
 require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/go-ping/ping v1.1.0
-	github.com/google/gopacket v1.1.19
 	github.com/miekg/dns v1.1.55
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/wailsapp/wails/v2 v2.5.1
 	github.com/xlzd/gotp v0.1.0
 	go.mongodb.org/mongo-driver v1.12.0
 	golang.org/x/crypto v0.11.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.11.0
 )
 
 require (
@@ -40,6 +39,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/samber/lo v1.27.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/tkrajina/go-reflector v0.5.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect

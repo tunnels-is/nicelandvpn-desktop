@@ -142,28 +142,19 @@ type State struct {
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
 
 	// FILE PATHS
-	LogFileName       string `json:"LogFileName"`
-	LogPath           string `json:"LogPath"`
-	ConfigPath        string `json:"ConfigPath"`
-	BackupPath        string `json:"BackupPath"`
-	BlockListPath     string `json:"BlockListPath"`
-	BasePath          string `json:"BasePath"`
-	DNSCaptureEnabled bool   `json:"DNSCaptureEnabled"`
+	LogFileName   string `json:"LogFileName"`
+	LogPath       string `json:"LogPath"`
+	ConfigPath    string `json:"ConfigPath"`
+	BackupPath    string `json:"BackupPath"`
+	BlockListPath string `json:"BlockListPath"`
+	BasePath      string `json:"BasePath"`
 
-	// BLOCKING AND PARENTAL CONTROLS
-	DNSWhitelistEnabled bool   `json:"DNSWhitelistEnabled"`
-	DomainBlockLevel    string `json:"DomainBlockLevel"`
-	PornBlock           bool   `json:"PornBlock"`
-	SocialBlock         bool   `json:"SocialBlock"`
-	GamblingBlock       bool   `json:"GamblingBlock"`
-	FakeNewsBlock       bool   `json:"FakeNewsBlock"`
-
-	// DefaultRouterIP      string
-	// DefaultInterfaceName string
 	Version string `json:"Version"`
 
-	// NEW BLOCKING STUFF
-	BLists []*List `json:"BlockLists"`
+	// BLOCKING AND PARENTAL CONTROLS
+	BLists              []*List `json:"BlockLists"`
+	DNSCaptureEnabled   bool    `json:"DNSCaptureEnabled"`
+	DNSWhitelistEnabled bool    `json:"DNSWhitelistEnabled"`
 }
 
 type List struct {
@@ -173,39 +164,21 @@ type List struct {
 	Domains  string
 }
 
-// type BlockConfig struct {
-// 	Abuse      bool
-// 	Ads        bool
-// 	Crypto     bool
-// 	Drugs      bool
-// 	Fraud      bool
-// 	Gambling   bool
-// 	Malware    bool
-
-// 	Phising    bool
-// 	Piracy     bool
-// 	Porn       bool
-// 	Ransomware bool
-// 	Redirect   bool
-// 	Scam       bool
-// 	TikTok     bool
-// 	Torrent    bool
-// 	Tracking   bool
-// }
-
 type FileConfig struct {
-	DNS1            string
-	DNS1Bytes       [4]byte
-	DNSIP           net.IP
-	DNS2            string
-	ManualRouter    bool
-	Region          string
-	DebugLogging    bool
-	Version         string
-	RouterFilePath  string
-	AutoReconnect   bool
-	KillSwitch      bool
-	DomainWhitelist string
+	DNS1                 string
+	DNS1Bytes            [4]byte
+	DNSIP                net.IP
+	DNS2                 string
+	ManualRouter         bool
+	Region               string
+	DebugLogging         bool
+	Version              string
+	RouterFilePath       string
+	AutoReconnect        bool
+	KillSwitch           bool
+	DomainWhitelist      string
+	EnabledBlockLists    []string
+	DisableIPv6OnConnect bool
 }
 
 type AdapterSettings struct {
@@ -236,10 +209,11 @@ type Config struct {
 	DebugLogging   bool
 	Version        string `json:"-"`
 	RouterFilePath string
-	// AddBlockLevel  int
-	// Region         string
-	PrevSession     *CONTROLLER_SESSION_REQUEST
-	DomainWhitelist string `json:",omitempty"`
+
+	PrevSession          *CONTROLLER_SESSION_REQUEST
+	DomainWhitelist      string
+	EnabledBlockLists    []string
+	DisableIPv6OnConnect bool
 
 	CLI bool `json:"-"`
 }
@@ -321,16 +295,17 @@ type INTERFACE_SETTINGS struct {
 }
 
 type CONFIG_FORM struct {
-	DNS1           string                      `json:"DNS1" bson:"-"`
-	DNS2           string                      `json:"DNS2" bson:"-"`
-	ManualRouter   bool                        `json:"ManualRouter" bson:"-"`
-	Region         string                      `json:"Region" bson:"-"`
-	Version        string                      `json:"Version" bson:"-"`
-	RouterFilePath string                      `json:"RouterFilePath" bson:"-"`
-	DebugLogging   bool                        `json:"DebugLogging" bson:"-"`
-	AutoReconnect  bool                        `json:"AutoReconnect" bson:"-"`
-	KillSwitch     bool                        `json:"KillSwitch" bson:"-"`
-	PrevSession    *CONTROLLER_SESSION_REQUEST `json:"PrevSlot" bson:"-"`
+	DNS1                 string                      `json:"DNS1" bson:"-"`
+	DNS2                 string                      `json:"DNS2" bson:"-"`
+	ManualRouter         bool                        `json:"ManualRouter" bson:"-"`
+	Region               string                      `json:"Region" bson:"-"`
+	Version              string                      `json:"Version" bson:"-"`
+	RouterFilePath       string                      `json:"RouterFilePath" bson:"-"`
+	DebugLogging         bool                        `json:"DebugLogging" bson:"-"`
+	AutoReconnect        bool                        `json:"AutoReconnect" bson:"-"`
+	KillSwitch           bool                        `json:"KillSwitch" bson:"-"`
+	PrevSession          *CONTROLLER_SESSION_REQUEST `json:"PrevSlot" bson:"-"`
+	DisableIPv6OnConnect bool                        `json:"DisableIPv6OnConnect" bson:"-"`
 }
 
 type ROUTER struct {

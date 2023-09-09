@@ -1834,37 +1834,47 @@ button {
       font-size: 0.9em;
     }
 
+    .toggle-button {
+
+      .subtext {
+        color: white;
+        font-size: 0.8em;
+
+      }
+    }
+
     .value {
       font-size: 0.9em;
       color: rgba(255, 255, 255, 0.744);
 
-      select {
-        margin-top: 10px;
-        margin-bottom: 25px;
-        padding: 5px;
-        padding-left: 10px;
-        padding-right: 10px;
-        border: 3px solid #484848;
-        font-weight: bold;
-        background: none;
-        // background-color: rgb(27, 27, 27);
-        color: white;
-        // padding-right: 10px;
-        color: #FF922D;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        text-indent: 1px;
-        text-overflow: '';
-        font-size: 1.2em;
-        border-radius: 0px;
-        cursor: pointer;
+      // We might need a select later
+      // select {
+      //   margin-top: 10px;
+      //   margin-bottom: 25px;
+      //   padding: 5px;
+      //   padding-left: 10px;
+      //   padding-right: 10px;
+      //   border: 3px solid #484848;
+      //   font-weight: bold;
+      //   background: none;
+      //   // background-color: rgb(27, 27, 27);
+      //   color: white;
+      //   // padding-right: 10px;
+      //   color: #FF922D;
+      //   -webkit-appearance: none;
+      //   -moz-appearance: none;
+      //   text-indent: 1px;
+      //   text-overflow: '';
+      //   font-size: 1.2em;
+      //   border-radius: 0px;
+      //   cursor: pointer;
 
-        option {
-          padding-left: 30px !important;
-          background: #2b2929;
-          cursor: pointer;
-        }
-      }
+      //   option {
+      //     padding-left: 30px !important;
+      //     background: #2b2929;
+      //     cursor: pointer;
+      //   }
+      // }
     }
 
   }

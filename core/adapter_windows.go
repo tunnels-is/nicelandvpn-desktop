@@ -614,6 +614,11 @@ func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
 func RestoreIPv6() {
 	defer RecoverAndLogToFile()
 
+	if !C.DisableIPv6OnConnect {
+		CreateLog("", "IPv6 settings unchanged")
+		return
+	}
+
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("", "Failed to restore IPv6 settings, interface settings not found")
 		return
@@ -695,6 +700,11 @@ func ChangeDNS() error {
 func DisableIPv6() error {
 	defer RecoverAndLogToFile()
 	start := time.Now()
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return nil
+	}
 
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("connect", " !! Unable to turn off IPv6, no interface settings found")

@@ -217,6 +217,30 @@ func (s *Service) StopDNSCapture() string {
 
 func (s *Service) RebuildDomainBlocklist() {
 	core.BuildDomainBlocklist()
+
+	core.C.EnabledBlockLists = make([]string, 0)
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Enabled {
+			core.C.EnabledBlockLists = append(core.C.EnabledBlockLists, core.GLOBAL_STATE.BLists[i].Tag)
+		}
+	}
+
+	_ = core.SaveConfig()
+}
+func (s *Service) DisableAllBlocklists() {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		core.GLOBAL_STATE.BLists[i].Enabled = false
+	}
+
+}
+
+func (s *Service) EnableAllBlocklists() {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		core.GLOBAL_STATE.BLists[i].Enabled = true
+	}
+
 }
 
 func (s *Service) DisableBlocklist(tag string) {

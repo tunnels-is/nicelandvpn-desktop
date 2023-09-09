@@ -6,6 +6,10 @@ export function Connect(arg1) {
   return window['go']['main']['Service']['Connect'](arg1);
 }
 
+export function DisableAllBlocklists() {
+  return window['go']['main']['Service']['DisableAllBlocklists']();
+}
+
 export function DisableBlocklist(arg1) {
   return window['go']['main']['Service']['DisableBlocklist'](arg1);
 }
@@ -16,6 +20,10 @@ export function DisableDNSWhitelist() {
 
 export function Disconnect() {
   return window['go']['main']['Service']['Disconnect']();
+}
+
+export function EnableAllBlocklists() {
+  return window['go']['main']['Service']['EnableAllBlocklists']();
 }
 
 export function EnableBlocklist(arg1) {

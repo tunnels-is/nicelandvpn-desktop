@@ -37,14 +37,23 @@ func LoadBlockLists() {
 
 		CreateLog("", "Blocklist loaded: ", name[0], " with ", name[1], " domains")
 
+		enabled := false
+		for i := range C.EnabledBlockLists {
+			if C.EnabledBlockLists[i] == name[0] {
+				enabled = true
+			}
+		}
+
 		GLOBAL_STATE.BLists = append(GLOBAL_STATE.BLists, &List{
 			FullPath: info.Name(),
 			Tag:      name[0],
 			Domains:  name[1],
-			Enabled:  false,
+			Enabled:  enabled,
 		})
 
 	}
+
+	BuildDomainBlocklist()
 
 	return
 }

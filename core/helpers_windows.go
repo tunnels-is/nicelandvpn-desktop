@@ -21,7 +21,6 @@ func GenerateBaseFolderPath() string {
 	return base + string(os.PathSeparator) + "files" + string(os.PathSeparator)
 }
 
-
 func CreateBaseFolder() {
 	defer RecoverAndLogToFile()
 
@@ -51,6 +50,7 @@ func AdminCheck() {
 		CreateErrorLog("", "nicelandVPN is not running as administrator, please restart as administartor")
 		return
 	}
+
 	GLOBAL_STATE.IsAdmin = true
 	_ = fd.Close()
 }

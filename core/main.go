@@ -227,22 +227,9 @@ func SaveConfig() (err error) {
 	}()
 	defer RecoverAndLogToFile()
 
-	FC := new(FileConfig)
-	FC.DNS1 = C.DNS1
-	FC.DNS1Bytes = C.DNS1Bytes
-	FC.DNSIP = C.DNSIP
-	FC.DNS2 = C.DNS2
-	FC.ManualRouter = C.ManualRouter
-	FC.DebugLogging = C.DebugLogging
-	FC.Version = C.Version
-	FC.RouterFilePath = C.RouterFilePath
-	FC.AutoReconnect = C.AutoReconnect
-	FC.KillSwitch = C.KillSwitch
-	FC.DomainWhitelist = C.DomainWhitelist
-	FC.EnabledBlockLists = C.EnabledBlockLists
-	FC.DisableIPv6OnConnect = C.DisableIPv6OnConnect
+	C.Version = GLOBAL_STATE.Version
 
-	cb, err := json.Marshal(FC)
+	cb, err := json.Marshal(C)
 	if err != nil {
 		CreateErrorLog("", "Unable to turn new config into bytes: ", err)
 		return err
@@ -290,13 +277,12 @@ func LoadConfig() {
 		CreateErrorLog("", "Unable to open config: ", err)
 		CreateLog("", "Generating a new default config")
 
-		NC := new(FileConfig)
+		NC := new(Config)
 		NC.DNS1Bytes = [4]byte{1, 1, 1, 1}
 		NC.DNS1 = "1.1.1.1"
 		NC.DNS2 = "8.8.8.8"
 		NC.DNSIP = net.IP{NC.DNS1Bytes[0], NC.DNS1Bytes[1], NC.DNS1Bytes[2], NC.DNS1Bytes[3]}
 		NC.ManualRouter = false
-		NC.Region = ""
 		NC.DebugLogging = true
 		NC.Version = ""
 		NC.RouterFilePath = ""
@@ -333,20 +319,7 @@ func LoadConfig() {
 			return
 		}
 
-		FC := new(Config)
-		FC.DNS1 = NC.DNS1
-		FC.DNS1Bytes = NC.DNS1Bytes
-		FC.DNSIP = NC.DNSIP
-		FC.DNS2 = NC.DNS2
-		FC.ManualRouter = NC.ManualRouter
-		// FC.Region = NC.Region
-		FC.DebugLogging = NC.DebugLogging
-		FC.Version = NC.Version
-		FC.RouterFilePath = NC.RouterFilePath
-		FC.AutoReconnect = NC.AutoReconnect
-		FC.KillSwitch = NC.KillSwitch
-		// CONFIG_INITIALIZED = true
-		C = FC
+		C = NC
 
 	} else {
 

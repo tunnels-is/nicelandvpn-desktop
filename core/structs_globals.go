@@ -164,21 +164,24 @@ type List struct {
 	Domains  string
 }
 
-type FileConfig struct {
-	DNS1                 string
-	DNS1Bytes            [4]byte
-	DNSIP                net.IP
-	DNS2                 string
-	ManualRouter         bool
-	Region               string
-	DebugLogging         bool
-	Version              string
-	RouterFilePath       string
-	AutoReconnect        bool
-	KillSwitch           bool
+type Config struct {
+	AutoReconnect  bool
+	KillSwitch     bool
+	DNS1           string
+	DNS1Bytes      [4]byte
+	DNSIP          net.IP
+	DNS2           string
+	ManualRouter   bool
+	DebugLogging   bool
+	Version        string
+	RouterFilePath string
+
+	PrevSession          *CONTROLLER_SESSION_REQUEST
 	DomainWhitelist      string
 	EnabledBlockLists    []string
 	DisableIPv6OnConnect bool
+
+	CLI bool `json:"-"`
 }
 
 type AdapterSettings struct {
@@ -196,26 +199,6 @@ type AdapterSettings struct {
 	AEAD cipher.AEAD
 
 	AP *AccessPoint
-}
-
-type Config struct {
-	AutoReconnect  bool
-	KillSwitch     bool
-	DNS1           string
-	DNS1Bytes      [4]byte
-	DNSIP          net.IP
-	DNS2           string
-	ManualRouter   bool
-	DebugLogging   bool
-	Version        string `json:"-"`
-	RouterFilePath string
-
-	PrevSession          *CONTROLLER_SESSION_REQUEST
-	DomainWhitelist      string
-	EnabledBlockLists    []string
-	DisableIPv6OnConnect bool
-
-	CLI bool `json:"-"`
 }
 
 type LOADING_LOGS_RESPONSE struct {

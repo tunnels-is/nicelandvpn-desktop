@@ -197,6 +197,7 @@ const useForm = (props) => {
     newConfig.AutoReconnect = inputs["AR"].AR
     newConfig.KillSwitch = inputs["KS"].KS
     newConfig.DisableIPv6OnConnect = inputs["IP6"].IP6
+    newConfig.CloseConnectionsOnConnect = inputs["CC"].CC
 
     SetConfig(newConfig).then((x) => {
       if (x.Err) {
@@ -331,6 +332,16 @@ const useForm = (props) => {
     props.toggleLoading(undefined)
   }
 
+  const ToggleCC = () => {
+    let i = { ...inputs }
+    if (i["CC"].CC === true) {
+      i["CC"].CC = false
+    } else {
+      i["CC"].CC = true
+    }
+    setInputs(i)
+  }
+
   const ToggleLogging = () => {
     let i = { ...inputs }
     if (i["DB"].DB === true) {
@@ -431,6 +442,7 @@ const useForm = (props) => {
     blockList,
     ToggleIP6,
     ToggleAllBlocking,
+    ToggleCC,
   }
 }
 
@@ -438,7 +450,7 @@ const Settings = (props) => {
 
   const navigate = useNavigate();
 
-  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, ToggleBlockList, ApplyBlocklistConfigurations, setBlockList, blockList, ToggleIP6, ToggleAllBlocking } = useForm(props);
+  const { inputs, setInputs, user, setUser, UpdateInput, UpdateConfig, Reset, DisableAccount, EnableAccount, UpdateRouterFile, ToggleLogging, ToggleAR, ToggleKS, UpdateUser, ToggleSubscription, autoLogout, ToggleAutoLogout, ToggleBlockList, ApplyBlocklistConfigurations, setBlockList, blockList, ToggleIP6, ToggleAllBlocking, ToggleCC } = useForm(props);
 
   const inputFile = useRef(null)
 
@@ -495,6 +507,9 @@ const Settings = (props) => {
     i["KS"] = {}
     i["KS"].Errors = {}
 
+    i["CC"] = {}
+    i["CC"].Errors = {}
+
     i["IP6"] = {}
     i["IP6"].Errors = {}
 
@@ -515,6 +530,7 @@ const Settings = (props) => {
       i["KS"].KS = config.KillSwitch
       i["AR"].AR = config.AutoReconnect
       i["IP6"].IP6 = config.DisableIPv6OnConnect
+      i["CC"].CC = config.CloseConnectionsOnConnect
     } else {
       i["DNS"].DNS0 = "1.1.1.1"
       i["DNS"].DNS2 = "8.8.8.8"
@@ -908,6 +924,39 @@ const Settings = (props) => {
         }
 
       </div>
+      <div className="panel other-panel">
+
+        <div className="header">
+          <Pencil2Icon className="icon"></Pencil2Icon>
+          <div className="title">Experimental Features</div>
+          {user &&
+            <div className="save-config title neutral-color" onClick={() => UpdateConfig()}>Save</div>
+          }
+        </div>
+
+        <div className="item">
+          <div className="subtitle">All features in this section are experimental, use with caution</div>
+        </div>
+
+        <div className="item extra-space">
+          <div className="am toggle-button">
+            <label className="switch">
+              <input checked={(inputs["CC"] && inputs["CC"].CC)} type="checkbox" onChange={() => ToggleCC()} />
+              <span className="slider"></span>
+            </label>
+            <div className="text">
+              Close Sockets On Connect
+            </div>
+          </div>
+          <div className="item">
+            <div className="subtitle">This feature will attempt to close TCP sockets when the VPN connects, preventing network leakage outside the VPN connection. Currently this feature only works on Windows</div>
+          </div>
+        </div>
+
+
+      </div>
+
+
 
 
     </div >

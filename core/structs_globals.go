@@ -164,6 +164,21 @@ type List struct {
 	Domains  string
 }
 
+type CONFIG_FORM struct {
+	DNS1                      string                      `json:"DNS1"`
+	DNS2                      string                      `json:"DNS2"`
+	ManualRouter              bool                        `json:"ManualRouter"`
+	Region                    string                      `json:"Region"`
+	Version                   string                      `json:"Version"`
+	RouterFilePath            string                      `json:"RouterFilePath"`
+	DebugLogging              bool                        `json:"DebugLogging"`
+	AutoReconnect             bool                        `json:"AutoReconnect"`
+	KillSwitch                bool                        `json:"KillSwitch"`
+	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
+	DisableIPv6OnConnect      bool                        `json:"DisableIPv6OnConnect"`
+	CloseConnectionsOnConnect bool                        `json:"CloseConnectionsOnConnect"`
+}
+
 type Config struct {
 	AutoReconnect  bool
 	KillSwitch     bool
@@ -176,10 +191,11 @@ type Config struct {
 	Version        string
 	RouterFilePath string
 
-	PrevSession          *CONTROLLER_SESSION_REQUEST
-	DomainWhitelist      string
-	EnabledBlockLists    []string
-	DisableIPv6OnConnect bool
+	PrevSession               *CONTROLLER_SESSION_REQUEST
+	DomainWhitelist           string
+	EnabledBlockLists         []string
+	DisableIPv6OnConnect      bool
+	CloseConnectionsOnConnect bool
 
 	CLI bool `json:"-"`
 }
@@ -275,20 +291,6 @@ type INTERFACE_SETTINGS struct {
 	OIF             net.Interface
 	Hop             string
 	Metric          int
-}
-
-type CONFIG_FORM struct {
-	DNS1                 string                      `json:"DNS1" bson:"-"`
-	DNS2                 string                      `json:"DNS2" bson:"-"`
-	ManualRouter         bool                        `json:"ManualRouter" bson:"-"`
-	Region               string                      `json:"Region" bson:"-"`
-	Version              string                      `json:"Version" bson:"-"`
-	RouterFilePath       string                      `json:"RouterFilePath" bson:"-"`
-	DebugLogging         bool                        `json:"DebugLogging" bson:"-"`
-	AutoReconnect        bool                        `json:"AutoReconnect" bson:"-"`
-	KillSwitch           bool                        `json:"KillSwitch" bson:"-"`
-	PrevSession          *CONTROLLER_SESSION_REQUEST `json:"PrevSlot" bson:"-"`
-	DisableIPv6OnConnect bool                        `json:"DisableIPv6OnConnect" bson:"-"`
 }
 
 type ROUTER struct {
@@ -550,11 +552,24 @@ type QR_CODE struct {
 	// Recovery string
 }
 
-var CurrentOpenSockets []*OpenSockets
+// var CurrentOpenSockets []*OpenSockets
 
-type OpenSockets struct {
-	RemoteAddress string  `json:"RemoteAddress"`
-	RemoteIP      [4]byte `json:"-"`
-	LocalPort     uint16  `json:"LocalPort"`
-	RemotePort    uint16  `json:"RemotePort"`
+//	type OpenSockets struct {
+//		RemoteAddress string  `json:"RemoteAddress"`
+//		RemoteIP      [4]byte `json:"-"`
+//		LocalPort     uint16  `json:"LocalPort"`
+//		RemotePort    uint16  `json:"RemotePort"`
+//	}
+type MIB_TCPROW_OWNER_PID struct {
+	dwState      uint32
+	dwLocalAddr  uint32
+	dwLocalPort  uint32
+	dwRemoteAddr uint32
+	dwRemotePort uint32
+	dwOwningPid  uint32
+}
+
+type MIB_TCPTABLE_OWNER_PID struct {
+	dwNumEntries uint32
+	table        [30000]MIB_TCPROW_OWNER_PID
 }

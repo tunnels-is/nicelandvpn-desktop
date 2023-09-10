@@ -10,7 +10,6 @@ import (
 	"io"
 	"log"
 	"math"
-	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -48,7 +47,13 @@ var (
 
 	GUID *windows.GUID
 	Dev  Device
-	// TUNBuff = make([]byte, 4000)
+
+	// WINDOWS DLL
+	IPHLPApi = syscall.NewLazyDLL("iphlpapi.dll")
+
+	GetTCP = IPHLPApi.NewProc("GetExtendedTcpTable")
+	GetUDP = IPHLPApi.NewProc("GetExtendedUdpTable")
+	SetTCP = IPHLPApi.NewProc("SetTcpEntry")
 )
 
 type loggerLevel int
@@ -58,6 +63,11 @@ const (
 	RingCapacityMin = 0x20000   // Minimum ring capacity (128 kiB)
 	RingCapacityMax = 0x4000000 // Maximum ring capacity (64 MiB)
 	AdapterNameMax  = 128
+
+	// WINDOWS DLL
+
+	MIB_TCP_TABLE_OWNER_PID_ALL = 5
+	MIB_TCP_STATE_DELETE_TCB    = 12
 )
 
 // ===========================================================
@@ -819,6 +829,11 @@ func EnablePacketRouting() (err error) {
 		return
 	}
 
+	err = CloseAllOpenSockets()
+	if err != nil {
+		return
+	}
+
 	err = DisableIPv6()
 	if err != nil {
 		return
@@ -997,53 +1012,6 @@ func FindDefaultInterfaceAndGateway() (NEW_DEFAULT *CONNECTION_SETTINGS, err err
 	return
 }
 
-// Get-NetTCPConnection -LocalAddress 192.168.2.10 | Select-Object RemoteAddress,LocalPort,RemotePort | ConvertTo-Json
-func GetOpenSockets() (err error) {
-
-	TempOpenSockets := make([]*OpenSockets, 0)
-	CurrentOpenSockets = make([]*OpenSockets, 0)
-
-	cmd := exec.Command("powershell", "-NoProfile", "Get-NetTCPConnection | Select-Object RemoteAddress,LocalPort,RemotePort | ConvertTo-Json -Depth 1")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		CreateErrorLog("", "Error fetching open sockets || msg: ", err, " || output: ", string(out))
-		return err
-	}
-
-	err = json.Unmarshal(out, &TempOpenSockets)
-	if err != nil {
-		CreateErrorLog("", "Error unmarshaling open sockets || msg: ", err)
-		return err
-	}
-
-	for i := range TempOpenSockets {
-		// log.Println(TempOpenSockets[i].RemoteAddress)
-		ip := net.ParseIP(TempOpenSockets[i].RemoteAddress)
-		ip4 := ip.To4()
-		if ip4 == nil {
-			// log.Println("Not a valid IP")
-			continue
-		}
-		ipString := ip4.String()
-		if ipString == "0.0.0.0" || ipString == "127.0.0.1" {
-			continue
-		}
-
-		// ip := net.IP(CurrentOpenSockets[i].RemoteAddress)
-		// log.Println("PARSED IP:", ip)
-		// ip = ip.To4()
-		TempOpenSockets[i].RemoteIP = [4]byte{ip4[0], ip4[1], ip4[2], ip4[3]}
-
-		CurrentOpenSockets = append(CurrentOpenSockets, TempOpenSockets[i])
-	}
-
-	// log.Println(CurrentOpenSockets)
-
-	return
-}
-
 func PrintRouters() ([]byte, error) {
 	cmd := exec.Command("route", "print")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
@@ -1072,4 +1040,74 @@ func PrintDNS() ([]byte, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// =============================================
+// =============================================
+// =============================================
+// =============================================
+// =============================================
+// WINDOWS DLL STUFF
+
+func CloseAllOpenSockets() error {
+
+	if !C.CloseConnectionsOnConnect {
+		CreateLog("", "Leaving open sockets intact")
+		return nil
+	}
+
+	CreateLog("", "Closing all open socket")
+
+	tcpTable, err := GetOpenSockets()
+	if err != nil {
+		CreateErrorLog("", "Unable to get TCP Socket table", err)
+		return err
+	}
+
+	for _, row := range tcpTable {
+		localAddr := fmt.Sprintf("%d.%d.%d.%d", byte(row.dwLocalAddr), byte(row.dwLocalAddr>>8), byte(row.dwLocalAddr>>16), byte(row.dwLocalAddr>>24))
+		remoteAddr := fmt.Sprintf("%d.%d.%d.%d", byte(row.dwRemoteAddr), byte(row.dwRemoteAddr>>8), byte(row.dwRemoteAddr>>16), byte(row.dwRemoteAddr>>24))
+
+		if localAddr != "0.0.0.0" && localAddr != "127.0.0.1" {
+			if remoteAddr == GLOBAL_STATE.ActiveRouter.IP {
+				continue
+			}
+			_ = DeleteSocket(row)
+		}
+
+	}
+
+	return nil
+}
+
+func GetOpenSockets() ([]MIB_TCPROW_OWNER_PID, error) {
+	var tcpTable MIB_TCPTABLE_OWNER_PID
+	size := uintptr(unsafe.Sizeof(tcpTable))
+
+	r, _, err := GetTCP.Call(
+		uintptr(unsafe.Pointer(&tcpTable)),
+		uintptr(unsafe.Pointer(&size)),
+		1,
+		syscall.AF_INET,
+		MIB_TCP_TABLE_OWNER_PID_ALL,
+		0)
+
+	if r == 0 {
+		entries := tcpTable.dwNumEntries
+		return tcpTable.table[:entries], nil
+	}
+
+	return nil, err
+}
+
+func DeleteSocket(row MIB_TCPROW_OWNER_PID) error {
+	row.dwState = MIB_TCP_STATE_DELETE_TCB
+	r, _, err := SetTCP.Call(
+		uintptr(unsafe.Pointer(&row)))
+
+	if r == 0 {
+		return nil
+	}
+
+	return err
 }

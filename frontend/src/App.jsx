@@ -149,7 +149,7 @@ const LaunchApp = () => {
       GetState().then((x) => {
         console.dir(x)
         if (x.Err) {
-          ToggleError(x.Err.Message)
+          ToggleError(x.Err)
           setState(newState)
           return
         }

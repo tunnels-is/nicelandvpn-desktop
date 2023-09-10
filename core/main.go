@@ -339,7 +339,6 @@ func LoadConfig() {
 		C.DNSIP = net.ParseIP(C.DNS1).To4()
 		C.DNS1Bytes = [4]byte{C.DNSIP[0], C.DNSIP[1], C.DNSIP[2], C.DNSIP[3]}
 
-		// CONFIG_INITIALIZED = true
 	}
 
 	CreateLog("loader", "Configurations loaded")

@@ -11,6 +11,13 @@ const Routers = (props) => {
   const [filter, setFilter] = useState("");
 
   const switchRouter = async (router) => {
+
+    if (props.state?.Connected) {
+      props.toggleError("Unable to change routers while connected")
+      return
+    }
+
+
     if (router.Tag === "") {
       props.toggleLoading({ tag: "ROUTERS", show: true, msg: "Switching to automatic router selection" })
     } else {
@@ -19,7 +26,7 @@ const Routers = (props) => {
 
     SwitchRouter(router.Tag).then((x) => {
       if (x.Err) {
-        props.toggleError(x.Err.Message)
+        props.toggleError(x.Err)
       } else {
         props.showSuccessToast("Router switch complete")
       }

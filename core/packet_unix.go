@@ -5,7 +5,6 @@ package core
 import (
 	"encoding/binary"
 	"io"
-	"log"
 	"net"
 	"time"
 
@@ -81,7 +80,7 @@ WAITFORDEVICE:
 
 		sendRemote, sendLocal = ProcessEgressPacket(&packet)
 		if !sendLocal && !sendRemote {
-			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
 			continue
 		} else if sendLocal {
 

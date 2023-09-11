@@ -5,7 +5,6 @@ package core
 import (
 	"encoding/binary"
 	"io"
-	"log"
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -105,7 +104,7 @@ WAITFORDEVICE:
 
 		sendRemote, sendLocal := ProcessEgressPacket(&packet)
 		if !sendLocal && !sendRemote {
-			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
 			continue
 		} else if sendLocal {
 

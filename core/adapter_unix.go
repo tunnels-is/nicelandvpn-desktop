@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -414,7 +413,6 @@ func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, e
 				metricInt, err = strconv.Atoi(fields[len(fields)-1])
 				if err != nil {
 					CreateErrorLog("", "Unable to parse interface metric", fields)
-					log.Println(err)
 					return nil, err
 				}
 			} else {

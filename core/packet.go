@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/binary"
-	"log"
 	"net"
 
 	"github.com/miekg/dns"
@@ -66,7 +65,7 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 		EP_RST = EP_TPHeader[13] & 0x7 >> 2
 		// fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
 		if EP_RST == 1 {
-			log.Println("RST PACKET")
+			// log.Println("RST PACKET")
 			return false, false
 		}
 	}
@@ -157,7 +156,7 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 
 		EP_MappedPort = CreateOrGetPortMapping(&TCP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
 		if EP_MappedPort == nil {
-			log.Println("NO TCP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
+			// log.Println("NO TCP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
 			return false, false
 		}
 
@@ -165,7 +164,7 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 
 		EP_MappedPort = CreateOrGetPortMapping(&UDP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
 		if EP_MappedPort == nil {
-			log.Println("NO UDP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
+			// log.Println("NO UDP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
 			return false, false
 		}
 
@@ -173,7 +172,7 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 
 	EP_NAT_IP, EP_NAT_OK = AS.AP.NAT_CACHE[EP_DstIP]
 	if EP_NAT_OK {
-		log.Println("FOUND NAT", EP_DstIP, EP_NAT_IP)
+		// log.Println("FOUND NAT", EP_DstIP, EP_NAT_IP)
 		EP_IPv4Header[16] = EP_NAT_IP[0]
 		EP_IPv4Header[17] = EP_NAT_IP[1]
 		EP_IPv4Header[18] = EP_NAT_IP[2]
@@ -235,7 +234,7 @@ func ProcessIngressPacket(packet []byte) bool {
 
 	IP_NAT_IP, IP_NAT_OK = AS.AP.REVERSE_NAT_CACHE[IP_SrcIP]
 	if IP_NAT_OK {
-		log.Println("FOUND INGRESS NAT", IP_SrcIP, IP_NAT_IP)
+		// log.Println("FOUND INGRESS NAT", IP_SrcIP, IP_NAT_IP)
 		IP_IPv4Header[12] = IP_NAT_IP[0]
 		IP_IPv4Header[13] = IP_NAT_IP[1]
 		IP_IPv4Header[14] = IP_NAT_IP[2]
@@ -251,7 +250,7 @@ func ProcessIngressPacket(packet []byte) bool {
 
 		IP_MappedPort = GetIngressPortMapping(&TCP_o0, IP_SrcIP, IP_DstPort)
 		if IP_MappedPort == nil {
-			log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
+			// log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
 
@@ -259,7 +258,7 @@ func ProcessIngressPacket(packet []byte) bool {
 
 		IP_MappedPort = GetIngressPortMapping(&UDP_o0, IP_SrcIP, IP_DstPort)
 		if IP_MappedPort == nil {
-			log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
+			// log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
 
@@ -425,7 +424,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 		var err error
 		DNSResponse, err = x.Pack()
 		if err != nil {
-			log.Println("UNABLE TO PICK DNS RESPONSE: ", err)
+			// log.Println("UNABLE TO PICK DNS RESPONSE: ", err)
 			return
 		}
 

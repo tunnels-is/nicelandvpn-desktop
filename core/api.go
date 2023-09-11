@@ -474,6 +474,14 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		if GLOBAL_STATE.Routers[b] == nil {
 			return false
 		}
+		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
+
+			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
+				return true
+			}
+
+		}
+
 		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
 	})
 
@@ -525,6 +533,12 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		if GLOBAL_STATE.AccessPoints[b].Router == nil {
 			return false
 		}
+		if GLOBAL_STATE.AccessPoints[a].Router.Score == GLOBAL_STATE.AccessPoints[b].Router.Score {
+			if GLOBAL_STATE.AccessPoints[a].Router.MS < GLOBAL_STATE.AccessPoints[b].Router.MS {
+				return true
+			}
+
+		}
 		return GLOBAL_STATE.AccessPoints[a].Router.Score > GLOBAL_STATE.AccessPoints[b].Router.Score
 	})
 
@@ -534,6 +548,12 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		}
 		if GLOBAL_STATE.PrivateAccessPoints[b].Router == nil {
 			return false
+		}
+		if GLOBAL_STATE.PrivateAccessPoints[a].Router.Score == GLOBAL_STATE.PrivateAccessPoints[b].Router.Score {
+			if GLOBAL_STATE.PrivateAccessPoints[a].Router.MS < GLOBAL_STATE.PrivateAccessPoints[b].Router.MS {
+				return true
+			}
+
 		}
 		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
 	})

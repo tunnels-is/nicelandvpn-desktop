@@ -624,25 +624,28 @@ const Settings = (props) => {
                 }
                 {!user.CancelSub &&
                   <div className="item">
-                    <div className="title neutral-color" onClick={() => ToggleSubscription(true)} >Disable Subscription</div>
+                    <div className="title warning-color" onClick={() => ToggleSubscription(true)} >Disable Subscription</div>
                   </div>
                 }
               </>
             }
+            {!user?.Disabled &&
+              <div className="item">
+                <div className="title warning-color" onClick={() => DisableAccount()} >Disable Account</div>
+              </div>
+            }
 
 
             <div className="item extra-space">
+              <div className="title neutral-color" onClick={() => NavigateToTokens()} >Device Logins</div>
+            </div>
+            <div className="item">
               <div className="title  neutral-color" onClick={() => NavigateTo2fa()} >Two-Factor Authentication</div>
             </div>
 
             {user?.Disabled &&
               <div className="item">
                 <div className="title ok-color" onClick={() => EnableAccount()} >Enable Account</div>
-              </div>
-            }
-            {!user?.Disabled &&
-              <div className="item">
-                <div className="title neutral-color" onClick={() => DisableAccount()} >Disable Account</div>
               </div>
             }
 
@@ -653,41 +656,7 @@ const Settings = (props) => {
 
       }
 
-      <div className="panel">
 
-        <div className="header">
-          <FileTextIcon className="icon"></FileTextIcon>
-          <div className="title">Routing</div>
-          <div className="save-config title neutral-color" onClick={() => UpdateConfig()}>Save</div>
-        </div>
-
-        <div className="seperator"></div>
-
-        <div className="item">
-          <div className="title">Primary DNS</div>
-          <input className="input"
-            onChange={e => UpdateInput("DNS", "DNS1", e.target.value)}
-            value={inputs["DNS"] ? inputs["DNS"].DNS1 : ""} />
-        </div>
-
-        <div className="item item-extra-margin">
-          <div className="title">Backup DNS</div>
-          <input className="input"
-            onChange={e => UpdateInput("DNS", "DNS2", e.target.value)}
-            value={inputs["DNS"] ? inputs["DNS"].DNS2 : ""} />
-        </div>
-
-        <div className="item extra-space">
-
-          <div onClick={() => UpdateRouterFile(false)} className="title neutral-color">Select A Router File</div>
-
-        </div>
-
-        <div className="item">
-          <div className="title neutral-color" onClick={() => UpdateRouterFile(true)} >Clear Router File</div>
-        </div>
-
-      </div>
 
       <div className="panel">
 
@@ -723,62 +692,104 @@ const Settings = (props) => {
           </div>
         </div>
 
-        <div className="item less-space">
-          <div className="am toggle-button">
-            <label className="switch">
-              <input checked={(inputs["KS"] && inputs["KS"].KS) ? true : false} type="checkbox" onClick={() => ToggleKS()} />
-              <span className="slider"></span>
-            </label>
-            <div className="text">
-              Killswitch
+        {props.advancedMode &&
+          <>
+
+            <div className="item less-space">
+              <div className="am toggle-button">
+                <label className="switch">
+                  <input checked={(inputs["KS"] && inputs["KS"].KS) ? true : false} type="checkbox" onClick={() => ToggleKS()} />
+                  <span className="slider"></span>
+                </label>
+                <div className="text">
+                  Killswitch
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
 
-        <div className="item less-space">
-          <div className="am toggle-button">
-            <label className="switch">
-              <input checked={(inputs["IP6"] && inputs["IP6"].IP6) ? true : false} type="checkbox" onClick={() => ToggleIP6()} />
-              <span className="slider"></span>
-            </label>
-            <div className="text">
-              Disable IPv6
+            <div className="item less-space">
+              <div className="am toggle-button">
+                <label className="switch">
+                  <input checked={(inputs["IP6"] && inputs["IP6"].IP6) ? true : false} type="checkbox" onClick={() => ToggleIP6()} />
+                  <span className="slider"></span>
+                </label>
+                <div className="text">
+                  Disable IPv6
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div className="item less-space">
-          <div className="am toggle-button">
-            <label className="switch">
-              <input checked={(inputs["DB"] && inputs["DB"].DB) ? true : false} type="checkbox" onClick={() => ToggleLogging()} />
-              <span className="slider"></span>
-            </label>
-            <div className="text">
-              Logging
+            <div className="item less-space">
+              <div className="am toggle-button">
+                <label className="switch">
+                  <input checked={(inputs["DB"] && inputs["DB"].DB) ? true : false} type="checkbox" onClick={() => ToggleLogging()} />
+                  <span className="slider"></span>
+                </label>
+                <div className="text">
+                  Logging
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+
+        }
 
 
 
-        <div className="item">
-          <div className="title neutral-color" onClick={() => NavigateToTokens()} >Device Logins</div>
-        </div>
 
-        <div className="item">
-          <div className="title neutral-color" onClick={() => NavigateToLogs()} >Logs</div>
-        </div>
+
 
         <div className="item extra-space">
           <div className="title neutral-color" onClick={() => Reset()} >Reset Network Settings</div>
         </div>
 
         <div className="item">
-          <div className="title neutral-color" onClick={() => ResetApp()} >Reset App Settings</div>
+          <div className="title warning-color" onClick={() => ResetApp()} >Reset App Settings</div>
         </div>
 
       </div>
+
+      {props.advancedMode &&
+        <div className="panel">
+
+          <div className="header">
+            <FileTextIcon className="icon"></FileTextIcon>
+            <div className="title">Routing</div>
+            <div className="save-config title neutral-color" onClick={() => UpdateConfig()}>Save</div>
+          </div>
+
+          <div className="seperator"></div>
+
+          <div className="item">
+            <div className="title">Primary DNS</div>
+            <input className="input"
+              onChange={e => UpdateInput("DNS", "DNS1", e.target.value)}
+              value={inputs["DNS"] ? inputs["DNS"].DNS1 : ""} />
+          </div>
+
+          <div className="item item-extra-margin">
+            <div className="title">Backup DNS</div>
+            <input className="input"
+              onChange={e => UpdateInput("DNS", "DNS2", e.target.value)}
+              value={inputs["DNS"] ? inputs["DNS"].DNS2 : ""} />
+          </div>
+
+          <div className="item extra-space">
+
+            <div onClick={() => UpdateRouterFile(false)} className="title neutral-color">Select A Router File</div>
+
+          </div>
+
+          <div className="item">
+            <div className="title neutral-color" onClick={() => UpdateRouterFile(true)} >Clear Router File</div>
+          </div>
+
+        </div>
+
+      }
+
+
       <div className="panel block-panel">
         <div className="header">
           <LockClosedIcon className="icon"></LockClosedIcon>
@@ -791,9 +802,9 @@ const Settings = (props) => {
           <div className="subtitle">Enabling blocklists will increase memory usage</div>
         </div>
 
-        <div className="item extra-space">
+        <div className="item extra-space blocking-toggles">
           <div className="title neutral-color" onClick={() => ToggleAllBlocking(true)} >Enable All</div>
-          <div className="title neutral-color" onClick={() => ToggleAllBlocking(false)} >Disable All</div>
+          <div className="title warning-color" onClick={() => ToggleAllBlocking(false)} >Disable All</div>
         </div>
         <div className="item extra-space">
         </div>
@@ -883,7 +894,7 @@ const Settings = (props) => {
           </div>
         }
 
-        {user &&
+        {(user && props.advancedMode) &&
           <>
             {inputs["APIKey"] &&
               <div className="item">
@@ -924,37 +935,41 @@ const Settings = (props) => {
         }
 
       </div>
-      <div className="panel other-panel">
 
-        <div className="header">
-          <Pencil2Icon className="icon"></Pencil2Icon>
-          <div className="title">Experimental Features</div>
-          {user &&
-            <div className="save-config title neutral-color" onClick={() => UpdateConfig()}>Save</div>
-          }
-        </div>
+      {props.advancedMode &&
 
-        <div className="item">
-          <div className="subtitle">All features in this section are experimental, use with caution</div>
-        </div>
+        <div className="panel other-panel">
 
-        <div className="item extra-space">
-          <div className="am toggle-button">
-            <label className="switch">
-              <input checked={(inputs["CC"] && inputs["CC"].CC)} type="checkbox" onChange={() => ToggleCC()} />
-              <span className="slider"></span>
-            </label>
-            <div className="text">
-              Close Sockets On Connect
+          <div className="header">
+            <Pencil2Icon className="icon"></Pencil2Icon>
+            <div className="title">Experimental Features</div>
+            {user &&
+              <div className="save-config title neutral-color" onClick={() => UpdateConfig()}>Save</div>
+            }
+          </div>
+
+          <div className="item">
+            <div className="subtitle">All features in this section are experimental, use with caution</div>
+          </div>
+
+          <div className="item extra-space">
+            <div className="am toggle-button">
+              <label className="switch">
+                <input checked={(inputs["CC"] && inputs["CC"].CC)} type="checkbox" onChange={() => ToggleCC()} />
+                <span className="slider"></span>
+              </label>
+              <div className="text">
+                Close Sockets On Connect
+              </div>
+            </div>
+            <div className="item">
+              <div className="subtitle">This feature will attempt to close TCP sockets when the VPN connects, preventing network leakage outside the VPN connection. Currently this feature only works on Windows</div>
             </div>
           </div>
-          <div className="item">
-            <div className="subtitle">This feature will attempt to close TCP sockets when the VPN connects, preventing network leakage outside the VPN connection. Currently this feature only works on Windows</div>
-          </div>
+
+
         </div>
-
-
-      </div>
+      }
 
 
 

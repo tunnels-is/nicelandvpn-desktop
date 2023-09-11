@@ -23,6 +23,7 @@ import Debug from "./App/debug";
 import Login from "./App/Login";
 import Logs from "./App/Logs";
 import STORE from "./store";
+import StatsSideBar from "./App/StatsSideBar";
 
 const root = createRoot(document.getElementById('app'));
 
@@ -59,6 +60,7 @@ const LaunchApp = () => {
   const [advancedMode, setAdvancedMode] = useState();
   const [loading, setLoading] = useState(undefined)
   const [state, setState] = useState({})
+  const [stats, setStats] = useState(false)
 
 
   const ToggleAdvancedMode = () => {
@@ -244,7 +246,12 @@ const LaunchApp = () => {
         }
 
         {/* <TopBar toggleLoading={ToggleLoading}></TopBar> */}
-        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} />
+        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} setStats={setStats} stats={stats} />
+
+        {stats &&
+          <StatsSideBar state={state} setStats={setStats}></StatsSideBar>
+        }
+
 
         <div className="content-container" >
 

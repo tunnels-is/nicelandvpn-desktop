@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { SwitchRouter } from '../../wailsjs/go/main/Service';
 
 import STORE from "../store";
-import { DesktopIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, MagnifyingGlassIcon, EnterIcon } from "@radix-ui/react-icons";
 
 const Routers = (props) => {
 
@@ -64,16 +64,18 @@ const Routers = (props) => {
 
   const RenderServer = (s, active) => {
 
-    let style = {}
-    if (active) {
-      style = { background: "#49ffc827" }
-    }
 
     return (
-      <div className="server" key={s.Tag} style={style} onClick={() => switchRouter(s)}>
+      <div className="server" key={s.Tag} onClick={() => switchRouter(s)}>
         {/* <div className="connect"></div> */}
         {s.Tag &&
-          <div className="item ip">{s.Tag}</div>
+          <div className="item ip">
+            {active &&
+
+              <EnterIcon className="icon"></EnterIcon>
+            }
+            {s.Tag}
+          </div>
         }
         {!s.Tag &&
           <div className="item ip">Unknown</div>

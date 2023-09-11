@@ -7,7 +7,7 @@ import Loader from "react-spinners/ScaleLoader";
 import { Connect, Switch } from "../../wailsjs/go/main/Service";
 
 import STORE from "../store";
-import { DesktopIcon, EnterFullScreenIcon, EnterIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, EnterIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 
 
 const Dashboard = (props) => {

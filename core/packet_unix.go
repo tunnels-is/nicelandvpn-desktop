@@ -31,7 +31,8 @@ func ReadFromLocalTunnel_NEW(MONITOR chan int) {
 		waitFortimeout = time.Now()
 		packetLength   int
 
-		packet = make([]byte, 65600)
+		tempPacket = make([]byte, 65600)
+		packet     []byte
 
 		encryptedPacket []byte
 		lengthBytes     = make([]byte, 2)
@@ -55,7 +56,7 @@ WAITFORDEVICE:
 
 	for {
 
-		packetLength, err = A.Interface.Read(packet)
+		packetLength, err = A.Interface.Read(tempPacket)
 		if err != nil {
 			BUFFER_ERROR = true
 			CreateLog("general", err, "error in interface reader loop")
@@ -74,6 +75,7 @@ WAITFORDEVICE:
 			}
 			continue
 		}
+		packet = tempPacket[:packetLength]
 
 		EGRESS_PACKETS++
 

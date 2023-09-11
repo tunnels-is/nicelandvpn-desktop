@@ -470,7 +470,7 @@ func RestoreIPv6() {
 
 	if !C.DisableIPv6OnConnect {
 		CreateLog("connect", "IPv6 settings unchanged")
-		return nil
+		return
 	}
 
 	if GLOBAL_STATE.DefaultInterface == nil {

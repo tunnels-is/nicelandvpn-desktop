@@ -329,6 +329,10 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		}
 	}
 
+	if code != 200 {
+		return nil, code, errors.New("Unable to fetch access points")
+	}
+
 	RoutersAndAccessPoints := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
 
 	err = json.Unmarshal(responseBytes, RoutersAndAccessPoints)
@@ -348,13 +352,13 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		}
 	}
 
-	// CreateLog("", string(responseBytes))
-
 	PrivateAccessPoints := make([]*AccessPoint, 0)
-	err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
-	if err != nil {
-		CreateErrorLog("", "Unable to unmarshal private device list: ", err)
-		return nil, 0, err
+	if code == 200 {
+		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
+		if err != nil {
+			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
+			return nil, 0, err
+		}
 	}
 
 	for ii := range RoutersAndAccessPoints.Routers {

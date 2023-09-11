@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-//go:embed blocklists/*
+//go:embed blocklists
 var BlockLists embed.FS
 
 func LoadBlockLists() {

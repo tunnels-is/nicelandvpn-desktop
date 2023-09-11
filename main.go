@@ -19,7 +19,7 @@ var assets embed.FS
 
 const VERSION = "1.1.4"
 const PRODUCTION = false
-const ENABLE_INSTERFACE = false
+const ENABLE_INSTERFACE = true
 
 var MONITOR = make(chan int, 200)
 

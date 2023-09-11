@@ -276,10 +276,10 @@ func ProcessIngressPacket(packet []byte) bool {
 	if EP_Protocol == 17 {
 		if IP_SrcIP == C.DNS1Bytes && IS_UNIX {
 			// if IsDNSQuery(EP_TPHeader[8:]) && IS_UNIX {
-			IP_IPv4Header[16] = PREV_DNS_IP[0]
-			IP_IPv4Header[17] = PREV_DNS_IP[1]
-			IP_IPv4Header[18] = PREV_DNS_IP[2]
-			IP_IPv4Header[19] = PREV_DNS_IP[3]
+			IP_IPv4Header[12] = PREV_DNS_IP[0]
+			IP_IPv4Header[13] = PREV_DNS_IP[1]
+			IP_IPv4Header[14] = PREV_DNS_IP[2]
+			IP_IPv4Header[15] = PREV_DNS_IP[3]
 		}
 	}
 
@@ -343,7 +343,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 						Class:  dns.TypeA,
 						Rrtype: dns.ClassINET,
 						Name:   x.Question[i].Name,
-						Ttl:    30,
+						Ttl:    5,
 					},
 					A: net.ParseIP("127.0.0.1"),
 				})
@@ -359,7 +359,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 							Class:  dns.ClassNONE,
 							Rrtype: dns.TypeCNAME,
 							Name:   x.Question[i].Name,
-							Ttl:    30,
+							Ttl:    5,
 						},
 						Target: CNAME + ".",
 					})
@@ -373,7 +373,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 								Class:  dns.TypeA,
 								Rrtype: dns.ClassINET,
 								Name:   x.Question[i].Name,
-								Ttl:    30,
+								Ttl:    5,
 							},
 							A: IPS[ii].To4(),
 						})

@@ -123,7 +123,7 @@ func RestoreIPv6() {
 
 	if !C.DisableIPv6OnConnect {
 		CreateLog("connect", "IPv6 settings unchanged")
-		return nil
+		return
 	}
 
 	if GLOBAL_STATE.DefaultInterface.IP6Method == "Manual" {
@@ -147,7 +147,7 @@ func DisableIPv6() {
 
 	if !C.DisableIPv6OnConnect {
 		CreateLog("connect", "IPv6 settings unchanged")
-		return nil
+		return
 	}
 
 	_, err := exec.Command("networksetup", "-setv6off", GLOBAL_STATE.DefaultInterface.IFName).Output()

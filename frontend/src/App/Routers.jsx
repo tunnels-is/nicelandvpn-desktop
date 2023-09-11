@@ -119,7 +119,7 @@ const Routers = (props) => {
 
       <div className="search-wrapper">
         <MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-        <input type="text" className="search" onChange={(e) => setFilter(e.target.value)} placeholder="Search for Country Code .."></input>
+        <input type="text" className="search" onChange={(e) => setFilter(e.target.value)} placeholder="Search .."></input>
       </div>
 
       {props.state?.C?.ManualRouter &&

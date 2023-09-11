@@ -14,7 +14,6 @@ const Dashboard = (props) => {
 
   const [filter, setFilter] = useState("");
   const navigate = useNavigate();
-  const [error, setError] = useState(undefined)
 
   const updateFilter = (event) => {
     setFilter(event.target.value)
@@ -25,28 +24,6 @@ const Dashboard = (props) => {
     STORE.Cache.Clear()
   }
 
-  const ConfirmQuickConnect = (country, ar) => {
-
-    toast.success((t) =>
-    (
-      <div className="exit-confirm">
-        <div className="text">
-          Your are connecting to
-        </div>
-        <div className="text-big">
-          {country}
-        </div>
-        <button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
-        <button className="cancel" onClick={() => {
-          toast.dismiss(t.id)
-          QuickConnectToVPN(country, ar)
-        }
-        }>Connect</button>
-      </div>
-
-    ), { id: "connect", duration: 999999 }
-    )
-  }
 
   const ConfirmConnect = (a, ar) => {
 
@@ -69,56 +46,7 @@ const Dashboard = (props) => {
 
   }
 
-  const QuickConnectToVPN = async (country, ar) => {
-    if (!STORE.ActiveRouterSet(props.state)) {
-      setError("No active router set, please wait a moment")
-      return
-    }
 
-    props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Connecting you to a VPN in " + country, includeLogs: true })
-
-
-    if (!user.DeviceToken) {
-      LogOut()
-      return
-    }
-
-    let method = Connect
-    if (props.state?.Connected) {
-      method = Switch
-    }
-
-    let CONNECT_FORM = {
-      UserID: user._id,
-      DeviceToken: user.DeviceToken.DT,
-      Country: country,
-      ROUTERID: ar.ROUTERID,
-      GROUP: ar.GROUP,
-    }
-
-    method(CONNECT_FORM).then((x) => {
-      if (x.Code === 401) {
-        LogOut()
-      }
-
-      if (x.Err) {
-        props.toggleError(x.Err)
-      } else {
-        if (x.Code === 200) {
-          STORE.Cache.Set("connected_quick", country)
-          props.showSuccessToast("Connected to " + country, undefined)
-        } else {
-          props.toggleError(x.Data)
-        }
-      }
-
-    }).catch((e) => {
-      console.dir(e)
-      props.toggleError("Unknown error, please try again in a moment")
-    })
-
-    props.toggleLoading(undefined)
-  }
 
   const ConnectToVPN = async (a, ar) => {
 
@@ -205,6 +133,8 @@ const Dashboard = (props) => {
     return (<Navigate to={"/login"} />)
   }
 
+
+
   const RenderServer = (ap, ar, editButton, isConnected) => {
     let method = undefined
     if (isConnected) {
@@ -240,6 +170,14 @@ const Dashboard = (props) => {
 
     }
 
+    let country = "icon"
+    if (ap.GEO !== undefined && ap.GEO.Country !== "") {
+      country = ap.GEO.Country.toLowerCase()
+    } else if (ap.Country !== "") {
+      country = ap.Country.toLowerCase()
+    }
+
+
     return (
       <>
         <div className={`server ${isConnected ? `is-connected` : ``}`} onClick={() => method(ap, ar)} >
@@ -256,34 +194,20 @@ const Dashboard = (props) => {
           }
 
           <div className="item country" >
-            {(ap.GEO?.Country !== "" && ap.Country == "") &&
+            {country !== "icon" &&
               <>
                 <img
                   className="country-flag"
-                  src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + ap.GEO.Country.toLowerCase() + ".svg"}
+                  src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country + ".svg"}
                 // src={"/src/assets/images/flag/" + ap.GEO.Country.toLowerCase() + ".svg"}
                 />
                 <div className="text">
-                  {ap.GEO.Country}
+                  {country.toUpperCase()}
                 </div>
               </>
             }
+            {country === "icon" &&
 
-            {(ap.Country !== "") &&
-
-              <>
-                <img
-                  className="country-flag"
-                  src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + ap.Country.toLowerCase() + ".svg"}
-                // src={"/src/assets/images/flag/" + ap.GEO.Country.toLowerCase() + ".svg"}
-                />
-                <div className="text">
-                  {ap.Country}
-                </div>
-              </>
-            }
-
-            {(ap.GEO?.Country === "" && ap.Country === "") &&
               <>
                 <DesktopIcon className="country-temp" height={23} width={23}></DesktopIcon>
                 <div className="text">
@@ -291,6 +215,7 @@ const Dashboard = (props) => {
                 </div>
               </>
             }
+
           </div>
 
           {ap.Router &&
@@ -309,62 +234,118 @@ const Dashboard = (props) => {
   }
 
   let AccessPoints = []
-  let Countries = []
+  let PrivateAccessPoints = []
 
-  if (props.advancedMode) {
+  if (props?.state?.PrivateAccessPoints) {
 
-    if (props?.state?.AccessPoints) {
+    if (filter && filter !== "") {
 
-      if (filter && filter !== "") {
 
-        props.state.AccessPoints.map(r => {
+      props.state.PrivateAccessPoints.map(r => {
 
-          let filterMatch = false
-          if (r.Tag.includes(filter)) {
-            filterMatch = true
-          } else if (r.GEO.Country.includes(filter)) {
-            filterMatch = true
-          } else if (r.GEO.CountryFull.includes(filter)) {
-            filterMatch = true
-          }
+        let filterMatch = false
+        if (r.Tag.toLowerCase().includes(filter)) {
+          filterMatch = true
+        } else if (r.GEO.Country.toLowerCase().includes(filter)) {
+          filterMatch = true
+        } else if (r.GEO.CountryFull.toLowerCase().includes(filter)) {
+          filterMatch = true
+        }
 
-          if (filterMatch) {
-            AccessPoints.push(r)
-          }
+        if (filterMatch) {
+          PrivateAccessPoints.push(r)
+        }
 
-        })
+      })
 
-      } else {
-        AccessPoints = props.state.AccessPoints
-      }
-
+    } else {
+      PrivateAccessPoints = props.state.PrivateAccessPoints
     }
 
-  } else {
-    if (props?.state?.AvailableCountries) {
+  }
 
-      if (filter && filter !== "") {
+  if (props?.state?.AccessPoints) {
 
-        props.state.AvailableCountries.map(r => {
+    if (filter && filter !== "") {
 
-          let filterMatch = false
-          if (r.includes(filter)) {
-            filterMatch = true
-          }
 
-          if (filterMatch) {
-            Countries.push(r)
-          }
+      props.state.AccessPoints.map(r => {
 
-        })
+        let filterMatch = false
+        if (r.Tag.toLowerCase().includes(filter)) {
+          filterMatch = true
+        } else if (r.GEO.Country.toLowerCase().includes(filter)) {
+          filterMatch = true
+        } else if (r.GEO.CountryFull.toLowerCase().includes(filter)) {
+          filterMatch = true
+        }
 
-      } else {
-        Countries = props.state.AvailableCountries
-      }
+        if (filterMatch) {
+          AccessPoints.push(r)
+        }
 
+      })
+
+    } else {
+      AccessPoints = props.state.AccessPoints
+    }
+
+  }
+
+  const RenderSimpleServer = (ap, ar) => {
+    let country = "icon"
+    if (ap.GEO !== undefined && ap.GEO.Country !== "") {
+      country = ap.GEO.Country.toLowerCase()
+    } else if (ap.Country !== "") {
+      country = ap.Country.toLowerCase()
+    }
+
+    let connected = false
+    if (props.state?.ActiveAccessPoint?._id == ap._id) {
+      connected = true
+    }
+
+    let method = function (x, y) {
+      props.toggleError("You are already connected to this VPN")
+    }
+    if (!connected) {
+      method = ConfirmConnect
     }
 
 
+    return (
+      <div className={`item ${connected ? "connected" : ""}`} onClick={() => method(ap, activeR)}>
+
+        {country !== "icon" &&
+          <>
+            <img
+              className="flag"
+              src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country + ".svg"}
+            />
+
+          </>
+        }
+        {country === "icon" &&
+          <div className="icon">
+            <DesktopIcon className="icon" height={"auto"} width={"auto"}></DesktopIcon>
+
+          </div>
+        }
+
+
+        <div className="info">
+          <div className="tag">
+            {ap.Tag}
+          </div>
+          <div className="score">Quality Score: {ap.Router.Score}</div>
+
+        </div>
+
+
+
+
+
+      </div>)
   }
 
   let activeR = props.state?.ActiveRouter
@@ -375,18 +356,11 @@ const Dashboard = (props) => {
 
         <div className="search-wrapper">
           <MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-          <input type="text" className="search" onChange={updateFilter} placeholder="Search for Country Code .."></input>
+          <input type="text" className="search" onChange={updateFilter} placeholder="Search .."></input>
         </div>
 
-        {props.state?.ActiveAccessPoint &&
-          <div className="simple-stats-bar" >
-            <div className="simple-vpn">
-              {`Connected to`} {props.state?.ActiveAccessPoint.Tag}
-            </div>
-          </div>
-        }
 
-        {Countries.length < 1 &&
+        {(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
           <Loader
             className="spinner"
             loading={true}
@@ -397,25 +371,17 @@ const Dashboard = (props) => {
         }
 
         <div className="simple-list">
-          {Countries.map(country => {
-            return (
-              <div className="item" onClick={() => ConfirmQuickConnect(country, activeR)}>
 
-                <img
-                  className="flag"
-                  // src={"/src/assets/images/flag/" + country.toLowerCase() + ".svg"}
-                  src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country.toLowerCase() + ".svg"}
-                />
+          {PrivateAccessPoints.map((ap) => {
+            return RenderSimpleServer(ap, activeR)
+          })}
 
-                <div className="code">
-                  {country}
-                </div>
+        </div>
 
-                <div className="code connect">
-                  Connect
-                </div>
+        <div className="simple-list">
 
-              </div>)
+          {AccessPoints.map(ap => {
+            return RenderSimpleServer(ap, activeR)
           })}
         </div>
 
@@ -428,7 +394,7 @@ const Dashboard = (props) => {
 
       <div className="search-wrapper">
         <MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-        <input type="text" className="search" onChange={updateFilter} placeholder="Search for Tag or Country .."></input>
+        <input type="text" className="search" onChange={updateFilter} placeholder="Search .."></input>
       </div>
 
       {activeR &&
@@ -457,7 +423,8 @@ const Dashboard = (props) => {
             </div>
           </div>
 
-          {!props.state?.AccessPoints &&
+
+          {(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
             <Loader
               className="spinner"
               loading={true}
@@ -467,17 +434,8 @@ const Dashboard = (props) => {
             />
           }
 
-          {props.state?.AccessPoints && props.state?.AccessPoints.length < 1 &&
-            <Loader
-              className="spinner"
-              loading={true}
-              color={"#20C997"}
-              height={100}
-              width={50}
-            />
-          }
-          {props?.state?.PrivateAccessPoints?.length > 0 &&
-            props.state.PrivateAccessPoints.map(ap => {
+          {PrivateAccessPoints.length > 0 &&
+            PrivateAccessPoints.map(ap => {
               return RenderServer(ap, activeR, false, false)
             })
           }

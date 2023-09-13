@@ -47,11 +47,11 @@ net.ipv4.ip_local_port_range = 1024 1999
  ```
 
 
-# VPN .json OBJECT
+# VPN .json OBJECT 
 ```json
 {
-  "_id":"64f084dbbb7f1d8e2e02f959",
-	"UID": "64a582dd8d9eb9e39599b559",
+  "_id":"64f084dbbb7f1d8e2e02f922", // This variable is not included when creating your VPN network
+	"UID": "64a582dd8d9eb9e39599b522",
 	"IP": "185.186.76.193",
 	"Tag": "office-network",
 	"InternetAccess": true,
@@ -60,7 +60,7 @@ net.ipv4.ip_local_port_range = 1024 1999
 	"UserMbps": 5,
 	"InterfaceIP": "185.186.76.193",
 	"RouterIP": "51.89.206.24",
-	"APIKey": "4c8aa0eb-87df-44d9-9a5b-a2a26fc4b1e3",
+	"APIKey": "4c8aa0eb-87df-44d9-9a5b-a2a26fc4b122",
 	"RouterPort": 443,
 	"StartPort": 2000,
 	"EndPort": 62000,
@@ -83,7 +83,7 @@ net.ipv4.ip_local_port_range = 1024 1999
 		}
 	},
 	"Access": [{
-		"UID": "6501ba548a32a75e4a309972",
+		"UID": "6501ba548a32a75e4a309911",
 		"Tag": "User-1"
 	}],
 }
@@ -93,9 +93,10 @@ net.ipv4.ip_local_port_range = 1024 1999
 # VPN .json OBJECT with documentation
 ```json
 {
-	"UID": "6501ba548a32a75e4a309972", // Your Account ID
+  "_id":"64f084dbbb7f1d8e2e02f922", // The VPN Device ID
+	"UID": "6501ba548a32a75e4a309922", // Your Account ID
 	"Tag": "office-network", // Your VPN network name/tag
-	"APIKey": "f1606dc9-4587-4084-8396-155100d705da", // Your account API Key
+	"APIKey": "f1606dc9-4587-4084-8396-155100d705aa", // Your account API Key
 
 	"RouterIP": "51.89.206.24", // The Router IP Address you want your VPN to be connected to
 
@@ -142,7 +143,7 @@ net.ipv4.ip_local_port_range = 1024 1999
   // The Private VPN supports multi-user access to VPN Networks. 
   // Add a users ID and a custom Tag to the Access list to enable user access to the VPN Network.
 	"Access": [{
-		"UID": "6501ba548a32a75e4a309972",
+		"UID": "6501ba548a32a75e4a309911",
 		"Tag": "User-1"
 	}],
 }

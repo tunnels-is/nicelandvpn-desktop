@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/gopacket/layers"
 	"github.com/xlzd/gotp"
 )
 
@@ -59,8 +58,7 @@ func CleanupWithStateLock() {
 
 	RestoreIPv6()
 	RestoreDNS()
-	InstantlyCleanAllTCPPorts()
-	InstantlyCleanAllUDPPorts()
+	InstantlyClearPortMaps()
 
 	SetGlobalStateAsDisconnected()
 }
@@ -288,9 +286,20 @@ func SendRequestToControllerProxy(method string, route string, data interface{},
 	return x, resp.StatusCode, nil
 }
 
+var LAST_PRIVATE_ACCESS_POINT_UPDATE = time.Now()
+
+func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
+
+	if GLOBAL_STATE.ActiveRouter == nil {
+		return nil, 500, errors.New("active router not found, please wait a moment")
+	}
+
+	return nil, 0, nil
+}
+
 var LAST_ROUTER_AND_ACCESS_POINT_UPDATE = time.Now()
 
-func GetRoutersAndAccessPoints() (interface{}, int, error) {
+func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	defer RecoverAndLogToFile()
 
 	if GLOBAL_STATE.ActiveRouter == nil {
@@ -320,6 +329,10 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		}
 	}
 
+	if code != 200 {
+		return nil, code, errors.New("Unable to fetch access points")
+	}
+
 	RoutersAndAccessPoints := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
 
 	err = json.Unmarshal(responseBytes, RoutersAndAccessPoints)
@@ -327,6 +340,25 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
 		CreateErrorLog("", "Could not process forward request: ", err)
 		return nil, 400, errors.New("unknown error, please try again in a moment")
+	}
+
+	responseBytes, code, err = SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
+	if err != nil {
+		CreateLog("", "(ROUTER/CONTROLLER) // code: ", code, " // err:", err)
+		if code != 0 {
+			return nil, code, errors.New(string(responseBytes))
+		} else {
+			return nil, code, errors.New("unable to contact controller")
+		}
+	}
+
+	PrivateAccessPoints := make([]*AccessPoint, 0)
+	if code == 200 {
+		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
+		if err != nil {
+			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
+			return nil, 0, err
+		}
 	}
 
 	for ii := range RoutersAndAccessPoints.Routers {
@@ -446,6 +478,14 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		if GLOBAL_STATE.Routers[b] == nil {
 			return false
 		}
+		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
+
+			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
+				return true
+			}
+
+		}
+
 		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
 	})
 
@@ -465,6 +505,27 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		}
 	}
 
+	GLOBAL_STATE.PrivateAccessPoints = PrivateAccessPoints
+	for i := range GLOBAL_STATE.PrivateAccessPoints {
+		A := GLOBAL_STATE.PrivateAccessPoints[i]
+
+		BUILD_NAT_MAP(A)
+
+		for ii := range GLOBAL_STATE.RoutersList {
+			R := GLOBAL_STATE.RoutersList[ii]
+			if R == nil {
+				continue
+			}
+
+			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
+				GLOBAL_STATE.PrivateAccessPoints[i].Router = GLOBAL_STATE.RoutersList[ii]
+			}
+		}
+	}
+
+	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	AS.AP = GLOBAL_STATE.ActiveAccessPoint
+
 	if len(GLOBAL_STATE.AccessPoints) == 0 {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
 	}
@@ -476,7 +537,29 @@ func GetRoutersAndAccessPoints() (interface{}, int, error) {
 		if GLOBAL_STATE.AccessPoints[b].Router == nil {
 			return false
 		}
+		if GLOBAL_STATE.AccessPoints[a].Router.Score == GLOBAL_STATE.AccessPoints[b].Router.Score {
+			if GLOBAL_STATE.AccessPoints[a].Router.MS < GLOBAL_STATE.AccessPoints[b].Router.MS {
+				return true
+			}
+
+		}
 		return GLOBAL_STATE.AccessPoints[a].Router.Score > GLOBAL_STATE.AccessPoints[b].Router.Score
+	})
+
+	sort.Slice(GLOBAL_STATE.PrivateAccessPoints, func(a, b int) bool {
+		if GLOBAL_STATE.PrivateAccessPoints[a].Router == nil {
+			return false
+		}
+		if GLOBAL_STATE.PrivateAccessPoints[b].Router == nil {
+			return false
+		}
+		if GLOBAL_STATE.PrivateAccessPoints[a].Router.Score == GLOBAL_STATE.PrivateAccessPoints[b].Router.Score {
+			if GLOBAL_STATE.PrivateAccessPoints[a].Router.MS < GLOBAL_STATE.PrivateAccessPoints[b].Router.MS {
+				return true
+			}
+
+		}
+		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
 	})
 
 	return nil, code, nil
@@ -613,10 +696,12 @@ func SetConfig(SF *CONFIG_FORM) error {
 	C.DebugLogging = SF.DebugLogging
 	C.AutoReconnect = SF.AutoReconnect
 	C.KillSwitch = SF.KillSwitch
+	C.DisableIPv6OnConnect = SF.DisableIPv6OnConnect
+	C.CloseConnectionsOnConnect = SF.CloseConnectionsOnConnect
 
-	if SF.PrevSession != nil {
-		C.PrevSession = SF.PrevSession
-	}
+	// if SF.PrevSession != nil {
+	// 	C.PrevSession = SF.PrevSession
+	// }
 
 	if !SF.DebugLogging {
 		DumpLoadingLogs(L)
@@ -708,16 +793,44 @@ func PrepareState() {
 		GLOBAL_STATE.ConnectedTimer = fmt.Sprintf("%.0f %s", seconds, label)
 	}
 
+	// if GLOBAL_STATE.ActiveSession != nil {
+	// 	S := GLOBAL_STATE.ActiveSession
+	// 	for i := range GLOBAL_STATE.AccessPoints {
+	// 		A := GLOBAL_STATE.AccessPoints[i]
+	// 		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID {
+	// 			GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+	// 		}
+	// 	}
+	// }
+	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+
+}
+
+func GetActiveAccessPointFromActiveSession() *AccessPoint {
 	if GLOBAL_STATE.ActiveSession != nil {
 		S := GLOBAL_STATE.ActiveSession
+
 		for i := range GLOBAL_STATE.AccessPoints {
 			A := GLOBAL_STATE.AccessPoints[i]
-			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID {
-				GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+				return GLOBAL_STATE.AccessPoints[i]
 			}
 		}
+
+		for i := range GLOBAL_STATE.PrivateAccessPoints {
+			A := GLOBAL_STATE.PrivateAccessPoints[i]
+			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+				return GLOBAL_STATE.PrivateAccessPoints[i]
+			}
+		}
+
 	}
 
+	return nil
 }
 
 func GetLogsForCLI() (*GeneralLogResponse, error) {
@@ -1011,22 +1124,17 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 
 	NewAdapterSettings.EndPort = S.EndPort
 	NewAdapterSettings.StartPort = S.StartPort
-	NewAdapterSettings.VPNIP = net.IP{S.VPNIP[0], S.VPNIP[1], S.VPNIP[2], S.VPNIP[3]}
-	NewAdapterSettings.TCPHeader = layers.IPv4{
-		SrcIP:    NewAdapterSettings.VPNIP,
-		DstIP:    net.IP{0, 0, 0, 0},
-		Version:  4,
-		TTL:      64,
-		Protocol: layers.IPProtocolTCP,
-	}
+	// NewAdapterSettings.VPNIP = net.IP{S.VPNIP[0], S.VPNIP[1], S.VPNIP[2], S.VPNIP[3]}
 
-	NewAdapterSettings.UDPHeader = layers.IPv4{
-		SrcIP:    NewAdapterSettings.VPNIP,
-		DstIP:    net.IP{0, 0, 0, 0},
-		Version:  4,
-		TTL:      64,
-		Protocol: layers.IPProtocolUDP,
-	}
+	EP_VPNSrcIP[0] = S.VPNIP[0]
+	EP_VPNSrcIP[1] = S.VPNIP[1]
+	EP_VPNSrcIP[2] = S.VPNIP[2]
+	EP_VPNSrcIP[3] = S.VPNIP[3]
+
+	IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
+	IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
+	IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
+	IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
 
 	NewAdapterSettings.RoutingBuffer = CreateMETABuffer(
 		CODE_CLIENT_connect_tunnel_with_handshake,
@@ -1084,8 +1192,12 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 
 	AS = NewAdapterSettings
 	AS.Session = S
+
 	GLOBAL_STATE.ActiveSession = AS.Session
-	AS.LastActivity = time.Now()
+	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	AS.AP = GLOBAL_STATE.ActiveAccessPoint
+
+	// AS.LastActivity = time.Now()
 	GLOBAL_STATE.Connected = true
 	BUFFER_ERROR = false
 	C.PrevSession = NS

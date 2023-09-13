@@ -34,7 +34,7 @@ Unicode true
 !include "wails_tools.nsh"
 ####
 # The version information for this two must consist of 4 parts
-!define PRODUCT_VERSION "1.1.3"
+!define PRODUCT_VERSION "1.1.4"
 
 VIProductVersion "${PRODUCT_VERSION}.0"
 VIFileVersion    "${PRODUCT_VERSION}.0"

@@ -5,11 +5,8 @@ package core
 import (
 	"encoding/binary"
 	"io"
-	"net"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/sys/windows"
 )
@@ -18,7 +15,7 @@ import (
 // The reason they are made global is to reduce memory
 // allocations per packet sent
 
-func ReadFromLocalTunnel(MONITOR chan int) {
+func ReadFromLocalSocket(MONITOR chan int) {
 	defer func() {
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 4
@@ -30,28 +27,19 @@ func ReadFromLocalTunnel(MONITOR chan int) {
 
 	var (
 		waitForTimeout = time.Now()
-		packetVersion  byte
 		readError      error
 		packet         []byte
+		receivePacket  []byte
 		packetSize     uint16 = 0
-
-		// fullData         []byte
-		serializeOptions = gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}
-		applicationLayer gopacket.ApplicationLayer
-		buffer           gopacket.SerializeBuffer
-		parsedPacket     gopacket.Packet
-		parsedTCPLayer   *layers.TCP
-		parsedUDPLayer   *layers.UDP
-		parsedIPLayer    *layers.IPv4
-
-		destinationIP = [4]byte{}
-		outgoingPort  *RemotePort
 
 		encryptedPacket []byte
 		lengthBytes     = make([]byte, 2)
 		nonce           = make([]byte, chacha20poly1305.NonceSizeX)
 		writtenBytes    int
 		writeError      error
+
+		ingressAllocationBuffer []byte
+		ingressPacketLength     int
 	)
 
 WAITFORDEVICE:
@@ -65,36 +53,36 @@ WAITFORDEVICE:
 	}
 
 	for {
-		// if packetSize > 0 {
-		if packet != nil {
-			A.ReleaseReceivePacket(packet)
-		}
 
-		// packet = nil
 		if GLOBAL_STATE.Exiting {
 			CreateLog("", "nicelandVPN is exiting, closing adapter reader")
 			return
 		}
 
-		packet, packetSize, readError = A.ReceivePacket()
+		receivePacket, packetSize, readError = A.ReceivePacket()
+		if receivePacket != nil {
+			packet = make([]byte, packetSize)
+			copy(packet, receivePacket)
+			A.ReleaseReceivePacket(receivePacket)
+		}
 
 		if readError == windows.ERROR_NO_MORE_ITEMS {
 			if time.Since(waitForTimeout).Seconds() > 120 {
-				CreateLog("file", "ADAPTER: no packets in buffer, waiting for packets")
+				CreateLog("", "ADAPTER: no packets in buffer, waiting for packets")
 				waitForTimeout = time.Now()
 			}
 			time.Sleep(200 * time.Microsecond)
 			continue
 		} else if readError == windows.ERROR_HANDLE_EOF {
-			CreateErrorLog("", "ADAPTER 1: ", readError)
+			CreateErrorLog("", "ADAPTER (eof): ", readError)
 			BUFFER_ERROR = true
 			return
 		} else if readError == windows.ERROR_INVALID_DATA {
-			CreateErrorLog("", "ADAPTER 2: ", readError)
+			CreateErrorLog("", "ADAPTER (invalid data): ", readError)
 			BUFFER_ERROR = true
 			return
 		} else if readError != nil {
-			CreateErrorLog("", "ADAPTER 3: ", readError)
+			CreateErrorLog("", "ADAPTER (unknown error): ", readError)
 			BUFFER_ERROR = true
 			return
 		}
@@ -104,7 +92,7 @@ WAITFORDEVICE:
 			continue
 		}
 
-		if AS == nil || !GLOBAL_STATE.Connected {
+		if AS == nil || AS.AP == nil || !GLOBAL_STATE.Connected {
 			if time.Since(waitForTimeout).Seconds() > 120 {
 				CreateLog("", "ADAPTER: received packet while disconnected. This is most likely a probe packet")
 				waitForTimeout = time.Now()
@@ -115,82 +103,33 @@ WAITFORDEVICE:
 
 		EGRESS_PACKETS++
 
-		packetVersion = packet[0] >> 4
-		if packetVersion != 4 {
+		sendRemote, sendLocal := ProcessEgressPacket(&packet)
+		if !sendLocal && !sendRemote {
+			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
 			continue
-		}
+		} else if sendLocal {
 
-		destinationIP[0] = packet[16]
-		destinationIP[1] = packet[17]
-		destinationIP[2] = packet[18]
-		destinationIP[3] = packet[19]
+			// testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+			// log.Println(" DNS TEST ==========================================")
+			// fmt.Println(testPacket)
+			// log.Println(" ==========================================")
 
-		if packet[9] == 6 {
-			parsedPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
-			applicationLayer = parsedPacket.ApplicationLayer()
-			parsedTCPLayer = parsedPacket.TransportLayer().(*layers.TCP)
-			if parsedTCPLayer.RST {
-				continue
+			ingressPacketLength = len(packet)
+			ingressAllocationBuffer, writeError = A.AllocateSendPacket(ingressPacketLength)
+			if writeError != nil {
+				CreateErrorLog("", "Send: ", writeError)
+				return
 			}
 
-			outgoingPort = GetOutgoingTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-			if outgoingPort == nil {
-				outgoingPort = CreateTCPMapping(destinationIP, uint16(parsedTCPLayer.SrcPort), uint16(parsedTCPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
-			}
+			copy(ingressAllocationBuffer, packet)
+			A.SendPacket(ingressAllocationBuffer)
 
-			parsedTCPLayer.SrcPort = layers.TCPPort(outgoingPort.Mapped)
-
-			AS.TCPHeader.DstIP = parsedIPLayer.DstIP
-			parsedIPLayer.SrcIP = AS.TCPHeader.SrcIP
-			parsedTCPLayer.SetNetworkLayerForChecksum(&AS.TCPHeader)
-
-			buffer = gopacket.NewSerializeBuffer()
-			if applicationLayer != nil {
-				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedTCPLayer, gopacket.Payload(applicationLayer.LayerContents()))
-
-			} else {
-				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedTCPLayer)
-
-			}
-
-		} else if packet[9] == 17 {
-			parsedPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-			parsedIPLayer = parsedPacket.NetworkLayer().(*layers.IPv4)
-			applicationLayer = parsedPacket.ApplicationLayer()
-			parsedUDPLayer = parsedPacket.TransportLayer().(*layers.UDP)
-
-			outgoingPort = GetOutgoingUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-			if outgoingPort == nil {
-				outgoingPort = GetOrCreateUDPMapping(destinationIP, uint16(parsedUDPLayer.SrcPort), uint16(parsedUDPLayer.DstPort))
-				if outgoingPort == nil {
-					continue
-				}
-			}
-
-			parsedUDPLayer.SrcPort = layers.UDPPort(outgoingPort.Mapped)
-			AS.UDPHeader.DstIP = parsedIPLayer.DstIP
-			parsedIPLayer.SrcIP = AS.UDPHeader.SrcIP
-			parsedUDPLayer.SetNetworkLayerForChecksum(&AS.UDPHeader)
-
-			buffer = gopacket.NewSerializeBuffer()
-			if applicationLayer != nil {
-				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedUDPLayer, gopacket.Payload(applicationLayer.LayerContents()))
-
-			} else {
-				gopacket.SerializeLayers(buffer, serializeOptions, parsedIPLayer, parsedUDPLayer)
-			}
-
-		} else {
 			continue
 		}
 
 		if AS.TCPTunnelSocket != nil {
 
-			encryptedPacket = AS.AEAD.Seal(nil, nonce, buffer.Bytes(), nil)
+			encryptedPacket = AS.AEAD.Seal(nil, nonce, packet, nil)
 
 			binary.BigEndian.PutUint16(lengthBytes, uint16(len(encryptedPacket)))
 
@@ -228,40 +167,25 @@ WAIT_FOR_TUNNEL:
 		goto WAIT_FOR_TUNNEL
 	}
 
-	if AS == nil || AS.TCPTunnelSocket == nil {
+	if AS == nil || AS.AP == nil || AS.TCPTunnelSocket == nil {
 		time.Sleep(100 * time.Millisecond)
 		goto WAIT_FOR_TUNNEL
 	}
 
 	var (
-		err error
-		// MIDL int = MIDBufferLength
+		err         error
 		lengthBytes = make([]byte, 2)
 		DL          uint16
 		readBytes   int
 
 		TunnelBuffer = CreateTunnelBuffer()
-		ip           = new(layers.IPv4)
 		nonce        = make([]byte, chacha20poly1305.NonceSizeX)
 
 		packet                  []byte
-		ingressPacket           gopacket.Packet
-		buffer                  gopacket.SerializeBuffer
-		serializeOptions        = gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}
-		appLayer                gopacket.ApplicationLayer
-		TCPLayer                *layers.TCP
-		UDPLayer                *layers.UDP
-		incomingPort            *RemotePort
-		inPacket                []byte
 		ingressAllocationBuffer []byte
 		writeError              error
 		ingressPacketLength     int
-		sourceIP                = [4]byte{}
 	)
-
-	ip.TTL = 120
-	ip.DstIP = TUNNEL_ADAPTER_ADDRESS_IP
-	ip.Version = 4
 
 	AS.TCPTunnelSocket.SetReadDeadline(time.Time{})
 
@@ -284,6 +208,7 @@ WAIT_FOR_TUNNEL:
 		}
 
 		INGRESS_PACKETS++
+
 		DL = binary.BigEndian.Uint16(lengthBytes[0:2])
 
 		if DL == CODE_CLIENT_new_ping {
@@ -303,57 +228,19 @@ WAIT_FOR_TUNNEL:
 			continue
 		}
 
-		sourceIP[0] = packet[12]
-		sourceIP[1] = packet[13]
-		sourceIP[2] = packet[14]
-		sourceIP[3] = packet[15]
-		ip.SrcIP = net.IP{sourceIP[0], sourceIP[1], sourceIP[2], sourceIP[3]}
-
-		ingressPacket = gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
-		buffer = gopacket.NewSerializeBuffer()
-		appLayer = ingressPacket.ApplicationLayer()
-
-		if packet[9] == 6 {
-			ip.Protocol = 6
-			TCPLayer = ingressPacket.TransportLayer().(*layers.TCP)
-
-			incomingPort = GetTCPMapping(sourceIP, uint16(TCPLayer.DstPort))
-			if incomingPort == nil {
-				continue
-			}
-
-			TCPLayer.DstPort = layers.TCPPort(incomingPort.Local)
-			TCPLayer.SetNetworkLayerForChecksum(ip)
-
-			if appLayer != nil {
-				gopacket.SerializeLayers(buffer, serializeOptions, ip, TCPLayer, gopacket.Payload(appLayer.LayerContents()))
-			} else {
-				gopacket.SerializeLayers(buffer, serializeOptions, ip, TCPLayer)
-			}
-
-		} else if packet[9] == 17 {
-			ip.Protocol = 17
-			UDPLayer = ingressPacket.TransportLayer().(*layers.UDP)
-			UDPLayer.SetNetworkLayerForChecksum(ip)
-
-			incomingPort = GetUDPMapping(sourceIP, uint16(UDPLayer.DstPort))
-
-			if incomingPort == nil {
-				continue
-			}
-
-			UDPLayer.DstPort = layers.UDPPort(incomingPort.Local)
-
-			if appLayer != nil {
-				gopacket.SerializeLayers(buffer, serializeOptions, ip, UDPLayer, gopacket.Payload(appLayer.LayerContents()))
-			} else {
-				gopacket.SerializeLayers(buffer, serializeOptions, ip, UDPLayer)
-			}
-
+		if !ProcessIngressPacket(packet) {
+			// log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
+			continue
 		}
 
-		inPacket = buffer.Bytes()
-		ingressPacketLength = len(inPacket)
+		// if bytes.Contains(packet, []byte{11, 11, 11, 193}) {
+		// 	testPacket := gopacket.NewPacket(packet, layers.LayerTypeIPv4, gopacket.Default)
+		// 	log.Println(" INGRESS ==========================================")
+		// 	fmt.Println(testPacket)
+		// 	log.Println(" INGRESS ==========================================")
+		// }
+
+		ingressPacketLength = len(packet)
 
 		ingressAllocationBuffer, writeError = A.AllocateSendPacket(ingressPacketLength)
 		if writeError != nil {
@@ -362,10 +249,10 @@ WAIT_FOR_TUNNEL:
 			return
 		}
 
-		copy(ingressAllocationBuffer, inPacket)
+		copy(ingressAllocationBuffer, packet)
 		A.SendPacket(ingressAllocationBuffer)
 		CURRENT_DBBS += ingressPacketLength
 
-		inPacket = nil
+		packet = nil
 	}
 }

@@ -6,8 +6,32 @@ export function Connect(arg1) {
   return window['go']['main']['Service']['Connect'](arg1);
 }
 
+export function DisableAllBlocklists() {
+  return window['go']['main']['Service']['DisableAllBlocklists']();
+}
+
+export function DisableBlocklist(arg1) {
+  return window['go']['main']['Service']['DisableBlocklist'](arg1);
+}
+
+export function DisableDNSWhitelist() {
+  return window['go']['main']['Service']['DisableDNSWhitelist']();
+}
+
 export function Disconnect() {
   return window['go']['main']['Service']['Disconnect']();
+}
+
+export function EnableAllBlocklists() {
+  return window['go']['main']['Service']['EnableAllBlocklists']();
+}
+
+export function EnableBlocklist(arg1) {
+  return window['go']['main']['Service']['EnableBlocklist'](arg1);
+}
+
+export function EnableDNSWhitelist() {
+  return window['go']['main']['Service']['EnableDNSWhitelist']();
 }
 
 export function ForwardToController(arg1) {
@@ -30,8 +54,8 @@ export function GetQRCode(arg1) {
   return window['go']['main']['Service']['GetQRCode'](arg1);
 }
 
-export function GetRoutersAndAccessPoints() {
-  return window['go']['main']['Service']['GetRoutersAndAccessPoints']();
+export function GetRoutersAndAccessPoints(arg1) {
+  return window['go']['main']['Service']['GetRoutersAndAccessPoints'](arg1);
 }
 
 export function GetState() {
@@ -42,12 +66,24 @@ export function OpenFileDialogForRouterFile(arg1) {
   return window['go']['main']['Service']['OpenFileDialogForRouterFile'](arg1);
 }
 
+export function RebuildDomainBlocklist() {
+  return window['go']['main']['Service']['RebuildDomainBlocklist']();
+}
+
 export function ResetEverything() {
   return window['go']['main']['Service']['ResetEverything']();
 }
 
 export function SetConfig(arg1) {
   return window['go']['main']['Service']['SetConfig'](arg1);
+}
+
+export function StartDNSCapture() {
+  return window['go']['main']['Service']['StartDNSCapture']();
+}
+
+export function StopDNSCapture() {
+  return window['go']['main']['Service']['StopDNSCapture']();
 }
 
 export function Switch(arg1) {

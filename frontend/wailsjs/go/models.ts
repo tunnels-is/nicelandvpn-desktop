@@ -33,6 +33,8 @@ export namespace core {
 	    AutoReconnect: boolean;
 	    KillSwitch: boolean;
 	    PrevSlot?: CONTROLLER_SESSION_REQUEST;
+	    DisableIPv6OnConnect: boolean;
+	    CloseConnectionsOnConnect: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CONFIG_FORM(source);
@@ -50,6 +52,8 @@ export namespace core {
 	        this.AutoReconnect = source["AutoReconnect"];
 	        this.KillSwitch = source["KillSwitch"];
 	        this.PrevSlot = this.convertValues(source["PrevSlot"], CONTROLLER_SESSION_REQUEST);
+	        this.DisableIPv6OnConnect = source["DisableIPv6OnConnect"];
+	        this.CloseConnectionsOnConnect = source["CloseConnectionsOnConnect"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

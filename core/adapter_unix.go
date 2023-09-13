@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -360,7 +359,7 @@ func AddRoute(IP string) (err error) {
 
 	out, err := exec.Command("ip", "route", "add", IP, "via", GLOBAL_STATE.DefaultInterface.DefaultRouter, "metric", "0").Output()
 	if err != nil {
-		CreateErrorLog("", "IP || Unable to add route to: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
+		CreateErrorLog("", "IP || Unable to add route to: ", IP, " || Gateway: ", GLOBAL_STATE.DefaultInterface.DefaultRouter, " || msg: ", err, " || output: ", string(out))
 		return err
 	}
 
@@ -382,7 +381,7 @@ func DeleteRoute(IP string, ignoreActiveRouter bool) (err error) {
 
 	out, err := exec.Command("ip", "route", "del", IP).Output()
 	if err != nil {
-		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
+		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || msg: ", err, " || output: ", string(out))
 		return
 	}
 
@@ -414,7 +413,6 @@ func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, e
 				metricInt, err = strconv.Atoi(fields[len(fields)-1])
 				if err != nil {
 					CreateErrorLog("", "Unable to parse interface metric", fields)
-					log.Println(err)
 					return nil, err
 				}
 			} else {
@@ -467,6 +465,12 @@ func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, e
 
 func RestoreIPv6() {
 	defer RecoverAndLogToFile()
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return
+	}
+
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("", "Failed to restore IPv6 settings, interface settings not found")
 		return
@@ -492,6 +496,11 @@ func RestoreIPv6() {
 
 func DisableIPv6() error {
 	defer RecoverAndLogToFile()
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return nil
+	}
 
 	CreateLog("connect", "Disabling IPv6 on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
 

@@ -23,16 +23,17 @@ import Debug from "./App/debug";
 import Login from "./App/Login";
 import Logs from "./App/Logs";
 import STORE from "./store";
+import StatsSideBar from "./App/StatsSideBar";
 
 const root = createRoot(document.getElementById('app'));
 
-window.addEventListener('focus',
-  STORE.Cache.Set("focus", true)
-);
+// window.addEventListener('focus',
+//   STORE.Cache.Set("focus", true)
+// );
 
-window.addEventListener('blur',
-  STORE.Cache.Set("focus", false)
-);
+// window.addEventListener('blur',
+//   STORE.Cache.Set("focus", false)
+// );
 
 const ToggleError = (e) => {
   let lastFetch = STORE.Cache.Get("error-timeout")
@@ -59,6 +60,7 @@ const LaunchApp = () => {
   const [advancedMode, setAdvancedMode] = useState();
   const [loading, setLoading] = useState(undefined)
   const [state, setState] = useState({})
+  const [stats, setStats] = useState(false)
 
 
   const ToggleAdvancedMode = () => {
@@ -109,24 +111,36 @@ const LaunchApp = () => {
       console.dir(state.ActiveRouter)
       console.log("getting access points")
       if (STORE.ActiveRouterSet(state)) {
-        GetRoutersAndAccessPoints().then((x) => {
-          if (x.Code === 401) {
-            ToggleError(ERROR_LOGIN)
-            STORE.Cache.Clear()
+        let user = STORE.GetUser()
+        if (user) {
+          let FR = {
+            Method: "POST",
+            Path: "devices/private",
+            JSONData: {
+              UID: user._id,
+              DeviceToken: user.DeviceToken.DT
+            },
           }
-
-          if (x.Err) {
-            ToggleError(x.Err)
-          } else {
-            if (x.Code !== 200) {
-              ToggleError(x.Data)
+          GetRoutersAndAccessPoints(FR).then((x) => {
+            if (x.Code === 401) {
+              ToggleError(ERROR_LOGIN)
+              STORE.Cache.Clear()
             }
-          }
 
-        }).catch((e) => {
-          console.dir(e)
-          ToggleError("Unknown error while trying to get VPN list")
-        })
+            if (x.Err) {
+              ToggleError(x.Err)
+            } else {
+              if (x.Code !== 200) {
+                ToggleError(x.Data)
+              }
+            }
+
+          }).catch((e) => {
+            console.dir(e)
+            ToggleError("Unknown error while trying to get VPN list")
+          })
+
+        }
       }
     } catch (error) {
       console.dir(error)
@@ -137,7 +151,7 @@ const LaunchApp = () => {
       GetState().then((x) => {
         console.dir(x)
         if (x.Err) {
-          ToggleError(x.Err.Message)
+          ToggleError(x.Err)
           setState(newState)
           return
         }
@@ -196,7 +210,7 @@ const LaunchApp = () => {
     const to = setTimeout(async () => {
       UpdateAdvancedMode()
       GetStateAndUpdateVPNList()
-    }, 1200)
+    }, 1000)
 
     return () => { clearTimeout(to); }
 
@@ -232,7 +246,12 @@ const LaunchApp = () => {
         }
 
         {/* <TopBar toggleLoading={ToggleLoading}></TopBar> */}
-        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} />
+        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} setStats={setStats} stats={stats} />
+
+        {stats &&
+          <StatsSideBar state={state} setStats={setStats}></StatsSideBar>
+        }
+
 
         <div className="content-container" >
 
@@ -292,7 +311,7 @@ class ErrorBoundary extends React.Component {
   }
 
   reloadAll() {
-    STORE.Cache.Clear()
+    // STORE.Cache.Clear()
     window.location.reload()
   }
 

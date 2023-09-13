@@ -38,8 +38,8 @@ func StartService(MONITOR chan int) {
 	go CalculateBandwidth(MONITOR)
 	go CleanPorts(MONITOR)
 
-	go ReadFromLocalTunnel_NEW(MONITOR)
-	go ReadFromRouterSocket_NEW(MONITOR)
+	go ReadFromLocalSocket(MONITOR)
+	go ReadFromRouterSocket(MONITOR)
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")

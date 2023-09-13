@@ -43,6 +43,7 @@ var (
 	procWintunReleaseReceivePacket = modwintun.NewProc("WintunReleaseReceivePacket")
 	procWintunSendPacket           = modwintun.NewProc("WintunSendPacket")
 	procWintunStartSession         = modwintun.NewProc("WintunStartSession")
+	procWintunGetLastError         = modwintun.NewProc("WintunGetLastError")
 	// procWintunSetLogger               = modwintun.NewProc("WintunSetLogger")
 
 	GUID *windows.GUID

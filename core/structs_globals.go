@@ -191,7 +191,7 @@ type Config struct {
 	Version        string
 	RouterFilePath string
 
-	PrevSession               *CONTROLLER_SESSION_REQUEST
+	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"-"`
 	DomainWhitelist           string
 	EnabledBlockLists         []string
 	DisableIPv6OnConnect      bool

@@ -15,7 +15,7 @@ import (
 // The reason they are made global is to reduce memory
 // allocations per packet sent
 
-func ReadFromLocalTunnel_NEW(MONITOR chan int) {
+func ReadFromLocalSocket(MONITOR chan int) {
 	defer func() {
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 4
@@ -29,6 +29,7 @@ func ReadFromLocalTunnel_NEW(MONITOR chan int) {
 		waitForTimeout = time.Now()
 		readError      error
 		packet         []byte
+		receivePacket  []byte
 		packetSize     uint16 = 0
 
 		encryptedPacket []byte
@@ -52,36 +53,36 @@ WAITFORDEVICE:
 	}
 
 	for {
-		// if packetSize > 0 {
-		if packet != nil {
-			A.ReleaseReceivePacket(packet)
-		}
 
-		// packet = nil
 		if GLOBAL_STATE.Exiting {
 			CreateLog("", "nicelandVPN is exiting, closing adapter reader")
 			return
 		}
 
-		packet, packetSize, readError = A.ReceivePacket()
+		receivePacket, packetSize, readError = A.ReceivePacket()
+		if receivePacket != nil {
+			packet = make([]byte, packetSize)
+			copy(packet, receivePacket)
+			A.ReleaseReceivePacket(receivePacket)
+		}
 
 		if readError == windows.ERROR_NO_MORE_ITEMS {
 			if time.Since(waitForTimeout).Seconds() > 120 {
-				CreateLog("file", "ADAPTER: no packets in buffer, waiting for packets")
+				CreateLog("", "ADAPTER: no packets in buffer, waiting for packets")
 				waitForTimeout = time.Now()
 			}
 			time.Sleep(200 * time.Microsecond)
 			continue
 		} else if readError == windows.ERROR_HANDLE_EOF {
-			CreateErrorLog("", "ADAPTER 1: ", readError)
+			CreateErrorLog("", "ADAPTER (eof): ", readError)
 			BUFFER_ERROR = true
 			return
 		} else if readError == windows.ERROR_INVALID_DATA {
-			CreateErrorLog("", "ADAPTER 2: ", readError)
+			CreateErrorLog("", "ADAPTER (invalid data): ", readError)
 			BUFFER_ERROR = true
 			return
 		} else if readError != nil {
-			CreateErrorLog("", "ADAPTER 3: ", readError)
+			CreateErrorLog("", "ADAPTER (unknown error): ", readError)
 			BUFFER_ERROR = true
 			return
 		}
@@ -150,7 +151,7 @@ WAITFORDEVICE:
 	}
 }
 
-func ReadFromRouterSocket_NEW(MONITOR chan int) {
+func ReadFromRouterSocket(MONITOR chan int) {
 	defer func() {
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 2

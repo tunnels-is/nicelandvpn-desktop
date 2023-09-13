@@ -13,7 +13,7 @@ import (
 
 var PREVDNS net.IP
 
-func ReadFromLocalTunnel_NEW(MONITOR chan int) {
+func ReadFromLocalSocket(MONITOR chan int) {
 	defer func() {
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 4
@@ -114,7 +114,7 @@ WAITFORDEVICE:
 	}
 }
 
-func ReadFromRouterSocket_NEW(MONITOR chan int) {
+func ReadFromRouterSocket(MONITOR chan int) {
 	defer func() {
 		if !GLOBAL_STATE.Exiting {
 			CreateErrorLog("", "Router tunnel listener exiting")

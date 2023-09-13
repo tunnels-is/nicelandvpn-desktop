@@ -359,7 +359,7 @@ func AddRoute(IP string) (err error) {
 
 	out, err := exec.Command("ip", "route", "add", IP, "via", GLOBAL_STATE.DefaultInterface.DefaultRouter, "metric", "0").Output()
 	if err != nil {
-		CreateErrorLog("", "IP || Unable to add route to: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
+		CreateErrorLog("", "IP || Unable to add route to: ", IP, " || Gateway: ", GLOBAL_STATE.DefaultInterface.DefaultRouter, " || msg: ", err, " || output: ", string(out))
 		return err
 	}
 
@@ -381,7 +381,7 @@ func DeleteRoute(IP string, ignoreActiveRouter bool) (err error) {
 
 	out, err := exec.Command("ip", "route", "del", IP).Output()
 	if err != nil {
-		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
+		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || msg: ", err, " || output: ", string(out))
 		return
 	}
 

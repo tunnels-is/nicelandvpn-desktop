@@ -41,9 +41,9 @@ func (a *App) startup(ctx context.Context) {
 			if ID == 1 {
 				go core.StateMaintenance(MONITOR)
 			} else if ID == 2 {
-				go core.ReadFromRouterSocket_NEW(MONITOR)
+				go core.ReadFromRouterSocket(MONITOR)
 			} else if ID == 4 {
-				go core.ReadFromLocalTunnel_NEW(MONITOR)
+				go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {

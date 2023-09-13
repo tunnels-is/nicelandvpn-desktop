@@ -699,9 +699,9 @@ func SetConfig(SF *CONFIG_FORM) error {
 	C.DisableIPv6OnConnect = SF.DisableIPv6OnConnect
 	C.CloseConnectionsOnConnect = SF.CloseConnectionsOnConnect
 
-	if SF.PrevSession != nil {
-		C.PrevSession = SF.PrevSession
-	}
+	// if SF.PrevSession != nil {
+	// 	C.PrevSession = SF.PrevSession
+	// }
 
 	if !SF.DebugLogging {
 		DumpLoadingLogs(L)

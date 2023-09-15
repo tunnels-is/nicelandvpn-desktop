@@ -6,7 +6,8 @@
 
 # Creating/Updating your Private VPN
 1. Create your VPN config in a .json file ( See examples of VPN configs below)
-2. Create the VPN
+2. Create the VPN<br/>
+A list of router IPs can be found here: https://raw.githubusercontent.com/tunnels-is/info/master/all
 ```bash
 curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/create --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
 

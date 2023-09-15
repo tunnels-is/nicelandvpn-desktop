@@ -337,8 +337,12 @@ const Dashboard = (props) => {
           <div className="tag">
             {ap.Tag}
           </div>
-          <div className="score">Quality Score: {ap.Router.Score}</div>
-
+          {ap.Online &&
+            <div className="score">Quality Score: {ap.Router.Score}</div>
+          }
+          {!ap.Online &&
+            <div className="score offline">OFFLINE</div>
+          }
         </div>
 
 

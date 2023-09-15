@@ -24,7 +24,6 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
 	"InterfaceIP": "185.186.76.193",
 	"RouterIP": "51.89.206.24",
 	"APIKey": "4c8aa0eb-87df-44d9-9a5b-a2a26fc4b122",
-	"RouterPort": 443,
 	"StartPort": 2000,
 	"EndPort": 62000,
 	"NAT": [{
@@ -74,7 +73,6 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
 	"InterfaceIP": "185.186.76.193",
 	"RouterIP": "51.89.206.24",
 	"APIKey": "[ REPLACE ]", // NEW: Replace the User APIKey with the APIKey returned from step 2
-	"RouterPort": 443,
 	"StartPort": 2000,
 	"EndPort": 62000,
 	"NAT": [{

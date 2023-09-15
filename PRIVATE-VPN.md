@@ -105,7 +105,7 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
  2. Apply iptables rules
 
  ```bash
-  $ iptables -A OUTPUT --src [InterfaceIP] -p tcp --tcp-flags RST RST -j DROP
+  $ iptables -I OUTPUT 1 --src [InterfaceIP] -p tcp --tcp-flags RST RST -j DROP
  ```
  3. Update the sysctl config (/etc/sysctl.conf) with these lines (make sure to replace `StartPort` and `Endport`)
 

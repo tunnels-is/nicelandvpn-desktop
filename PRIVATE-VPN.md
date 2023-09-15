@@ -62,7 +62,7 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
 
 # Example vpn.json (detailed documentation further down)
 {
-  "_id":"64f084dbbb7f1d8e2e02f922", // NEW: this is the _id returned from step 2
+  "_id": "[ REPLCE ]", // NEW: this is the _id returned from step 2
 	"UID": "64a582dd8d9eb9e39599b522",
 	"IP": "185.186.76.193",
 	"Tag": "office-network",
@@ -72,7 +72,7 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
 	"UserMbps": 5,
 	"InterfaceIP": "185.186.76.193",
 	"RouterIP": "51.89.206.24",
-	"APIKey": "4c8aa0eb-87df-44d9-9a5b-a2a26fc4b122", // NEW: Replace the User APIKey with the APIKey returned in step 2
+	"APIKey": "[ REPLACE ]", // NEW: Replace the User APIKey with the APIKey returned from step 2
 	"RouterPort": 443,
 	"StartPort": 2000,
 	"EndPort": 62000,

@@ -9,49 +9,10 @@
 2. Create the VPN
 ```bash
 curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/create --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
-```
-3. <b>When you create a VPN your will receive an JSON Response from the endpoint. That response contains a NEW `APIKey` and `_id` (DeviceID). This key will now be the authentication key for updating your VPN.</b>
-
-4. <b>Save the NEW `APIKey` and `_id` variables, you will need those when updating your VPN in the future.</b> (We recommend updating your VPN .json config with these new variables)
 
 
-5. Updating your VPN (Remember to replace the `APIKey` and `_id` variables)
-```bash
-curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/update --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
-```
-
-# Installation
- 1. Download the binary (niceland-network) here: https://drive.google.com/file/d/1l6zSu5f-9tXqMgdgyyXmWKzZ5Cs33thY/view?usp=drive_link
- 2. Apply iptables rules
-
- ```bash
-  $ iptables -F
-  $ iptables -A OUTPUT --src [InterfaceIP] -p tcp --tcp-flags RST RST -j DROP
- ```
- 3. Update the sysctl config (/etc/sysctl.conf) with these lines (make sure to replace `StartPort` and `Endport`)
-
- ```bash
-net.ipv6.conf.default.disable_ipv6=1
-net.ipv6.conf.all.disable_ipv6=1
-# Example: 2000-62000
-net.ipv4.ip_local_reserved_ports = [StartPort]-[EndPort]
-# Make sure the local_port_range end port is LOWER then the VPN StartPort
-net.ipv4.ip_local_port_range = 1024 1999
- ```
- Then apply the sysctl configurations
- ```bash
-  $ sysctl -p
- ```
- 4. Run the binary
- ```bash
-  $ ./niceland-network -deviceID=[_id from the .json config] -apiKey=[APIKey form the .json config] -routerURL=https://raw.githubusercontent.com/tunnels-is/info/master/all
- ```
-
-
-# VPN .json OBJECT 
-```json
+# Example vpn.json (detailed documentation further down)
 {
-  "_id":"64f084dbbb7f1d8e2e02f922", // This variable is not included when creating your VPN network
 	"UID": "64a582dd8d9eb9e39599b522",
 	"IP": "185.186.76.193",
 	"Tag": "office-network",
@@ -90,6 +51,85 @@ net.ipv4.ip_local_port_range = 1024 1999
 }
 
 ```
+3. <b>When you create a VPN your will receive an JSON Response from the endpoint. That response contains a NEW `APIKey` and `_id` (DeviceID). This key will now be the authentication key for updating your VPN.</b>
+
+4. <b>Save the NEW `APIKey` and `_id` variables, you will need those when updating your VPN in the future.</b> (We recommend updating your VPN .json config with these new variables)
+
+
+5. Updating your VPN (Remember to replace the `APIKey` and `_id` variables)
+```bash
+curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/update --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
+
+# Example vpn.json (detailed documentation further down)
+{
+  "_id":"64f084dbbb7f1d8e2e02f922", // NEW: this is the _id returned from step 2
+	"UID": "64a582dd8d9eb9e39599b522",
+	"IP": "185.186.76.193",
+	"Tag": "office-network",
+	"InternetAccess": true,
+	"LocalNetworkAccess": true,
+	"AvailableMbps": 1000,
+	"UserMbps": 5,
+	"InterfaceIP": "185.186.76.193",
+	"RouterIP": "51.89.206.24",
+	"APIKey": "4c8aa0eb-87df-44d9-9a5b-a2a26fc4b122", // NEW: Replace the User APIKey with the APIKey returned in step 2
+	"RouterPort": 443,
+	"StartPort": 2000,
+	"EndPort": 62000,
+	"NAT": [{
+		"Tag": "local-to-11",
+		"Network": "185.186.76.0/24",
+		"Nat": "11.11.12.0/24"
+	}],
+	"DNS": {
+		"cname.meow.com": {
+			"CNAME": "meow.com"
+		},
+		"meow.com": {
+			"Wildcard": true,
+			"IP": ["1.1.1.1", "33.33.33.33", "44.44.44.44"],
+			"TXT": ["This is a text record", "second record", "third!"],
+		},
+		"txt.meow.com": {
+			"TXT": ["This is a text record only for txt.meow.com"],
+		}
+	},
+	"Access": [{
+		"UID": "6501ba548a32a75e4a309911",
+		"Tag": "User-1"
+	}],
+}
+```
+
+# Installation
+ 1. Download the binary (niceland-network) here: https://drive.google.com/file/d/1l6zSu5f-9tXqMgdgyyXmWKzZ5Cs33thY/view?usp=drive_link
+ 2. Apply iptables rules
+
+ ```bash
+  $ iptables -F
+  $ iptables -A OUTPUT --src [InterfaceIP] -p tcp --tcp-flags RST RST -j DROP
+ ```
+ 3. Update the sysctl config (/etc/sysctl.conf) with these lines (make sure to replace `StartPort` and `Endport`)
+
+ ```bash
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.all.disable_ipv6=1
+# Example: 2000-62000
+net.ipv4.ip_local_reserved_ports = [StartPort]-[EndPort]
+# Make sure the local_port_range end port is LOWER then the VPN StartPort
+net.ipv4.ip_local_port_range = 1024 1999
+ ```
+ Then apply the sysctl configurations
+ ```bash
+  $ sysctl -p
+ ```
+ 4. Run the binary
+ ```bash
+  $ ./niceland-network -deviceID=[_id from the .json config] -apiKey=[APIKey form the .json config] -routerURL=https://raw.githubusercontent.com/tunnels-is/info/master/all
+ ```
+
+
+
 
 # VPN .json OBJECT with documentation
 ```json
@@ -119,6 +159,7 @@ net.ipv4.ip_local_port_range = 1024 1999
 	"InternetAccess": true,  // Enables or Disables internet access from the VPN
 	"LocalNetworkAccess": true, // Enables or Disables local network access from the VPN
 
+   ** OPTIONAL
   // The Private VPN offers 3 Octet NAT for network sizes up to /12
 	"NAT": [{
 		"Tag": "local-to-11", // Tag for the current NAT configurations
@@ -126,6 +167,7 @@ net.ipv4.ip_local_port_range = 1024 1999
 		"Nat": "11.11.12.0/24" // NAT CIDR
 	}],
 
+  ** OPTIONAL
   // The Private VPN supports custom CNAME, A and TXT records. Multiple A and TXT records can be defined per domain.
 	"DNS": {
 		"cname.meow.com": {
@@ -141,6 +183,7 @@ net.ipv4.ip_local_port_range = 1024 1999
 		}
 	},
 
+   ** OPTIONAL
   // The Private VPN supports multi-user access to VPN Networks. 
   // Add a users ID and a custom Tag to the Access list to enable user access to the VPN Network.
 	"Access": [{

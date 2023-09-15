@@ -10,8 +10,9 @@
 ```bash
 curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/create --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
 ```
-3. <b>When you create a VPN your will receive an JSON Response from the endpoint. That response contains a NEW `APIKey`. This key will now be the authentication key for updating your VPN.</b>
-4. <b>Save the `APIKey` and `_id` variables, you will need those when updating your VPN in the future.</b> (We recommend updating your VPN .json config with these new variables)
+3. <b>When you create a VPN your will receive an JSON Response from the endpoint. That response contains a NEW `APIKey` and `_id` (DeviceID). This key will now be the authentication key for updating your VPN.</b>
+
+4. <b>Save the NEW `APIKey` and `_id` variables, you will need those when updating your VPN in the future.</b> (We recommend updating your VPN .json config with these new variables)
 
 
 5. Updating your VPN (Remember to replace the `APIKey` and `_id` variables)

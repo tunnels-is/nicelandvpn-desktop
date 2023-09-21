@@ -134,6 +134,7 @@ func setTcpEntry(row MIB_TCPROW_OWNER_PID) error {
 
 	return err
 }
+
 func getHostname() {
 	DLL := syscall.NewLazyDLL("Ws2_32.dll")
 	DLL.Load()

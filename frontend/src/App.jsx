@@ -1,4 +1,4 @@
-import { HashRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -49,10 +49,6 @@ const ShowSuccessToast = (e) => {
   toast.success(e);
 }
 
-const ShowNativeNotification = (n) => {
-  console.log("to be implemented when wails v3 releases")
-}
-
 let ShowStartupLoadingScreen = true
 let StatupLoadingScreenStartTime = dayjs()
 
@@ -89,7 +85,7 @@ const LaunchApp = () => {
 
     ToggleLoading({ logTag: "disconnect", tag: "LOGOUT", show: true, msg: "Disconnecting", includeLogs: true })
 
-    await Disconnect().then((x) => {
+    await Disconnect().then(() => {
       ShowSuccessToast("Disconnected", { Title: "DISCONNECTED", Body: "You have been disconnected from your VPN", TimeoutType: "default" })
       STORE.CleanupOnDisconnect()
     }).catch((e) => {
@@ -258,26 +254,15 @@ const LaunchApp = () => {
           <Routes>
 
             <Route path="/" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
-
             <Route path="twofactor" element={<Enable2FA toggleError={ToggleError} toggleLoading={ToggleLoading} />} />
-
             <Route path="support" element={<Support toggleError={ToggleError} />} />
-
             <Route path="settings" element={<Settings advancedMode={advancedMode} showSuccessToast={ShowSuccessToast} toggleAdvancedMode={ToggleAdvancedMode} toggleError={ToggleError} disconnectFromVPN={DisconnectFromVPN} toggleLoading={ToggleLoading} state={state} />} />
-
             <Route path="tokens" element={<DeviceLogins toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-
             <Route path="logs" element={<Logs toggleError={ToggleError} />} />
-
             <Route path="debug" element={<Debug toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-
             <Route path="login" element={<Login state={state} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-
             <Route path="register" element={<Register toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-
-
             <Route path="routers" element={<Routers state={state} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-
             <Route path="*" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
 
           </Routes>
@@ -302,11 +287,11 @@ class ErrorBoundary extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch() {
     this.state.hasError = true
   }
 
@@ -317,7 +302,7 @@ class ErrorBoundary extends React.Component {
 
   async quit() {
     this.setState({ ...this.state, title: "closing app, please wait.." })
-    await Disconnect().then((x) => {
+    await Disconnect().then(() => {
     }).catch((e) => {
       console.dir(e)
     })

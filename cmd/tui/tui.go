@@ -176,13 +176,15 @@ func (m model) View() string {
 
     ret := docStyle.Render(doc.String()) // tab and it's contents
 
-    // Status line at the bottom
-    var status string
-    if core.GLOBAL_STATE.Connected {
-        status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
-    } else {
-        status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
-    }
+  // Status line at the bottom
+  var status string
+  if core.GLOBAL_STATE.Connected {
+    // core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
+    // status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
+    status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
+  } else {
+    status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
+  }
 
 	return lipgloss.JoinVertical(lipgloss.Left, ret, status)
 }

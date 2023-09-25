@@ -54,6 +54,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+    case "ctrl+d":
+      core.Disconnect()
+      return m, nil
 		case "ctrl+c", "q":
 			logout()
 			core.CleanupOnClose()

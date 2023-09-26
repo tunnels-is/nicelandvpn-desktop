@@ -202,7 +202,7 @@ func StartTui() {
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the
 	// tables ready before I start the TUI
-	core.GetRoutersAndAccessPoints()
+	core.GetRoutersAndAccessPoints(&FR)
 
 	// Configure tabs and their number
 	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}

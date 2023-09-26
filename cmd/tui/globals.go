@@ -3,10 +3,12 @@ package main
 import (
 	"time"
 
+	"github.com/tunnels-is/nicelandvpn-desktop/core"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var user *User
+var FR core.FORWARD_REQUEST
 
 // Device token struct need for the login respons from user scruct
 type DEVICE_TOKEN struct {

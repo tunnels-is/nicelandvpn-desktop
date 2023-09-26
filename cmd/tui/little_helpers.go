@@ -18,7 +18,7 @@ func TimedUIUpdate(MONITOR chan int) {
 
 	for {
 		time.Sleep(3 * time.Second)
-		core.GetRoutersAndAccessPoints()
+		core.GetRoutersAndAccessPoints(&FR)
 		TUI.Send(&tea.KeyMsg{
 			Type: 0,
 		})

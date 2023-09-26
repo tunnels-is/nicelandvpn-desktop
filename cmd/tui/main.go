@@ -51,7 +51,7 @@ func RoutineMonitor() {
 				// TUI ONLY .. does not fire on wails GUI
 				go TimedUIUpdate(MONITOR)
 			} else if ID == 4 {
-				go core.ReadFromLocalTunnel(MONITOR)
+        go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {

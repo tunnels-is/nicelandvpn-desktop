@@ -141,6 +141,7 @@ func login() {
 }
 
 func sendLoginRequest(creds []textinput.Model) {
+  var FR core.FORWARD_REQUEST
 
 	// fill the login form
 	li := core.LoginForm{
@@ -173,12 +174,4 @@ func sendLoginRequest(creds []textinput.Model) {
 		os.Exit(1)
 	}
 
-	jsonData := make(map[string]string)
-	jsonData["UID"] = user.ID.Hex()
-	jsonData["DeviceToken"] = user.DeviceToken.DT
-	PAFR = core.FORWARD_REQUEST{
-		Method:   "POST",
-		Path:     "devices/private",
-		JSONData: jsonData,
-	}
 }

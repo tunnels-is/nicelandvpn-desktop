@@ -202,6 +202,16 @@ func StartTui() {
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the
 	// tables ready before I start the TUI
+  // Construct the request for it 1st
+	jsonData := make(map[string]string)
+	jsonData["UID"] = user.ID.Hex()
+	jsonData["DeviceToken"] = user.DeviceToken.DT
+	PAFR = core.FORWARD_REQUEST{
+		Method:   "POST",
+		Path:     "devices/private",
+		JSONData: jsonData,
+	}
+
 	if PAFR.JSONData != nil {
 		core.GetRoutersAndAccessPoints(&PAFR)
 	}

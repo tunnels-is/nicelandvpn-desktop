@@ -61,7 +61,7 @@ func (m loginForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			// core.CleanupOnClose()
-            sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
+			sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
 			return m, tea.Quit
 		case "tab", "shift-tab", "enter", "up", "down":
 			s := msg.String()
@@ -171,5 +171,14 @@ func sendLoginRequest(creds []textinput.Model) {
 		fmt.Println("Response error: ", err)
 		core.CleanupOnClose()
 		os.Exit(1)
+	}
+
+	jsonData := make(map[string]string)
+	jsonData["UID"] = user.ID.Hex()
+	jsonData["DeviceToken"] = user.DeviceToken.DT
+	PAFR = core.FORWARD_REQUEST{
+		Method:   "POST",
+		Path:     "devices/private",
+		JSONData: jsonData,
 	}
 }

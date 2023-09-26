@@ -18,7 +18,11 @@ func TimedUIUpdate(MONITOR chan int) {
 
 	for {
 		time.Sleep(3 * time.Second)
-		core.GetRoutersAndAccessPoints(&FR)
+
+		if PAFR.JSONData != nil {
+			core.GetRoutersAndAccessPoints(&PAFR)
+		}
+
 		TUI.Send(&tea.KeyMsg{
 			Type: 0,
 		})

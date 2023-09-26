@@ -54,9 +54,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
-    case "ctrl+d":
-      core.Disconnect()
-      return m, nil
+		case "ctrl+d":
+			core.Disconnect()
+			return m, nil
 		case "ctrl+c", "q":
 			logout()
 			core.CleanupOnClose()
@@ -177,17 +177,17 @@ func (m model) View() string {
 	}
 	doc.WriteString(windowStyle.Render(tabContent))
 
-    ret := docStyle.Render(doc.String()) // tab and it's contents
+	ret := docStyle.Render(doc.String()) // tab and it's contents
 
-  // Status line at the bottom
-  var status string
-  if core.GLOBAL_STATE.Connected {
-    // core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
-    // status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
-    status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
-  } else {
-    status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
-  }
+	// Status line at the bottom
+	var status string
+	if core.GLOBAL_STATE.Connected {
+		// core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
+		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
+		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
+	} else {
+		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, ret, status)
 }
@@ -202,7 +202,9 @@ func StartTui() {
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the
 	// tables ready before I start the TUI
-	core.GetRoutersAndAccessPoints(&FR)
+	if PAFR.JSONData != nil {
+		core.GetRoutersAndAccessPoints(&PAFR)
+	}
 
 	// Configure tabs and their number
 	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}

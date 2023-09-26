@@ -354,6 +354,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 
 	PrivateAccessPoints := make([]*AccessPoint, 0)
 	if code == 200 {
+		CreateLog("", "RESPONSE:", string(responseBytes))
 		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
 		if err != nil {
 			CreateErrorLog("", "Unable to unmarshal private device list: ", err)

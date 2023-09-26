@@ -9,6 +9,7 @@ import (
 
 var user *User
 var FR core.FORWARD_REQUEST
+var PAFR core.FORWARD_REQUEST
 
 // Device token struct need for the login respons from user scruct
 type DEVICE_TOKEN struct {

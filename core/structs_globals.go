@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-ping/ping"
-	"github.com/google/gopacket/layers"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -52,13 +51,13 @@ var TCP_MAP_LOCK = sync.RWMutex{}
 var UDP_MAP = make(map[[4]byte]*IP)
 var UDP_MAP_LOCK = sync.RWMutex{}
 
-var BlockedDomainMap = make(map[string]bool)
-var BlockListLock = sync.Mutex{}
+var DNSWhitelist = make(map[string]bool)
+
+var GLOBAL_BLOCK_LIST = make(map[string]bool)
 
 type IP struct {
-	CurrentPort uint16
-	LOCAL       map[uint16]*RemotePort
-	REMOTE      map[uint16]*RemotePort
+	LOCAL  map[uint16]*RemotePort
+	REMOTE map[uint16]*RemotePort
 }
 
 type RemotePort struct {
@@ -126,62 +125,60 @@ type State struct {
 	Connecting bool `json:"Connecting"`
 	Exiting    bool `json:"Exiting"`
 
-	C                             *Config   `json:"C"`
-	LastRouterPing                time.Time `json:"LastRouterPing"`
-	PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
-	SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
+	C                             *Config              `json:"C"`
+	DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
+	LastRouterPing                time.Time            `json:"LastRouterPing"`
+	PingReceivedFromRouter        time.Time            `json:"PingReceivedFromRouter"`
+	SecondsSincePingFromRouter    string               `json:"SecondsSincePingFromRouter"`
 	LastAccessPointUpdate         time.Time
 	SecondsUntilAccessPointUpdate int
 	AvailableCountries            []string        `json:"AvailableCountries"`
 	RoutersList                   [2000]*ROUTER   `json:"-"`
 	Routers                       []*ROUTER       `json:"Routers"`
 	AccessPoints                  []*AccessPoint  `json:"AccessPoints"`
+	PrivateAccessPoints           []*AccessPoint  `json:"PrivateAccessPoints"`
 	ActiveRouter                  *ROUTER         `json:"ActiveRouter"`
 	ActiveAccessPoint             *AccessPoint    `json:"ActiveAccessPoint"`
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
 
 	// FILE PATHS
-	LogFileName string `json:"LogFileName"`
-	LogPath     string `json:"LogPath"`
-	ConfigPath  string `json:"ConfigPath"`
-	BackupPath  string `json:"BackupPath"`
-	BasePath    string `json:"BasePath"`
+	LogFileName   string `json:"LogFileName"`
+	LogPath       string `json:"LogPath"`
+	ConfigPath    string `json:"ConfigPath"`
+	BackupPath    string `json:"BackupPath"`
+	BlockListPath string `json:"BlockListPath"`
+	BasePath      string `json:"BasePath"`
 
-	DefaultInterface *CONNECTION_SETTINGS `json:"DefaultInterface"`
-	// DefaultRouterIP      string
-	// DefaultInterfaceName string
 	Version string `json:"Version"`
-}
-type FileConfig struct {
-	DNS1           string
-	DNS1Bytes      [4]byte
-	DNSIP          net.IP
-	DNS2           string
-	ManualRouter   bool
-	Region         string
-	DebugLogging   bool
-	Version        string
-	RouterFilePath string
-	AutoReconnect  bool
-	KillSwitch     bool
-}
-type AdapterSettings struct {
-	// SleepTrigger bool
-	Session *CLIENT_SESSION
 
-	TCPTunnelSocket net.Conn
-
-	RoutingBuffer [8]byte
-	PingBuffer    [8]byte
-
-	LastActivity time.Time
-	StartPort    uint16
-	EndPort      uint16
-	VPNIP        net.IP
-	UDPHeader    layers.IPv4
-	TCPHeader    layers.IPv4
-	AEAD         cipher.AEAD
+	// BLOCKING AND PARENTAL CONTROLS
+	BLists              []*List `json:"BlockLists"`
+	DNSCaptureEnabled   bool    `json:"DNSCaptureEnabled"`
+	DNSWhitelistEnabled bool    `json:"DNSWhitelistEnabled"`
 }
+
+type List struct {
+	FullPath string
+	Tag      string
+	Enabled  bool
+	Domains  string
+}
+
+type CONFIG_FORM struct {
+	DNS1                      string                      `json:"DNS1"`
+	DNS2                      string                      `json:"DNS2"`
+	ManualRouter              bool                        `json:"ManualRouter"`
+	Region                    string                      `json:"Region"`
+	Version                   string                      `json:"Version"`
+	RouterFilePath            string                      `json:"RouterFilePath"`
+	DebugLogging              bool                        `json:"DebugLogging"`
+	AutoReconnect             bool                        `json:"AutoReconnect"`
+	KillSwitch                bool                        `json:"KillSwitch"`
+	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
+	DisableIPv6OnConnect      bool                        `json:"DisableIPv6OnConnect"`
+	CloseConnectionsOnConnect bool                        `json:"CloseConnectionsOnConnect"`
+}
+
 type Config struct {
 	AutoReconnect  bool
 	KillSwitch     bool
@@ -191,13 +188,33 @@ type Config struct {
 	DNS2           string
 	ManualRouter   bool
 	DebugLogging   bool
-	Version        string `json:"-"`
+	Version        string
 	RouterFilePath string
-	// AddBlockLevel  int
-	// Region         string
-	PrevSession *CONTROLLER_SESSION_REQUEST
+
+	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"-"`
+	DomainWhitelist           string
+	EnabledBlockLists         []string
+	DisableIPv6OnConnect      bool
+	CloseConnectionsOnConnect bool
 
 	CLI bool `json:"-"`
+}
+
+type AdapterSettings struct {
+	// SleepTrigger bool
+	Session *CLIENT_SESSION
+
+	TCPTunnelSocket net.Conn
+
+	RoutingBuffer [8]byte
+	PingBuffer    [8]byte
+
+	StartPort uint16
+	EndPort   uint16
+
+	AEAD cipher.AEAD
+
+	AP *AccessPoint
 }
 
 type LOADING_LOGS_RESPONSE struct {
@@ -274,19 +291,6 @@ type INTERFACE_SETTINGS struct {
 	OIF             net.Interface
 	Hop             string
 	Metric          int
-}
-
-type CONFIG_FORM struct {
-	DNS1           string                      `json:"DNS1" bson:"-"`
-	DNS2           string                      `json:"DNS2" bson:"-"`
-	ManualRouter   bool                        `json:"ManualRouter" bson:"-"`
-	Region         string                      `json:"Region" bson:"-"`
-	Version        string                      `json:"Version" bson:"-"`
-	RouterFilePath string                      `json:"RouterFilePath" bson:"-"`
-	DebugLogging   bool                        `json:"DebugLogging" bson:"-"`
-	AutoReconnect  bool                        `json:"AutoReconnect" bson:"-"`
-	KillSwitch     bool                        `json:"KillSwitch" bson:"-"`
-	PrevSession    *CONTROLLER_SESSION_REQUEST `json:"PrevSlot" bson:"-"`
 }
 
 type ROUTER struct {
@@ -387,12 +391,11 @@ type AccessPoint struct {
 	DEVICEID uint8  `json:"DEVICEID" bson:"DID"`
 	IP       string `json:"IP" bson:"IP"`
 
-	Access             []*AP_DEVICE_USER_ACCESS `json:"Access" bson:"A"`
-	Networks           []*AP_DEVICE_NETWORK_MAP `json:"Networks" bson:"N"`
-	Updated            time.Time                `json:"Updated" bson:"U"`
-	InternetAccess     bool                     `json:"InternetAccess" bson:"I"`
-	LocalNetworkAccess bool                     `json:"LocalNetworkAccess" bson:"LA"`
-	Public             bool                     `json:"Public" bson:"P"`
+	Access             []*DeviceUserRegistration `json:"Access" bson:"A"`
+	Updated            time.Time                 `json:"Updated" bson:"U"`
+	InternetAccess     bool                      `json:"InternetAccess" bson:"I"`
+	LocalNetworkAccess bool                      `json:"LocalNetworkAccess" bson:"LA"`
+	Public             bool                      `json:"Public" bson:"P"`
 
 	Online     bool       `json:"Online" bson:"O"`
 	LastOnline time.Time  `json:"LastOnline" bson:"LO"`
@@ -403,18 +406,41 @@ type AccessPoint struct {
 	AvailableMbps  int `json:"AvailableMbps" bson:"ABS"`
 	UserMbps       int `json:"UserMbps" bson:"UB"`
 
+	Country     string `json:"Country" bson:"Country"`
+	CountryFull string `json:"CountryFull" bson:"CountryFull"`
+	// MIGHT USE
+	NAT             []*DeviceNatRegistration          `json:"NAT" bson:"NAT"`
+	BlockedNetworks []string                          `json:"BlockedNetworks" bson:"BlockedNetworks"`
+	DNS             map[string]*DeviceDNSRegistration `json:"DNS" bson:"DNS"`
+	DNSWhiteList    bool                              `json:"DNSWhiteList" bson:"DNSWhiteList"`
+
 	Router *ROUTER `json:"Router"`
+
+	NAT_CACHE         map[[4]byte][4]byte `json:"-"`
+	REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
 }
 
-type AP_DEVICE_USER_ACCESS struct {
+// type DNSMap struct {
+// 	IP       string
+// 	Wildcard bool
+// }
+
+type DeviceDNSRegistration struct {
+	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
+	IP       []string `json:"IP" bson:"IP"`
+	TXT      []string `json:"TXT" bson:"TXT"`
+	CNAME    string   `json:"CNAME" bson:"CNAME"`
+}
+
+type DeviceNatRegistration struct {
+	Tag     string `json:"Tag" bson:"T"`
+	Network string `json:"Network" bson:"N"`
+	Nat     string `json:"Nat" bson:"L"`
+}
+
+type DeviceUserRegistration struct {
 	UID primitive.ObjectID `json:"UID" bson:"UID"`
 	Tag string             `json:"Tag" bson:"T"`
-}
-
-type AP_DEVICE_NETWORK_MAP struct {
-	Tag          string `json:"Tag" bson:"T"`
-	Network      string `json:"Network" bson:"N"`
-	LocalNetwork string `json:"LocalNetwork" bson:"L"`
 }
 
 type AP_GEO_DB struct {
@@ -524,4 +550,26 @@ type TWO_FACTOR_CONFIRM struct {
 type QR_CODE struct {
 	Value string
 	// Recovery string
+}
+
+// var CurrentOpenSockets []*OpenSockets
+
+//	type OpenSockets struct {
+//		RemoteAddress string  `json:"RemoteAddress"`
+//		RemoteIP      [4]byte `json:"-"`
+//		LocalPort     uint16  `json:"LocalPort"`
+//		RemotePort    uint16  `json:"RemotePort"`
+//	}
+type MIB_TCPROW_OWNER_PID struct {
+	dwState      uint32
+	dwLocalAddr  uint32
+	dwLocalPort  uint32
+	dwRemoteAddr uint32
+	dwRemotePort uint32
+	dwOwningPid  uint32
+}
+
+type MIB_TCPTABLE_OWNER_PID struct {
+	dwNumEntries uint32
+	table        [30000]MIB_TCPROW_OWNER_PID
 }

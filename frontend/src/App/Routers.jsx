@@ -4,13 +4,20 @@ import React, { useState } from "react";
 import { SwitchRouter } from '../../wailsjs/go/main/Service';
 
 import STORE from "../store";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { DesktopIcon, MagnifyingGlassIcon, EnterIcon } from "@radix-ui/react-icons";
 
 const Routers = (props) => {
 
   const [filter, setFilter] = useState("");
 
   const switchRouter = async (router) => {
+
+    if (props.state?.Connected) {
+      props.toggleError("Unable to change routers while connected")
+      return
+    }
+
+
     if (router.Tag === "") {
       props.toggleLoading({ tag: "ROUTERS", show: true, msg: "Switching to automatic router selection" })
     } else {
@@ -19,7 +26,7 @@ const Routers = (props) => {
 
     SwitchRouter(router.Tag).then((x) => {
       if (x.Err) {
-        props.toggleError(x.Err.Message)
+        props.toggleError(x.Err)
       } else {
         props.showSuccessToast("Router switch complete")
       }
@@ -57,30 +64,43 @@ const Routers = (props) => {
 
   const RenderServer = (s, active) => {
 
-    let style = {}
-    if (active) {
-      style = { background: "#49ffc827" }
-    }
 
     return (
-      <div className="server" key={s.Tag} style={style} onClick={() => switchRouter(s)}>
+      <div className="server" key={s.Tag} onClick={() => switchRouter(s)}>
         {/* <div className="connect"></div> */}
         {s.Tag &&
-          <div className="item ip">{s.Tag}</div>
+          <div className="item ip">
+            {active &&
+
+              <EnterIcon className="icon"></EnterIcon>
+            }
+            {s.Tag}
+          </div>
         }
         {!s.Tag &&
           <div className="item ip">Unknown</div>
         }
-        <div className="item country-item x3">
-          <img
-            className="flag"
-            src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + s.Country.toLowerCase() + ".svg"}
-          // src={"/src/assets/images/flag/" + s.Country.toLowerCase() + ".svg"}
-          />
-          <span className="name">
-            {s.Country}
-          </span>
-        </div>
+        {s.Country !== "" &&
+          <div className="item country-item x3">
+            <img
+              className="flag"
+              src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + s.Country.toLowerCase() + ".svg"}
+            // src={"/src/assets/images/flag/" + s.Country.toLowerCase() + ".svg"}
+            />
+            <span className="name">
+              {s.Country}
+            </span>
+          </div>
+        }
+        {s.Country === "" &&
+          <div className="item country-item x3">
+            <DesktopIcon className="flag-temp" height={23} width={23}></DesktopIcon>
+            <span className="name">
+              Private
+            </span>
+          </div>
+
+        }
         <div className="item x3">{s.Score}</div>
         <div className="item x3">{s.MS === 999 ? "?" : s.MS}</div>
         <div className="item x3">{(s.AvailableSlots)}</div>
@@ -99,7 +119,7 @@ const Routers = (props) => {
 
       <div className="search-wrapper">
         <MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-        <input type="text" className="search" onChange={(e) => setFilter(e.target.value)} placeholder="Search for Country Code .."></input>
+        <input type="text" className="search" onChange={(e) => setFilter(e.target.value)} placeholder="Search .."></input>
       </div>
 
       {props.state?.C?.ManualRouter &&

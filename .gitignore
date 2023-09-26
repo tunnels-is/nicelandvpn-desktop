@@ -19,6 +19,8 @@ files
 launcher/launcher
 launcher/launcher.exe
 
+tests/domainblocking/combined
+
 .DS_Store
 *.DS_Store
 .idea

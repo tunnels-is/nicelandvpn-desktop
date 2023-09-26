@@ -122,8 +122,8 @@ func (s *Service) GetLogs(lengthFromJavascript int) (OUT *ReturnObject) {
 	return
 }
 
-func (s *Service) GetRoutersAndAccessPoints() (OUT *ReturnObject) {
-	Data, code, err := core.GetRoutersAndAccessPoints()
+func (s *Service) GetRoutersAndAccessPoints(FR *core.FORWARD_REQUEST) (OUT *ReturnObject) {
+	Data, code, err := core.GetRoutersAndAccessPoints(FR)
 	if err != nil {
 		OUT = CreateReturnError(code, err.Error())
 		return
@@ -174,4 +174,91 @@ func (s *Service) OpenFileDialogForRouterFile(clearFile bool) string {
 	}
 
 	return path
+}
+
+func (s *Service) EnableDNSWhitelist() {
+	core.GLOBAL_STATE.DNSWhitelistEnabled = true
+}
+
+func (s *Service) DisableDNSWhitelist() {
+	core.GLOBAL_STATE.DNSWhitelistEnabled = false
+}
+
+func (s *Service) StartDNSCapture() {
+	core.StartCapturing()
+	return
+}
+
+func (s *Service) StopDNSCapture() string {
+	core.CreateLog("START", "")
+
+	path := ""
+	var err error
+	path, err = runtime.SaveFileDialog(APP.ctx, runtime.SaveDialogOptions{
+		Title:                "Create A File",
+		DefaultFilename:      "allowed_websites",
+		ShowHiddenFiles:      true,
+		CanCreateDirectories: true,
+	})
+
+	if err != nil {
+		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+		return err.Error()
+	}
+
+	err = core.StopCapturing(path)
+	if err != nil {
+		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+		return err.Error()
+	}
+
+	return ""
+}
+
+func (s *Service) RebuildDomainBlocklist() {
+	core.BuildDomainBlocklist()
+
+	core.C.EnabledBlockLists = make([]string, 0)
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Enabled {
+			core.C.EnabledBlockLists = append(core.C.EnabledBlockLists, core.GLOBAL_STATE.BLists[i].Tag)
+		}
+	}
+
+	_ = core.SaveConfig()
+}
+func (s *Service) DisableAllBlocklists() {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		core.GLOBAL_STATE.BLists[i].Enabled = false
+	}
+
+}
+
+func (s *Service) EnableAllBlocklists() {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		core.GLOBAL_STATE.BLists[i].Enabled = true
+	}
+
+}
+
+func (s *Service) DisableBlocklist(tag string) {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Tag == tag {
+			core.GLOBAL_STATE.BLists[i].Enabled = false
+		}
+	}
+
+}
+
+func (s *Service) EnableBlocklist(tag string) {
+
+	for i := range core.GLOBAL_STATE.BLists {
+		if core.GLOBAL_STATE.BLists[i].Tag == tag {
+			core.GLOBAL_STATE.BLists[i].Enabled = true
+		}
+	}
+
 }

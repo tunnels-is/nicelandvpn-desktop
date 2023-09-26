@@ -43,11 +43,18 @@ var (
 	procWintunReleaseReceivePacket = modwintun.NewProc("WintunReleaseReceivePacket")
 	procWintunSendPacket           = modwintun.NewProc("WintunSendPacket")
 	procWintunStartSession         = modwintun.NewProc("WintunStartSession")
+	procWintunGetLastError         = modwintun.NewProc("WintunGetLastError")
 	// procWintunSetLogger               = modwintun.NewProc("WintunSetLogger")
 
 	GUID *windows.GUID
 	Dev  Device
-	// TUNBuff = make([]byte, 4000)
+
+	// WINDOWS DLL
+	IPHLPApi = syscall.NewLazyDLL("iphlpapi.dll")
+
+	GetTCP = IPHLPApi.NewProc("GetExtendedTcpTable")
+	GetUDP = IPHLPApi.NewProc("GetExtendedUdpTable")
+	SetTCP = IPHLPApi.NewProc("SetTcpEntry")
 )
 
 type loggerLevel int
@@ -57,6 +64,11 @@ const (
 	RingCapacityMin = 0x20000   // Minimum ring capacity (128 kiB)
 	RingCapacityMax = 0x4000000 // Maximum ring capacity (64 MiB)
 	AdapterNameMax  = 128
+
+	// WINDOWS DLL
+
+	MIB_TCP_TABLE_OWNER_PID_ALL = 5
+	MIB_TCP_STATE_DELETE_TCB    = 12
 )
 
 // ===========================================================
@@ -456,8 +468,10 @@ func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) 
 	GetIPv6Settings(PotentialDefault)
 
 	if PotentialDefault.DNS1 == "" || PotentialDefault.DNS1 == TUNNEL_ADAPTER_ADDRESS {
-		return errors.New("")
+		PotentialDefault.DNS1 = "1.1.1.1"
+		PotentialDefault.DNS2 = "8.8.8.8"
 	}
+
 	return
 }
 
@@ -611,6 +625,11 @@ func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
 func RestoreIPv6() {
 	defer RecoverAndLogToFile()
 
+	if !C.DisableIPv6OnConnect {
+		CreateLog("", "IPv6 settings unchanged")
+		return
+	}
+
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("", "Failed to restore IPv6 settings, interface settings not found")
 		return
@@ -620,9 +639,9 @@ func RestoreIPv6() {
 
 		cmd := exec.Command("powershell", "-NoProfile", "Enable-NetAdapterBinding -Name '"+GLOBAL_STATE.DefaultInterface.IFName+"' -ComponentID ms_tcpip6")
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		_, err := cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
-			CreateErrorLog("", "Error restoring IPv6 settings on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
+			CreateErrorLog("", "Error restoring IPv6 settings on interface: ", GLOBAL_STATE.DefaultInterface.IFName, "|| error: ", err, " || output: ", string(out))
 		}
 
 		CreateLog("", "IPv6 Restored on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
@@ -650,11 +669,20 @@ func RestoreDNS() error {
 		return errors.New("NO PRIMARY DNS FOUND IN BACKUP SETTINGS")
 	}
 
-	_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS1, "1")
+	if GLOBAL_STATE.DefaultInterface.DNS1 == "" || GLOBAL_STATE.DefaultInterface.DNS1 == TUNNEL_ADAPTER_ADDRESS {
+		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, "1.1.1.1", "1")
+	} else {
+		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS1, "1")
+	}
 
 	if GLOBAL_STATE.DefaultInterface.DNS2 != "" {
-		_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS2, "2")
+		if GLOBAL_STATE.DefaultInterface.DNS2 == TUNNEL_ADAPTER_ADDRESS {
+			_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, "8.8.8.8", "2")
+		} else {
+			_ = SetDNS(GLOBAL_STATE.DefaultInterface.IFName, GLOBAL_STATE.DefaultInterface.DNS2, "2")
+		}
 	}
+
 	CreateLog("", "DNS Restored on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
 
 	return nil
@@ -683,6 +711,11 @@ func ChangeDNS() error {
 func DisableIPv6() error {
 	defer RecoverAndLogToFile()
 	start := time.Now()
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return nil
+	}
 
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("connect", " !! Unable to turn off IPv6, no interface settings found")
@@ -797,6 +830,11 @@ func EnablePacketRouting() (err error) {
 		return
 	}
 
+	err = CloseAllOpenSockets()
+	if err != nil {
+		return
+	}
+
 	err = DisableIPv6()
 	if err != nil {
 		return
@@ -858,7 +896,7 @@ func ClearDNS(Interface string) error {
 		CreateErrorLog("", "NETSH || Error clearing DNS on interface: ", Interface, " || msg: ", err, " || output: ", string(out))
 		return err
 	}
-	CreateLog("file", "DNS cleared on interface: ", Interface, " || out: ", string(out))
+	CreateLog("file", "DNS cleared on interface: ", Interface)
 	return nil
 
 }
@@ -875,7 +913,7 @@ func SetDNS(Interface, IP string, index string) error {
 		return err
 	}
 
-	CreateLog("file", "DNS set on interface: ", Interface, " ", IP, " ", index, " || out: ", string(out))
+	CreateLog("file", "DNS set on interface: ", Interface, " ", IP, " ", index)
 	return nil
 }
 
@@ -892,7 +930,7 @@ func FindDefaultInterfaceAndGateway() (NEW_DEFAULT *CONNECTION_SETTINGS, err err
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		CreateErrorLog("", "Error fetching default routes || msg: ", err)
+		CreateErrorLog("", "Error fetching default routes || msg: ", err, " || output: ", string(out))
 		return nil, err
 	}
 
@@ -1003,4 +1041,74 @@ func PrintDNS() ([]byte, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// =============================================
+// =============================================
+// =============================================
+// =============================================
+// =============================================
+// WINDOWS DLL STUFF
+
+func CloseAllOpenSockets() error {
+
+	if !C.CloseConnectionsOnConnect {
+		CreateLog("", "Leaving open sockets intact")
+		return nil
+	}
+
+	CreateLog("", "Closing all open socket")
+
+	tcpTable, err := GetOpenSockets()
+	if err != nil {
+		CreateErrorLog("", "Unable to get TCP Socket table", err)
+		return err
+	}
+
+	for _, row := range tcpTable {
+		localAddr := fmt.Sprintf("%d.%d.%d.%d", byte(row.dwLocalAddr), byte(row.dwLocalAddr>>8), byte(row.dwLocalAddr>>16), byte(row.dwLocalAddr>>24))
+		remoteAddr := fmt.Sprintf("%d.%d.%d.%d", byte(row.dwRemoteAddr), byte(row.dwRemoteAddr>>8), byte(row.dwRemoteAddr>>16), byte(row.dwRemoteAddr>>24))
+
+		if localAddr != "0.0.0.0" && localAddr != "127.0.0.1" {
+			if remoteAddr == GLOBAL_STATE.ActiveRouter.IP {
+				continue
+			}
+			_ = DeleteSocket(row)
+		}
+
+	}
+
+	return nil
+}
+
+func GetOpenSockets() ([]MIB_TCPROW_OWNER_PID, error) {
+	var tcpTable MIB_TCPTABLE_OWNER_PID
+	size := uintptr(unsafe.Sizeof(tcpTable))
+
+	r, _, err := GetTCP.Call(
+		uintptr(unsafe.Pointer(&tcpTable)),
+		uintptr(unsafe.Pointer(&size)),
+		1,
+		syscall.AF_INET,
+		MIB_TCP_TABLE_OWNER_PID_ALL,
+		0)
+
+	if r == 0 {
+		entries := tcpTable.dwNumEntries
+		return tcpTable.table[:entries], nil
+	}
+
+	return nil, err
+}
+
+func DeleteSocket(row MIB_TCPROW_OWNER_PID) error {
+	row.dwState = MIB_TCP_STATE_DELETE_TCB
+	r, _, err := SetTCP.Call(
+		uintptr(unsafe.Pointer(&row)))
+
+	if r == 0 {
+		return nil
+	}
+
+	return err
 }

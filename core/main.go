@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -25,15 +26,20 @@ func StartService(MONITOR chan int) {
 	GLOBAL_STATE.NeedsRouterProbe = true
 
 	AdminCheck()
+	InitPaths()
 	CreateBaseFolder()
 	InitLogfile()
 	LoadConfig()
+	// LoadDNSWhitelist()
+	LoadBlockLists()
 
 	go StartLogQueueProcessor(MONITOR)
 	go StateMaintenance(MONITOR)
-	go ReadFromLocalTunnel(MONITOR)
-	go ReadFromRouterSocket(MONITOR)
 	go CalculateBandwidth(MONITOR)
+	go CleanPorts(MONITOR)
+
+	go ReadFromLocalSocket(MONITOR)
+	go ReadFromRouterSocket(MONITOR)
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")
@@ -54,7 +60,6 @@ func CalculateBandwidth(MONITOR chan int) {
 		CURRENT_DBBS = 0
 		CURRENT_UBBS = 0
 	}
-
 }
 
 func StateMaintenance(MONITOR chan int) {
@@ -66,9 +71,6 @@ func StateMaintenance(MONITOR chan int) {
 		}
 	}()
 	defer RecoverAndLogToFile()
-
-	CleanTCPPorts()
-	CleanUDPPorts()
 
 	InterfaceMaintenenceAndBackup()
 
@@ -225,22 +227,9 @@ func SaveConfig() (err error) {
 	}()
 	defer RecoverAndLogToFile()
 
-	// _ = os.Remove(GLOBAL_STATE.ConfigPath)
+	C.Version = GLOBAL_STATE.Version
 
-	FC := new(FileConfig)
-	FC.DNS1 = C.DNS1
-	FC.DNS1Bytes = C.DNS1Bytes
-	FC.DNSIP = C.DNSIP
-	FC.DNS2 = C.DNS2
-	FC.ManualRouter = C.ManualRouter
-	// FC.Region = C.Region
-	FC.DebugLogging = C.DebugLogging
-	FC.Version = C.Version
-	FC.RouterFilePath = C.RouterFilePath
-	FC.AutoReconnect = C.AutoReconnect
-	FC.KillSwitch = C.KillSwitch
-
-	cb, err := json.Marshal(FC)
+	cb, err := json.Marshal(C)
 	if err != nil {
 		CreateErrorLog("", "Unable to turn new config into bytes: ", err)
 		return err
@@ -288,18 +277,18 @@ func LoadConfig() {
 		CreateErrorLog("", "Unable to open config: ", err)
 		CreateLog("", "Generating a new default config")
 
-		NC := new(FileConfig)
+		NC := new(Config)
 		NC.DNS1Bytes = [4]byte{1, 1, 1, 1}
 		NC.DNS1 = "1.1.1.1"
 		NC.DNS2 = "8.8.8.8"
 		NC.DNSIP = net.IP{NC.DNS1Bytes[0], NC.DNS1Bytes[1], NC.DNS1Bytes[2], NC.DNS1Bytes[3]}
 		NC.ManualRouter = false
-		NC.Region = ""
 		NC.DebugLogging = true
 		NC.Version = ""
 		NC.RouterFilePath = ""
 		NC.AutoReconnect = true
 		NC.KillSwitch = false
+		NC.DisableIPv6OnConnect = true
 
 		var cb []byte
 		cb, err = json.Marshal(NC)
@@ -330,20 +319,7 @@ func LoadConfig() {
 			return
 		}
 
-		FC := new(Config)
-		FC.DNS1 = NC.DNS1
-		FC.DNS1Bytes = NC.DNS1Bytes
-		FC.DNSIP = NC.DNSIP
-		FC.DNS2 = NC.DNS2
-		FC.ManualRouter = NC.ManualRouter
-		// FC.Region = NC.Region
-		FC.DebugLogging = NC.DebugLogging
-		FC.Version = NC.Version
-		FC.RouterFilePath = NC.RouterFilePath
-		FC.AutoReconnect = NC.AutoReconnect
-		FC.KillSwitch = NC.KillSwitch
-		// CONFIG_INITIALIZED = true
-		C = FC
+		C = NC
 
 	} else {
 
@@ -363,12 +339,46 @@ func LoadConfig() {
 		C.DNSIP = net.ParseIP(C.DNS1).To4()
 		C.DNS1Bytes = [4]byte{C.DNSIP[0], C.DNSIP[1], C.DNSIP[2], C.DNSIP[3]}
 
-		// CONFIG_INITIALIZED = true
 	}
 
 	CreateLog("loader", "Configurations loaded")
 	GLOBAL_STATE.C = C
 	GLOBAL_STATE.ConfigInitialized = true
+}
+
+func LoadDNSWhitelist() (err error) {
+	defer RecoverAndLogToFile()
+
+	if C.DomainWhitelist == "" {
+		return nil
+	}
+
+	WFile, err := os.OpenFile(C.DomainWhitelist, os.O_RDWR|os.O_CREATE, 0777)
+	if err != nil {
+		return err
+	}
+	defer WFile.Close()
+
+	scanner := bufio.NewScanner(WFile)
+
+	WhitelistMap := make(map[string]bool)
+	for scanner.Scan() {
+		domain := scanner.Text()
+		if domain == "" {
+			continue
+		}
+		WhitelistMap[domain] = true
+	}
+
+	err = scanner.Err()
+	if err != nil {
+		CreateErrorLog("loader", "Unable to load domain whitelist: ", err)
+		return err
+	}
+
+	DNSWhitelist = WhitelistMap
+
+	return nil
 }
 
 func CleanupOnClose() {

@@ -120,6 +120,12 @@ func RestoreOriginalDefaultRoute() (err error) {
 }
 
 func RestoreIPv6() {
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return
+	}
+
 	if GLOBAL_STATE.DefaultInterface.IP6Method == "Manual" {
 
 	} else if GLOBAL_STATE.DefaultInterface.IP6Method == "Automatic" {
@@ -138,6 +144,12 @@ func RestoreIPv6() {
 }
 
 func DisableIPv6() {
+
+	if !C.DisableIPv6OnConnect {
+		CreateLog("connect", "IPv6 settings unchanged")
+		return
+	}
+
 	_, err := exec.Command("networksetup", "-setv6off", GLOBAL_STATE.DefaultInterface.IFName).Output()
 	if err != nil {
 		CreateErrorLog("", err, "unable to disable ipv6 on interface", GLOBAL_STATE.DefaultInterface.IFName)

@@ -141,7 +141,7 @@ func login() {
 }
 
 func sendLoginRequest(creds []textinput.Model) {
-  var FR core.FORWARD_REQUEST
+	var FR core.FORWARD_REQUEST
 
 	// fill the login form
 	li := core.LoginForm{
@@ -173,5 +173,4 @@ func sendLoginRequest(creds []textinput.Model) {
 		core.CleanupOnClose()
 		os.Exit(1)
 	}
-
 }

@@ -7,8 +7,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var user *User
-var PAFR core.FORWARD_REQUEST
+var (
+	user *User
+	PAFR core.FORWARD_REQUEST
+)
 
 // Device token struct need for the login respons from user scruct
 type DEVICE_TOKEN struct {

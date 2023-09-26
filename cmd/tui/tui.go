@@ -49,7 +49,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.routerTable.SetHeight(max(msg.Height-8, 17))
 
 		m.logsViewport.Width = max(msg.Width-8, 72)
-		m.logsViewport.Height = max(msg.Height-6, 19)
+		m.logsViewport.Height = max(msg.Height-8, 19)
 
 		return m, nil
 	case tea.KeyMsg:
@@ -183,10 +183,10 @@ func (m model) View() string {
 	var status string
 	if core.GLOBAL_STATE.Connected {
 		// core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
-		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
-		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
+		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
+		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
 	} else {
-		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: ---")
+		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected")
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, ret, status)

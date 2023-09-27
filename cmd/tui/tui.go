@@ -43,21 +43,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.serverTable.SetWidth(max(msg.Width-8, 72))
-		m.serverTable.SetHeight(max(msg.Height-8, 17))
+		m.serverTable.SetHeight(max(msg.Height-8, 16))
 
 		m.routerTable.SetWidth(max(msg.Width-8, 72))
-		m.routerTable.SetHeight(max(msg.Height-8, 17))
+		m.routerTable.SetHeight(max(msg.Height-8, 16))
 
 		m.logsViewport.Width = max(msg.Width-8, 72)
-		m.logsViewport.Height = max(msg.Height-8, 19)
+		m.logsViewport.Height = max(msg.Height-8, 16)
 
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+d":
+		case "D":
 			core.Disconnect()
-			return m, nil
-		case "ctrl+c", "q":
+			return m, tea.Println("Disconnected!")
+		case "ctrl+c", "ctrl+d", "q":
 			logout()
 			core.CleanupOnClose()
 			log.Println("GRACEFULL QUIT!")
@@ -177,19 +177,23 @@ func (m model) View() string {
 	}
 	doc.WriteString(windowStyle.Render(tabContent))
 
-	ret := docStyle.Render(doc.String()) // tab and it's contents
+	// ret := docStyle.Render(doc.String()) // tab and it's contents
 
 	// Status line at the bottom
 	var status string
 	if core.GLOBAL_STATE.Connected {
 		// core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
-		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag)
+		status = "\nRouter: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
 		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
 	} else {
-		status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected")
+		status = "\nRouter: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
 	}
+  status = status + "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps)  + "\tDown: " + strconv.Itoa(core.GLOBAL_STATE.DMbps) 
 
-	return lipgloss.JoinVertical(lipgloss.Left, ret, status)
+  doc.WriteString(statusStyle.Render(status))
+
+	// return lipgloss.JoinVertical(lipgloss.Left, ret, status)
+  return docStyle.Render(doc.String())
 }
 
 func StartTui() {
@@ -265,7 +269,7 @@ func StartTui() {
 	// Initial tables finished ---
 
 	// Initialize the viewport for the logs
-	vp := viewport.New(80, 20)
+	vp := viewport.New(78, 17)
 	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values

@@ -70,6 +70,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.activeTab == 1 {
 				m.serverTable.Blur()
 				m.routerTable.Focus()
+      } else if m.activeTab == 2 {
+        m.logsViewport.GotoBottom()
 			} else {
 				m.serverTable.Blur()
 				m.routerTable.Blur()
@@ -83,7 +85,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.activeTab == 1 {
 				m.serverTable.Blur()
 				m.routerTable.Focus()
-			} else {
+      } else if m.activeTab == 2 {
+        m.logsViewport.GotoBottom()
+      } else {
 				m.serverTable.Blur()
 				m.routerTable.Blur()
 			}
@@ -114,7 +118,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logs = logs
 		}
 		m.logsViewport.SetContent(strings.Join(m.logs, ""))
-		if m.logsViewport.ScrollPercent() == 1 {
+		if m.logsViewport.ScrollPercent() >= 0.9 {
 			m.logsViewport.GotoBottom()
 		}
 
@@ -176,20 +180,20 @@ func (m model) View() string {
 		tabContent = baseStyle.Render("Not implemented yet!")
 	}
 	doc.WriteString(windowStyle.Render(tabContent))
-
-	// ret := docStyle.Render(doc.String()) // tab and it's contents
+  doc.WriteString("\n")
 
 	// Status line at the bottom
 	var status string
 	if core.GLOBAL_STATE.Connected {
 		// core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
-		status = "\nRouter: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
+		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
 		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
 	} else {
-		status = "\nRouter: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
+		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
 	}
-  status = status + "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps)  + "\tDown: " + strconv.Itoa(core.GLOBAL_STATE.DMbps) 
 
+  stats := "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps)  + "   " + "Down: " + strconv.Itoa(core.GLOBAL_STATE.DMbps) 
+  status = lipgloss.JoinHorizontal(lipgloss.Left, status, stats)
   doc.WriteString(statusStyle.Render(status))
 
 	// return lipgloss.JoinVertical(lipgloss.Left, ret, status)

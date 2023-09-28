@@ -70,8 +70,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.activeTab == 1 {
 				m.serverTable.Blur()
 				m.routerTable.Focus()
-      } else if m.activeTab == 2 {
-        m.logsViewport.GotoBottom()
+			} else if m.activeTab == 2 {
+				m.logsViewport.GotoBottom()
 			} else {
 				m.serverTable.Blur()
 				m.routerTable.Blur()
@@ -85,9 +85,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.activeTab == 1 {
 				m.serverTable.Blur()
 				m.routerTable.Focus()
-      } else if m.activeTab == 2 {
-        m.logsViewport.GotoBottom()
-      } else {
+			} else if m.activeTab == 2 {
+				m.logsViewport.GotoBottom()
+			} else {
 				m.serverTable.Blur()
 				m.routerTable.Blur()
 			}
@@ -180,7 +180,7 @@ func (m model) View() string {
 		tabContent = baseStyle.Render("Not implemented yet!")
 	}
 	doc.WriteString(windowStyle.Render(tabContent))
-  doc.WriteString("\n")
+	doc.WriteString("\n")
 
 	// Status line at the bottom
 	var status string
@@ -192,12 +192,12 @@ func (m model) View() string {
 		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
 	}
 
-  stats := "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps)  + "   " + "Down: " + strconv.Itoa(core.GLOBAL_STATE.DMbps) 
-  status = lipgloss.JoinHorizontal(lipgloss.Left, status, stats)
-  doc.WriteString(statusStyle.Render(status))
+	stats := "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps) + "   " + "Down: " + strconv.Itoa(core.GLOBAL_STATE.DMbps)
+	status = lipgloss.JoinHorizontal(lipgloss.Left, status, stats)
+	doc.WriteString(statusStyle.Render(status))
 
 	// return lipgloss.JoinVertical(lipgloss.Left, ret, status)
-  return docStyle.Render(doc.String())
+	return docStyle.Render(doc.String())
 }
 
 func StartTui() {

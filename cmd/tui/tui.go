@@ -72,7 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.routerTable.SetHeight(m.routerTable.Height() + 5)
 
 				m.logsViewport.Height = m.logsViewport.Height + 5
-      }
+			}
 			return m, nil
 		case key.Matches(msg, m.keys.Disconnect):
 			core.Disconnect()
@@ -212,17 +212,16 @@ func (m model) View() string {
 		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
 	}
 
-	stats := "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps) + "   " + "Down: " + strconv.Itoa(core.GLOBAL_STATE.DMbps)
-	status = lipgloss.JoinHorizontal(lipgloss.Left, status, stats)
-	// doc.WriteString(statusStyle.Render(status))
+	stats := "Up: " + core.GLOBAL_STATE.UMbpsString + " " + "Down: " + core.GLOBAL_STATE.DMbpsString
+	sep := "\t"
+	status = lipgloss.JoinHorizontal(lipgloss.Left, status, sep, stats)
 	hlpView := m.help.View(m.keys)
 	if m.help.ShowAll {
-		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, statusStyle.Render(status), baseStyle.Render(hlpView)))
+		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, statusStyle.Render(status), hlpView))
 	} else {
-		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), baseStyle.Render(hlpView)))
+		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), hlpView))
 	}
 
-	// return lipgloss.JoinVertical(lipgloss.Left, ret, status)
 	return docStyle.Render(doc.String())
 }
 
@@ -306,7 +305,8 @@ func StartTui() {
 	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
 	m.serverTable.Focus() // focus on the first table since it starts there
 
-	// help menu
+	// help & keybinds
+	m.help = help.New()
 	m.keys = keys
 
 	// This is where it actually starts

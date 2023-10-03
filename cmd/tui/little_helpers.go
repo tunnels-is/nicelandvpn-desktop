@@ -23,6 +23,8 @@ func TimedUIUpdate(MONITOR chan int) {
 			core.GetRoutersAndAccessPoints(&PAFR)
 		}
 
+    core.PrepareState()
+
 		TUI.Send(&tea.KeyMsg{
 			Type: 0,
 		})

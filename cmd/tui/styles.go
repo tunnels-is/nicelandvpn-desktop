@@ -71,3 +71,4 @@ var (
 
 // status line
 var statusStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(0, 1).Bold(true)
+var statsStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(1, 1).Bold(true)

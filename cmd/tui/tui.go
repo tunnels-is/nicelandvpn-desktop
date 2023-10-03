@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -24,6 +25,8 @@ type model struct {
 	logs         []string
 	ready        bool
 	status       []string
+	keys         keyMap
+	help         help.Model
 	// setting I have no idea how to handle them yet...
 }
 
@@ -43,17 +46,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.serverTable.SetWidth(max(msg.Width-8, 72))
-		m.serverTable.SetHeight(max(msg.Height-8, 16))
+		m.serverTable.SetHeight(max(msg.Height-9, 10))
 
 		m.routerTable.SetWidth(max(msg.Width-8, 72))
-		m.routerTable.SetHeight(max(msg.Height-8, 16))
+		m.routerTable.SetHeight(max(msg.Height-9, 10))
 
 		m.logsViewport.Width = max(msg.Width-8, 72)
-		m.logsViewport.Height = max(msg.Height-8, 16)
+		m.logsViewport.Height = max(msg.Height-8, 11)
 
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "?":
+			m.help.ShowAll = !m.help.ShowAll
+			if m.help.ShowAll {
+				m.serverTable.SetHeight(m.serverTable.Height() - 5)
+
+				m.routerTable.SetHeight(m.routerTable.Height() - 5)
+
+				m.logsViewport.Height = m.logsViewport.Height - 5
+			} else {
+				m.serverTable.SetHeight(m.serverTable.Height() + 5)
+
+				m.routerTable.SetHeight(m.routerTable.Height() + 5)
+
+				m.logsViewport.Height = m.logsViewport.Height + 5
+      }
+			return m, nil
 		case "D":
 			core.Disconnect()
 			return m, tea.Println("Disconnected!")
@@ -194,7 +213,13 @@ func (m model) View() string {
 
 	stats := "\tUp: " + strconv.Itoa(core.GLOBAL_STATE.UMbps) + "   " + "Down: " + strconv.Itoa(core.GLOBAL_STATE.DMbps)
 	status = lipgloss.JoinHorizontal(lipgloss.Left, status, stats)
-	doc.WriteString(statusStyle.Render(status))
+	// doc.WriteString(statusStyle.Render(status))
+	hlpView := m.help.View(m.keys)
+	if m.help.ShowAll {
+		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, statusStyle.Render(status), baseStyle.Render(hlpView)))
+	} else {
+		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), baseStyle.Render(hlpView)))
+	}
 
 	// return lipgloss.JoinVertical(lipgloss.Left, ret, status)
 	return docStyle.Render(doc.String())
@@ -279,6 +304,9 @@ func StartTui() {
 	// make the model and give some starting values
 	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
 	m.serverTable.Focus() // focus on the first table since it starts there
+
+	// help menu
+	m.keys = keys
 
 	// This is where it actually starts
 	TUI = tea.NewProgram(m)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -56,8 +57,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "?":
+		switch {
+		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			if m.help.ShowAll {
 				m.serverTable.SetHeight(m.serverTable.Height() - 5)
@@ -73,15 +74,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.logsViewport.Height = m.logsViewport.Height + 5
       }
 			return m, nil
-		case "D":
+		case key.Matches(msg, m.keys.Disconnect):
 			core.Disconnect()
 			return m, tea.Println("Disconnected!")
-		case "ctrl+c", "ctrl+d", "q":
+		case key.Matches(msg, m.keys.Quit):
 			logout()
 			core.CleanupOnClose()
 			log.Println("GRACEFULL QUIT!")
 			return m, tea.Quit
-		case "right", "l", "tab":
+		case key.Matches(msg, m.keys.Right):
 			m.activeTab = min(m.activeTab+1, len(m.tabs)-1)
 			if m.activeTab == 0 {
 				m.serverTable.Focus()
@@ -96,7 +97,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.routerTable.Blur()
 			}
 			return m, nil
-		case "left", "h", "shift+tab":
+		case key.Matches(msg, m.keys.Left):
 			m.activeTab = max(m.activeTab-1, 0)
 			if m.activeTab == 0 {
 				m.serverTable.Focus()
@@ -111,7 +112,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.routerTable.Blur()
 			}
 			return m, nil
-		case "enter":
+		case key.Matches(msg, m.keys.Select):
 			// Handle selection for different tabs differently LUL
 			switch m.activeTab {
 			case 0:

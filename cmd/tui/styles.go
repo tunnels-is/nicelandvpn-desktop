@@ -72,3 +72,10 @@ var (
 // status line
 var statusStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(0, 1).Bold(true)
 var statsStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(1, 1).Bold(true)
+
+// Stats table style
+var detailedStatsStyle = table.Styles{
+	Header:   lipgloss.NewStyle().Padding(0, 1).BorderStyle(lipgloss.NormalBorder()).BorderForeground(teal).BorderBottom(true).Bold(true).Width(28).Foreground(teal),
+	Selected: lipgloss.NewStyle().Foreground(white),
+	Cell:     lipgloss.NewStyle().Padding(0, 1).Width(28),
+}

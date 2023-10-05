@@ -127,8 +127,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					s = fmt.Sprintf("There was an error switching routers: %s\nCode: %d", err, code)
 				}
 				return m, tea.Println(s)
-			default:
-				return m, tea.Println("This thing is still work in progress...")
 			}
 		}
 	default:
@@ -196,6 +194,8 @@ func (m model) View() string {
 		tabContent = baseStyle.Render(m.routerTable.View())
 	case 2:
 		tabContent = baseStyle.Render(m.logsViewport.View())
+	case 3:
+		tabContent = baseStyle.Render(detailedStats())
 	default:
 		tabContent = baseStyle.Render("Not implemented yet!")
 	}
@@ -219,7 +219,7 @@ func (m model) View() string {
 	if m.help.ShowAll {
 		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, statusStyle.Render(status), hlpView))
 	} else {
-		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), hlpView))
+		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), sep, hlpView))
 	}
 
 	return docStyle.Render(doc.String())
@@ -250,21 +250,21 @@ func StartTui() {
 	}
 
 	// Configure tabs and their number
-	tabs := []string{"VPN List", "Router List", "Logs", "Settings"}
+	tabs := []string{"VPN List", "Router List", "Logs", "Details", "Settings"}
 
 	// Initialize the servers and routers tables
 	// Columns for server table
 	s_col := []table.Column{
 		{Title: "server", Width: 24},
-		{Title: "country", Width: 8},
-		{Title: "QoS", Width: 4},
+		{Title: "country", Width: 7},
+		{Title: "QoS", Width: 3},
 	}
 
 	// Columns for routers table
 	r_col := []table.Column{
 		{Title: "server", Width: 24},
-		{Title: "country", Width: 8},
-		{Title: "QoS", Width: 4},
+		{Title: "country", Width: 7},
+		{Title: "QoS", Width: 3},
 	}
 
 	var s_row []table.Row
@@ -350,4 +350,125 @@ func ConnectToAP(Tag string) {
 			fmt.Println("Code: ", code)
 		}
 	}
+}
+
+// Creating the the View() for the detailed Stats tab
+func detailedStats() string {
+	// App State table
+	as_col := []table.Column{
+		{Title: "App State", Width: 22},
+		{Title: " ", Width: 6},
+	}
+
+	app_state_str := [10]string{
+		"VPN List Update", "Ready to Connect", "Version", "VPN Tunnel Ready",
+		"Launched as Admin", "Config Loaded", "Base Folder Created",
+		"Log File Created", "Buffer Error", "Launch Error",
+	}
+	app_state_values := [10]string{
+		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilAccessPointUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
+		core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
+		strconv.FormatBool(core.GLOBAL_STATE.IsAdmin), strconv.FormatBool(core.GLOBAL_STATE.ConfigInitialized),
+		strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+	}
+
+	var as_row []table.Row
+	for i := 0; i < 10; i++ {
+		as_row = append(as_row, table.Row{app_state_str[i], app_state_values[i]})
+	}
+
+	as_t := table.New(
+		table.WithColumns(as_col),
+		table.WithRows(as_row),
+    table.WithHeight(10),
+	)
+
+	as_t.SetStyles(detailedStatsStyle)
+	as_t.Blur()
+
+	// Interface table
+	i_col := []table.Column{
+		{Title: "Interface", Width: 12},
+		{Title: " ", Width: 16},
+	}
+
+	interface_str := [3]string{"Name", "IPv6 Enabled", "Gateway"}
+	interface_values := [3]string{
+		core.GLOBAL_STATE.DefaultInterface.IFName,
+		strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
+		core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
+	}
+
+	var i_row []table.Row
+	for i := 0; i < 3; i++ {
+		i_row = append(i_row, table.Row{interface_str[i], interface_values[i]})
+	}
+
+	i_t := table.New(
+		table.WithColumns(i_col),
+		table.WithRows(i_row),
+    table.WithHeight(3),
+	)
+
+	i_t.SetStyles(detailedStatsStyle)
+	i_t.Blur()
+
+	// Connection table
+	c_col := []table.Column{
+		{Title: "Connection", Width: 12},
+		{Title: " ", Width: 16},
+	}
+
+	connection_str := [3]string{"Entr Router", "ms", "QoS"}
+	connetion_values := [3]string{
+		core.GLOBAL_STATE.ActiveRouter.Tag,
+		strconv.FormatUint(core.GLOBAL_STATE.ActiveRouter.MS, 10),
+		strconv.Itoa(core.GLOBAL_STATE.ActiveRouter.Score),
+	}
+
+	var c_row []table.Row
+	for i := 0; i < 3; i++ {
+		c_row = append(c_row, table.Row{connection_str[i], connetion_values[i]})
+	}
+
+	c_t := table.New(
+		table.WithColumns(c_col),
+		table.WithRows(c_row),
+    table.WithHeight(3),
+	)
+
+	c_t.SetStyles(detailedStatsStyle)
+	c_t.Blur()
+
+	// Network Stats table
+	n_col := []table.Column{
+		{Title: "Network Stats", Width: 13},
+		{Title: " ", Width: 16},
+	}
+
+	network_stats_str := [5]string{"Connected", "Download", "Packets", "Upload", "Packets"}
+	network_stats_values := [5]string{
+    strconv.FormatBool(core.GLOBAL_STATE.Connected),
+    core.GLOBAL_STATE.DMbpsString,
+    strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
+    core.GLOBAL_STATE.UMbpsString,
+    strconv.FormatUint(core.GLOBAL_STATE.EgressPackets, 10),
+  }
+
+	var n_row []table.Row
+	for i := 0; i < 5; i++ {
+		n_row = append(n_row, table.Row{network_stats_str[i], network_stats_values[i]})
+	}
+
+	n_t := table.New(
+		table.WithColumns(n_col),
+		table.WithRows(n_row),
+    table.WithHeight(5),
+	)
+
+	n_t.SetStyles(detailedStatsStyle)
+	n_t.Blur()
+
+	return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Left, as_t.View(), i_t.View()), "\n", lipgloss.JoinHorizontal(lipgloss.Left, c_t.View(), n_t.View()))
 }

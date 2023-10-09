@@ -23,6 +23,7 @@ type model struct {
 	serverTable  table.Model
 	routerTable  table.Model
 	logsViewport viewport.Model
+	stats        []table.Model
 	logs         []string
 	ready        bool
 	status       []string
@@ -52,7 +53,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.routerTable.SetWidth(max(msg.Width-8, 72))
 		m.routerTable.SetHeight(max(msg.Height-9, 10))
 
-		m.logsViewport.Width = max(msg.Width-8, 72)
+		m.logsViewport.Width = max(msg.Width-20, 72)
 		m.logsViewport.Height = max(msg.Height-8, 11)
 
 		return m, nil
@@ -135,7 +136,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.logs) != len(logs) {
 			m.logs = logs
 		}
-		m.logsViewport.SetContent(strings.Join(m.logs, ""))
+		var str string
+		for _, l := range m.logs {
+			str = str + l
+		}
+		m.logsViewport.SetContent(str)
+		// m.logsViewport.SetContent(strings.Join(m.logs, ""))
 		if m.logsViewport.ScrollPercent() >= 0.9 {
 			m.logsViewport.GotoBottom()
 		}
@@ -154,6 +160,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.serverTable.SetRows(s_row)
 		m.routerTable.SetRows(r_row)
+
+		if m.activeTab == 3 {
+			detailedStatsUpdate(m)
+		}
 
 		return m, tea.Batch(servCmd, routCmd, vpCmd)
 	}
@@ -194,8 +204,10 @@ func (m model) View() string {
 		tabContent = baseStyle.Render(m.routerTable.View())
 	case 2:
 		tabContent = baseStyle.Render(m.logsViewport.View())
-	case 3:
-		tabContent = baseStyle.Render(detailedStats())
+	case 3: // Breaks if terminal columns < 134 ??? Also if for some reason you change the number the form of the stats your will have to change this too
+		tabContent = lipgloss.JoinHorizontal(
+			lipgloss.Left, baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[0].View(), "\n", m.stats[2].View())),
+			baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[1].View(), strings.Repeat("\n", 8), m.stats[3].View())))
 	default:
 		tabContent = baseStyle.Render("Not implemented yet!")
 	}
@@ -205,9 +217,7 @@ func (m model) View() string {
 	// Status line at the bottom
 	var status string
 	if core.GLOBAL_STATE.Connected {
-		// core.GLOBAL_STATE.ActiveAccessPoint.Tag throws a panic with runtime error: invalid memory address or nil pointer dereference.
 		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
-		// status = statusStyle.Render("Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Connected")
 	} else {
 		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
 	}
@@ -295,14 +305,17 @@ func StartTui() {
 		table.WithRows(r_row),
 	)
 	r_t.SetStyles(table_style)
+
+	detes := detailedStatsInit()
 	// Initial tables finished ---
 
 	// Initialize the viewport for the logs
-	vp := viewport.New(78, 17)
+	vp := viewport.New(50, 22)
+	vp.SetContent("Loading...")
 	vp.Style = baseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
-	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp}
+	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp, stats: detes}
 	m.serverTable.Focus() // focus on the first table since it starts there
 
 	// help & keybinds
@@ -352,19 +365,74 @@ func ConnectToAP(Tag string) {
 	}
 }
 
-// Creating the the View() for the detailed Stats tab
-func detailedStats() string {
+// Probably I should refactor detailedStatsUpdate() and detailedStatsInit() too much spaghet
+// Updates the stats for the tables in the detailed Stats tab
+func detailedStatsUpdate(m model) {
+	// The strings for the name of each stat are declared in the globals.go
+	app_state_values := [10]string{
+		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilAccessPointUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
+		core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
+		strconv.FormatBool(core.GLOBAL_STATE.IsAdmin), strconv.FormatBool(core.GLOBAL_STATE.ConfigInitialized),
+		strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+	}
+
+	var as_row []table.Row
+	for i := 0; i < 10; i++ {
+		as_row = append(as_row, table.Row{app_state_str[i], app_state_values[i]})
+	}
+
+	interface_values := [3]string{
+		core.GLOBAL_STATE.DefaultInterface.IFName,
+		strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
+		core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
+	}
+
+	var i_row []table.Row
+	for i := 0; i < 3; i++ {
+		i_row = append(i_row, table.Row{interface_str[i], interface_values[i]})
+	}
+
+	connetion_values := [3]string{
+		core.GLOBAL_STATE.ActiveRouter.Tag,
+		strconv.FormatUint(core.GLOBAL_STATE.ActiveRouter.MS, 10),
+		strconv.Itoa(core.GLOBAL_STATE.ActiveRouter.Score),
+	}
+
+	var c_row []table.Row
+	for i := 0; i < 3; i++ {
+		c_row = append(c_row, table.Row{connection_str[i], connetion_values[i]})
+	}
+
+	network_stats_values := [5]string{
+		strconv.FormatBool(core.GLOBAL_STATE.Connected),
+		core.GLOBAL_STATE.DMbpsString,
+		strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
+		core.GLOBAL_STATE.UMbpsString,
+		strconv.FormatUint(core.GLOBAL_STATE.EgressPackets, 10),
+	}
+
+	var n_row []table.Row
+	for i := 0; i < 5; i++ {
+		n_row = append(n_row, table.Row{network_stats_str[i], network_stats_values[i]})
+	}
+
+	m.stats[0].SetRows(as_row)
+	m.stats[1].SetRows(i_row)
+	m.stats[2].SetRows(c_row)
+	m.stats[3].SetRows(n_row)
+}
+
+// Initializes the tables for the Detailed Stats tab
+func detailedStatsInit() []table.Model {
+	// The strings for the name of each stat are declared in the globals.go
+
 	// App State table
 	as_col := []table.Column{
-		{Title: "App State", Width: 22},
+		{Title: "App State", Width: 19},
 		{Title: " ", Width: 6},
 	}
 
-	app_state_str := [10]string{
-		"VPN List Update", "Ready to Connect", "Version", "VPN Tunnel Ready",
-		"Launched as Admin", "Config Loaded", "Base Folder Created",
-		"Log File Created", "Buffer Error", "Launch Error",
-	}
 	app_state_values := [10]string{
 		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilAccessPointUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
 		core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
@@ -381,7 +449,7 @@ func detailedStats() string {
 	as_t := table.New(
 		table.WithColumns(as_col),
 		table.WithRows(as_row),
-    table.WithHeight(10),
+		table.WithHeight(10),
 	)
 
 	as_t.SetStyles(detailedStatsStyle)
@@ -390,10 +458,9 @@ func detailedStats() string {
 	// Interface table
 	i_col := []table.Column{
 		{Title: "Interface", Width: 12},
-		{Title: " ", Width: 16},
+		{Title: " ", Width: 15},
 	}
 
-	interface_str := [3]string{"Name", "IPv6 Enabled", "Gateway"}
 	interface_values := [3]string{
 		core.GLOBAL_STATE.DefaultInterface.IFName,
 		strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
@@ -408,7 +475,7 @@ func detailedStats() string {
 	i_t := table.New(
 		table.WithColumns(i_col),
 		table.WithRows(i_row),
-    table.WithHeight(3),
+		table.WithHeight(3),
 	)
 
 	i_t.SetStyles(detailedStatsStyle)
@@ -417,10 +484,9 @@ func detailedStats() string {
 	// Connection table
 	c_col := []table.Column{
 		{Title: "Connection", Width: 12},
-		{Title: " ", Width: 16},
+		{Title: " ", Width: 12},
 	}
 
-	connection_str := [3]string{"Entr Router", "ms", "QoS"}
 	connetion_values := [3]string{
 		core.GLOBAL_STATE.ActiveRouter.Tag,
 		strconv.FormatUint(core.GLOBAL_STATE.ActiveRouter.MS, 10),
@@ -435,7 +501,7 @@ func detailedStats() string {
 	c_t := table.New(
 		table.WithColumns(c_col),
 		table.WithRows(c_row),
-    table.WithHeight(3),
+		table.WithHeight(3),
 	)
 
 	c_t.SetStyles(detailedStatsStyle)
@@ -444,17 +510,16 @@ func detailedStats() string {
 	// Network Stats table
 	n_col := []table.Column{
 		{Title: "Network Stats", Width: 13},
-		{Title: " ", Width: 16},
+		{Title: " ", Width: 7},
 	}
 
-	network_stats_str := [5]string{"Connected", "Download", "Packets", "Upload", "Packets"}
 	network_stats_values := [5]string{
-    strconv.FormatBool(core.GLOBAL_STATE.Connected),
-    core.GLOBAL_STATE.DMbpsString,
-    strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
-    core.GLOBAL_STATE.UMbpsString,
-    strconv.FormatUint(core.GLOBAL_STATE.EgressPackets, 10),
-  }
+		strconv.FormatBool(core.GLOBAL_STATE.Connected),
+		core.GLOBAL_STATE.DMbpsString,
+		strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
+		core.GLOBAL_STATE.UMbpsString,
+		strconv.FormatUint(core.GLOBAL_STATE.EgressPackets, 10),
+	}
 
 	var n_row []table.Row
 	for i := 0; i < 5; i++ {
@@ -464,11 +529,11 @@ func detailedStats() string {
 	n_t := table.New(
 		table.WithColumns(n_col),
 		table.WithRows(n_row),
-    table.WithHeight(5),
+		table.WithHeight(5),
 	)
 
 	n_t.SetStyles(detailedStatsStyle)
 	n_t.Blur()
 
-	return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Left, as_t.View(), i_t.View()), "\n", lipgloss.JoinHorizontal(lipgloss.Left, c_t.View(), n_t.View()))
+	return []table.Model{as_t, i_t, c_t, n_t}
 }

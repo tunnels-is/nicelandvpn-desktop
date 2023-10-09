@@ -35,7 +35,7 @@ var (
 
 // tab style
 var (
-	docStyle         = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	docStyle         = lipgloss.NewStyle().Padding(1, 1, 1, 1)
 	highlightColor   = teal_hover
 	selectionColor   = orange
 	inactiveTabStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true, true, false, true).UnsetBorderBottom().BorderForeground(highlightColor)
@@ -71,7 +71,7 @@ var (
 
 // status line
 var statusStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(0, 1).Bold(true)
-var statsStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(1, 1).Bold(true)
+var statsStyle = lipgloss.NewStyle().Foreground(orange_hover).Padding(0).Bold(true)
 
 // Stats table style
 var detailedStatsStyle = table.Styles{

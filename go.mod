@@ -1,6 +1,8 @@
 module github.com/tunnels-is/nicelandvpn-desktop
 
-go 1.19
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/charmbracelet/bubbles v0.16.1
@@ -16,6 +18,8 @@ require (
 	golang.org/x/sys v0.13.0
 )
 
+replace github.com/wailsapp/wails/v2 => ../wails-fork/v2
+
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -29,6 +33,7 @@ require (
 	github.com/leaanthony/go-ansi-parser v1.6.0 // indirect
 	github.com/leaanthony/gosod v1.0.3 // indirect
 	github.com/leaanthony/slicer v1.6.0 // indirect
+	github.com/leaanthony/u v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
@@ -45,7 +50,7 @@ require (
 	github.com/tkrajina/go-reflector v0.5.6 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/wailsapp/go-webview2 v1.0.1 // indirect
+	github.com/wailsapp/go-webview2 v1.0.7 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect

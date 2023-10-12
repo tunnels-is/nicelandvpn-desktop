@@ -19,7 +19,7 @@ var assets embed.FS
 
 const VERSION = "1.1.5"
 const PRODUCTION = false
-const ENABLE_INSTERFACE = false
+const ENABLE_INSTERFACE = true
 
 var MONITOR = make(chan int, 200)
 
@@ -105,8 +105,11 @@ func main() {
 		},
 
 		Debug: options.Debug{
-			OpenInspectorOnStartup: !PRODUCTION,
+			OpenInspectorOnStartup: true,
 		},
+		// Debug: options.Debug{
+		// 	OpenInspectorOnStartup: !PRODUCTION,
+		// },
 	})
 
 	if err != nil {

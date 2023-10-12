@@ -122,6 +122,16 @@ func (s *Service) GetLogs(lengthFromJavascript int) (OUT *ReturnObject) {
 	return
 }
 
+func (s *Service) LoadRoutersUnAuthenticated() (OUT *ReturnObject) {
+	Data, code, err := core.LoadRoutersUnAuthenticated()
+	if err != nil {
+		OUT = CreateReturnError(code, err.Error())
+		return
+	}
+	OUT = CreateReturnData(code, Data)
+	return
+}
+
 func (s *Service) GetRoutersAndAccessPoints(FR *core.FORWARD_REQUEST) (OUT *ReturnObject) {
 	Data, code, err := core.GetRoutersAndAccessPoints(FR)
 	if err != nil {

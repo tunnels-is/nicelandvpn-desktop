@@ -62,6 +62,10 @@ export function GetState() {
   return window['go']['main']['Service']['GetState']();
 }
 
+export function LoadRoutersUnAuthenticated() {
+  return window['go']['main']['Service']['LoadRoutersUnAuthenticated']();
+}
+
 export function OpenFileDialogForRouterFile(arg1) {
   return window['go']['main']['Service']['OpenFileDialogForRouterFile'](arg1);
 }

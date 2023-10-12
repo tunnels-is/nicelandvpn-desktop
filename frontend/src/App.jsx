@@ -8,7 +8,7 @@ import dayjs from "dayjs";
 import "./assets/style/app.scss";
 
 import { CloseApp, IsProduction } from '../wailsjs/go/main/App';
-import { Disconnect, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
+import { Disconnect, LoadRoutersUnAuthenticated, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
 
 import ScreenLoader from "./App/ScreenLoader";
 import DeviceLogins from "./App/DeviceLogins";
@@ -36,241 +36,250 @@ const root = createRoot(document.getElementById('app'));
 // );
 
 const ToggleError = (e) => {
-  let lastFetch = STORE.Cache.Get("error-timeout")
-  let now = dayjs().unix()
-  if ((now - lastFetch) < 3) {
-    return
-  }
-  toast.error(e);
-  STORE.Cache.Set("error-timeout", dayjs().unix())
+	let lastFetch = STORE.Cache.Get("error-timeout")
+	let now = dayjs().unix()
+	if ((now - lastFetch) < 3) {
+		return
+	}
+	toast.error(e);
+	STORE.Cache.Set("error-timeout", dayjs().unix())
 }
 
 const ShowSuccessToast = (e) => {
-  toast.success(e);
+	toast.success(e);
 }
 
 let ShowStartupLoadingScreen = true
 let StatupLoadingScreenStartTime = dayjs()
 
 const LaunchApp = () => {
-  const [advancedMode, setAdvancedMode] = useState();
-  const [loading, setLoading] = useState(undefined)
-  const [state, setState] = useState({})
-  const [stats, setStats] = useState(false)
+	const [advancedMode, setAdvancedMode] = useState();
+	const [loading, setLoading] = useState(undefined)
+	const [state, setState] = useState({})
+	const [stats, setStats] = useState(false)
 
 
-  const ToggleAdvancedMode = () => {
-    if (STORE.Config.AdvancedMode === true) {
-      STORE.Config.AdvancedMode = false
-    } else {
-      STORE.Config.AdvancedMode = true
-    }
+	const ToggleAdvancedMode = () => {
+		if (STORE.Config.AdvancedMode === true) {
+			STORE.Config.AdvancedMode = false
+		} else {
+			STORE.Config.AdvancedMode = true
+		}
 
-    STORE.Cache.Set("advanced", STORE.Config.AdvancedMode)
-    setAdvancedMode(STORE.Config.AdvancedMode)
-  }
+		STORE.Cache.Set("advanced", STORE.Config.AdvancedMode)
+		setAdvancedMode(STORE.Config.AdvancedMode)
+	}
 
-  const ToggleLoading = (object) => {
-    if (object?.show) {
-      setLoading(object)
-    } else {
-      const to = setTimeout(() => {
-        setLoading(undefined)
-      }, 4000)
-      return () => { clearTimeout(to) }
-    }
-  }
+	const ToggleLoading = (object) => {
+		if (object?.show) {
+			setLoading(object)
+		} else {
+			const to = setTimeout(() => {
+				setLoading(undefined)
+			}, 4000)
+			return () => { clearTimeout(to) }
+		}
+	}
 
-  const DisconnectFromVPN = async () => {
+	const DisconnectFromVPN = async () => {
 
-    ToggleLoading({ logTag: "disconnect", tag: "LOGOUT", show: true, msg: "Disconnecting", includeLogs: true })
+		ToggleLoading({ logTag: "disconnect", tag: "LOGOUT", show: true, msg: "Disconnecting", includeLogs: true })
 
-    await Disconnect().then(() => {
-      ShowSuccessToast("Disconnected", { Title: "DISCONNECTED", Body: "You have been disconnected from your VPN", TimeoutType: "default" })
-      STORE.CleanupOnDisconnect()
-    }).catch((e) => {
-      console.dir(e)
-      ToggleError("Unknown error, please try again in a moment")
-    })
+		await Disconnect().then(() => {
+			ShowSuccessToast("Disconnected", { Title: "DISCONNECTED", Body: "You have been disconnected from your VPN", TimeoutType: "default" })
+			STORE.CleanupOnDisconnect()
+		}).catch((e) => {
+			console.dir(e)
+			ToggleError("Unknown error, please try again in a moment")
+		})
 
-    setTimeout(() => {
-      setLoading(undefined)
-    }, 1000)
+		setTimeout(() => {
+			setLoading(undefined)
+		}, 1000)
 
-  }
+	}
 
-  const GetStateAndUpdateVPNList = async () => {
-    let newState = { ...state }
+	const GetStateAndUpdateVPNList = async () => {
+		let newState = { ...state }
 
-    try {
+		try {
 
-      console.dir(state.ActiveRouter)
-      console.log("getting access points")
-      if (STORE.ActiveRouterSet(state)) {
-        let user = STORE.GetUser()
-        if (user) {
-          let FR = {
-            Method: "POST",
-            Path: "devices/private",
-            JSONData: {
-              UID: user._id,
-              DeviceToken: user.DeviceToken.DT
-            },
-          }
-          GetRoutersAndAccessPoints(FR).then((x) => {
-            if (x.Code === 401) {
-              ToggleError(ERROR_LOGIN)
-              STORE.Cache.Clear()
-            }
+			console.dir(state.ActiveRouter)
+			console.log("getting access points")
+			if (STORE.ActiveRouterSet(state)) {
+				let user = STORE.GetUser()
+				if (user) {
+					let FR = {
+						Method: "POST",
+						Path: "devices/private",
+						JSONData: {
+							UID: user._id,
+							DeviceToken: user.DeviceToken.DT
+						},
+					}
+					GetRoutersAndAccessPoints(FR).then((x) => {
+						if (x.Code === 401) {
+							ToggleError(ERROR_LOGIN)
+							STORE.Cache.Clear()
+						}
 
-            if (x.Err) {
-              ToggleError(x.Err)
-            } else {
-              if (x.Code !== 200) {
-                ToggleError(x.Data)
-              }
-            }
+						if (x.Err) {
+							ToggleError(x.Err)
+						} else {
+							if (x.Code !== 200) {
+								ToggleError(x.Data)
+							}
+						}
 
-          }).catch((e) => {
-            console.dir(e)
-            ToggleError("Unknown error while trying to get VPN list")
-          })
+					}).catch((e) => {
+						console.dir(e)
+						ToggleError("Unknown error while trying to get VPN list")
+					})
 
-        }
-      }
-    } catch (error) {
-      console.dir(error)
-    }
+				} else {
 
-    try {
+					LoadRoutersUnAuthenticated().then((x) => {
+					}).catch((e) => {
+						console.dir(e)
+						ToggleError("Unknown error while loading routers un-authenticated")
+					})
 
-      GetState().then((x) => {
-        console.dir(x)
-        if (x.Err) {
-          ToggleError(x.Err)
-          setState(newState)
-          return
-        }
+				}
+			}
+		} catch (error) {
+			console.dir(error)
+		}
 
-        if (x.Data) {
-          newState = { ...x.Data }
-          STORE.Cache.SetObject("state", newState)
+		try {
 
-          if (newState.C) {
-            STORE.Cache.SetObject("config", newState.C)
-          }
-        }
+			console.log("GET STATE!!!!")
+			GetState().then((x) => {
+				console.dir(x)
+				if (x.Err) {
+					ToggleError(x.Err)
+					setState(newState)
+					return
+				}
 
-        setState(newState)
+				if (x.Data) {
+					newState = { ...x.Data }
+					STORE.Cache.SetObject("state", newState)
 
-      }).catch(error => {
-        console.dir(error)
-        ToggleError("Unknown error, please try again in a moment")
-        setState(newState)
-      });
+					if (newState.C) {
+						STORE.Cache.SetObject("config", newState.C)
+					}
+				}
 
-    } catch (error) {
-      console.dir(error)
-      setState(newState)
-    }
+				setState(newState)
 
-  }
+			}).catch(error => {
+				console.dir(error)
+				ToggleError("Unknown error, please try again in a moment")
+				setState(newState)
+			});
 
-  const UpdateAdvancedMode = () => {
-    let status = STORE.AdvancedModeEnabled()
-    if (status !== advancedMode) {
-      console.log("UPDATING ADVANCED MODE:", status, advancedMode)
-      setAdvancedMode(status)
-    }
-  }
+		} catch (error) {
+			console.dir(error)
+			setState(newState)
+		}
 
-  useEffect(() => {
+	}
 
-    if (ShowStartupLoadingScreen) {
-      setLoading({ logTag: "loader", tag: "READY", show: true, msg: "Starting Niceland", includeLogs: true })
+	const UpdateAdvancedMode = () => {
+		let status = STORE.AdvancedModeEnabled()
+		if (status !== advancedMode) {
+			console.log("UPDATING ADVANCED MODE:", status, advancedMode)
+			setAdvancedMode(status)
+		}
+	}
 
-      let now = dayjs()
-      if (now.diff(StatupLoadingScreenStartTime, "s") > 10) {
-        ShowStartupLoadingScreen = false
-        setLoading(undefined)
-      }
+	useEffect(() => {
 
-      if (state && state.ClientReady) {
-        if (loading && loading.tag === "READY") {
-          ShowStartupLoadingScreen = false
-          setLoading(undefined)
-        }
-      }
-    }
+		if (ShowStartupLoadingScreen) {
+			setLoading({ logTag: "loader", tag: "READY", show: true, msg: "Starting Niceland", includeLogs: true })
 
-    const to = setTimeout(async () => {
-      UpdateAdvancedMode()
-      GetStateAndUpdateVPNList()
-    }, 1000)
+			let now = dayjs()
+			if (now.diff(StatupLoadingScreenStartTime, "s") > 10) {
+				ShowStartupLoadingScreen = false
+				setLoading(undefined)
+			}
 
-    return () => { clearTimeout(to); }
+			if (state && state.ClientReady) {
+				if (loading && loading.tag === "READY") {
+					ShowStartupLoadingScreen = false
+					setLoading(undefined)
+				}
+			}
+		}
 
-  }, [state]);
+		const to = setTimeout(async () => {
+			UpdateAdvancedMode()
+			GetStateAndUpdateVPNList()
+		}, 1000)
 
-  return (
-    < HashRouter >
-      <>
+		return () => { clearTimeout(to); }
 
-        <Toaster
-          containerStyle={{
-            top: "20px",
-            left: "20px",
-            position: 'fixed',
-          }}
-          toastOptions={{
-            className: 'toast',
-            position: "top-left",
-            success: {
-              duration: 5000,
-            },
-            icon: null,
-            error: {
-              duration: 5000,
-              style: {
-              },
-            },
-          }}
-        />
+	}, [state]);
 
-        {loading &&
-          <ScreenLoader loading={loading} toggleError={ToggleError}></ScreenLoader>
-        }
+	return (
+		< HashRouter >
+			<>
 
-        {/* <TopBar toggleLoading={ToggleLoading}></TopBar> */}
-        <SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} setStats={setStats} stats={stats} />
+				<Toaster
+					containerStyle={{
+						top: "20px",
+						left: "20px",
+						position: 'fixed',
+					}}
+					toastOptions={{
+						className: 'toast',
+						position: "top-left",
+						success: {
+							duration: 5000,
+						},
+						icon: null,
+						error: {
+							duration: 5000,
+							style: {
+							},
+						},
+					}}
+				/>
 
-        {stats &&
-          <StatsSideBar state={state} setStats={setStats}></StatsSideBar>
-        }
+				{loading &&
+					<ScreenLoader loading={loading} toggleError={ToggleError}></ScreenLoader>
+				}
+
+				{/* <TopBar toggleLoading={ToggleLoading}></TopBar> */}
+				<SideBar advancedMode={advancedMode} toggleLoading={ToggleLoading} state={state} loading={loading} disconnectFromVPN={DisconnectFromVPN} toggleError={ToggleError} setStats={setStats} stats={stats} />
+
+				{stats &&
+					<StatsSideBar state={state} setStats={setStats}></StatsSideBar>
+				}
 
 
-        <div className="content-container" >
+				<div className="content-container" >
 
-          <Routes>
+					<Routes>
 
-            <Route path="/" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
-            <Route path="twofactor" element={<Enable2FA toggleError={ToggleError} toggleLoading={ToggleLoading} />} />
-            <Route path="support" element={<Support toggleError={ToggleError} />} />
-            <Route path="settings" element={<Settings advancedMode={advancedMode} showSuccessToast={ShowSuccessToast} toggleAdvancedMode={ToggleAdvancedMode} toggleError={ToggleError} disconnectFromVPN={DisconnectFromVPN} toggleLoading={ToggleLoading} state={state} />} />
-            <Route path="tokens" element={<DeviceLogins toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-            <Route path="logs" element={<Logs toggleError={ToggleError} />} />
-            <Route path="debug" element={<Debug toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-            <Route path="login" element={<Login state={state} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-            <Route path="register" element={<Register toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-            <Route path="routers" element={<Routers state={state} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-            <Route path="*" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
+						<Route path="/" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
+						<Route path="twofactor" element={<Enable2FA toggleError={ToggleError} toggleLoading={ToggleLoading} />} />
+						<Route path="support" element={<Support toggleError={ToggleError} />} />
+						<Route path="settings" element={<Settings advancedMode={advancedMode} showSuccessToast={ShowSuccessToast} toggleAdvancedMode={ToggleAdvancedMode} toggleError={ToggleError} disconnectFromVPN={DisconnectFromVPN} toggleLoading={ToggleLoading} state={state} />} />
+						<Route path="tokens" element={<DeviceLogins toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
+						<Route path="logs" element={<Logs toggleError={ToggleError} />} />
+						<Route path="debug" element={<Debug toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
+						<Route path="login" element={<Login state={state} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
+						<Route path="register" element={<Register toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
+						<Route path="routers" element={<Routers state={state} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
+						<Route path="*" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
 
-          </Routes>
-        </div>
-      </>
+					</Routes>
+				</div>
+			</>
 
-    </HashRouter >
-  )
+		</HashRouter >
+	)
 
 
 }
@@ -279,80 +288,80 @@ const LaunchApp = () => {
 
 
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      title: "Something unexpected happened, please press Reload. If that doesn't work try pressing 'Close And Reset'. If nothing works, please contact customer support"
-    };
-  }
+	constructor(props) {
+		super(props);
+		this.state = {
+			hasError: false,
+			title: "Something unexpected happened, please press Reload. If that doesn't work try pressing 'Close And Reset'. If nothing works, please contact customer support"
+		};
+	}
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
+	static getDerivedStateFromError() {
+		return { hasError: true };
+	}
 
-  componentDidCatch() {
-    this.state.hasError = true
-  }
+	componentDidCatch() {
+		this.state.hasError = true
+	}
 
-  reloadAll() {
-    // STORE.Cache.Clear()
-    window.location.reload()
-  }
+	reloadAll() {
+		// STORE.Cache.Clear()
+		window.location.reload()
+	}
 
-  async quit() {
-    this.setState({ ...this.state, title: "closing app, please wait.." })
-    await Disconnect().then(() => {
-    }).catch((e) => {
-      console.dir(e)
-    })
-    STORE.Cache.Clear()
-    CloseApp()
-  }
+	async quit() {
+		this.setState({ ...this.state, title: "closing app, please wait.." })
+		await Disconnect().then(() => {
+		}).catch((e) => {
+			console.dir(e)
+		})
+		STORE.Cache.Clear()
+		CloseApp()
+	}
 
-  async ProductionCheck() {
+	async ProductionCheck() {
 
-    await IsProduction().then((x) => {
-      if (x) {
-        var console = {}
-        console.apply = function () { }
-        console.log = function () { }
-        console.dir = function () { }
-        console.info = function () { }
-        console.warn = function () { }
-        console.error = function () { }
-        window.console = console
-      }
+		await IsProduction().then((x) => {
+			if (x) {
+				var console = {}
+				console.apply = function() { }
+				console.log = function() { }
+				console.dir = function() { }
+				console.info = function() { }
+				console.warn = function() { }
+				console.error = function() { }
+				window.console = console
+			}
 
-    }).catch((e) => {
-      console.dir(e)
-    })
-  }
+		}).catch((e) => {
+			console.dir(e)
+		})
+	}
 
-  render() {
+	render() {
 
-    this.ProductionCheck()
+		this.ProductionCheck()
 
-    if (this.state.hasError) {
-      return (<>
-        <h1 className="exception-title">
-          {this.state.title}
-        </h1>
-        <button className="exception-button" onClick={() => this.reloadAll()}>Reload</button>
-        <button className="exception2-button" onClick={() => this.quit()}>Close And Reset</button>
-      </>)
-    }
+		if (this.state.hasError) {
+			return (<>
+				<h1 className="exception-title">
+					{this.state.title}
+				</h1>
+				<button className="exception-button" onClick={() => this.reloadAll()}>Reload</button>
+				<button className="exception2-button" onClick={() => this.quit()}>Close And Reset</button>
+			</>)
+		}
 
-    return this.props.children;
-  }
+		return this.props.children;
+	}
 }
 
 STORE.Cache.Set("focus", true)
 
 root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <LaunchApp />
-    </ErrorBoundary>
-  </React.StrictMode>
+	<React.StrictMode>
+		<ErrorBoundary>
+			<LaunchApp />
+		</ErrorBoundary>
+	</React.StrictMode>
 )

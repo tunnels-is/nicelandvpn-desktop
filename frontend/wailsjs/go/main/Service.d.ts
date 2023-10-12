@@ -33,6 +33,8 @@ export function GetRoutersAndAccessPoints(arg1:core.FORWARD_REQUEST):Promise<mai
 
 export function GetState():Promise<main.ReturnObject>;
 
+export function LoadRoutersUnAuthenticated():Promise<main.ReturnObject>;
+
 export function OpenFileDialogForRouterFile(arg1:boolean):Promise<string>;
 
 export function RebuildDomainBlocklist():Promise<void>;

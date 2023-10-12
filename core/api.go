@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"math/big"
 	"math/rand"
@@ -295,6 +296,38 @@ func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	}
 
 	return nil, 0, nil
+}
+
+func LoadRoutersUnAuthenticated() (interface{}, int, error) {
+
+	log.Println("GET ROUTERS UN_AHUTH")
+	GLOBAL_STATE.Routers = nil
+	GLOBAL_STATE.Routers = make([]*ROUTER, 0)
+	for i := range GLOBAL_STATE.RoutersList {
+		if GLOBAL_STATE.RoutersList[i] == nil {
+			continue
+		}
+
+		GLOBAL_STATE.Routers = append(GLOBAL_STATE.Routers, GLOBAL_STATE.RoutersList[i])
+	}
+
+	sort.Slice(GLOBAL_STATE.Routers, func(a, b int) bool {
+		if GLOBAL_STATE.Routers[a] == nil {
+			return false
+		}
+		if GLOBAL_STATE.Routers[b] == nil {
+			return false
+		}
+		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
+			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
+				return true
+			}
+		}
+
+		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
+	})
+
+	return nil, 200, nil
 }
 
 var LAST_ROUTER_AND_ACCESS_POINT_UPDATE = time.Now()

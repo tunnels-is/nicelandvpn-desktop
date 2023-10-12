@@ -43,11 +43,13 @@ func (a *App) startup(ctx context.Context) {
 			} else if ID == 2 {
 				go core.ReadFromRouterSocket(MONITOR)
 			} else if ID == 4 {
-				go core.ReadFromLocalTunnel(MONITOR)
+				go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {
 				go core.StartLogQueueProcessor(MONITOR)
+			} else if ID == 9 {
+				go core.CleanPorts(MONITOR)
 			}
 		}
 	}

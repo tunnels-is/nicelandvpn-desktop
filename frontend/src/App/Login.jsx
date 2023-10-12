@@ -172,9 +172,8 @@ const useForm = (props) => {
       inputs.DeviceToken = token
     }
 
-    let version = STORE.Cache.Get("version")
-    inputs["version"] = version
-
+    // let version = STORE.Cache.Get("version")
+    inputs["version"] = props.state.Version
     let FR = {
       Path: "v2/user/login",
       Method: "POST",

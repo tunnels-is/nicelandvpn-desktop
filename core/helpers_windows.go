@@ -24,13 +24,11 @@ func GenerateBaseFolderPath() string {
 func CreateBaseFolder() {
 	defer RecoverAndLogToFile()
 
-	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
-	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
 	CreateLog("loader", "Verifying configurations and logging folder")
 
 	_, err := os.Stat(GLOBAL_STATE.BasePath)
 	if err != nil {
-		err = os.Mkdir(GLOBAL_STATE.BasePath, os.ModeDir)
+		err = os.Mkdir(GLOBAL_STATE.BasePath, 0777)
 		if err != nil {
 			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to create base folder: ", err)
@@ -52,6 +50,7 @@ func AdminCheck() {
 		CreateErrorLog("", "nicelandVPN is not running as administrator, please restart as administartor")
 		return
 	}
+
 	GLOBAL_STATE.IsAdmin = true
 	_ = fd.Close()
 }

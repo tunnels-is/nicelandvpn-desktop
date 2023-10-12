@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"runtime/debug"
 	"time"
 
@@ -10,28 +8,26 @@ import (
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
 
-const VERSION = "1.1.1"
-const PRODUCTION = false
-const ENABLE_INSTERFACE = false
+const (
+	VERSION           = "1.1.3"
+	PRODUCTION        = true
+	ENABLE_INSTERFACE = true
+)
 
-var MONITOR = make(chan int, 200)
-var TUI *tea.Program
+var (
+	MONITOR = make(chan int, 200)
+	TUI     *tea.Program
+)
 
 func main() {
-
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INSTERFACE
 	core.GLOBAL_STATE.Version = VERSION
 
 	go RoutineMonitor()
 	go core.StartService(MONITOR)
-	go TimedUIUpdate(MONITOR)
 
-	TUI = tea.NewProgram(initialModel())
-	if _, err := TUI.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
+	StartTui()
 }
 
 func RoutineMonitor() {
@@ -55,7 +51,7 @@ func RoutineMonitor() {
 				// TUI ONLY .. does not fire on wails GUI
 				go TimedUIUpdate(MONITOR)
 			} else if ID == 4 {
-				go core.ReadFromLocalTunnel(MONITOR)
+				go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {
@@ -63,5 +59,4 @@ func RoutineMonitor() {
 			}
 		}
 	}
-
 }

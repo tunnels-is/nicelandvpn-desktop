@@ -17,7 +17,7 @@ body {
   height: auto;
   background-color: $body-bg;
   color: #ffffff;
-  font-family: 'Poppins';
+  font-family: "Poppins";
   font-weight: 500;
   -ms-overflow-style: none;
   /* Internet Explorer 10+ */
@@ -68,7 +68,6 @@ body::-webkit-scrollbar {
     // margin-top: 5px;
     font-size: 1.2em;
     padding: 5px;
-
   }
 
   .cancel {
@@ -97,9 +96,7 @@ body::-webkit-scrollbar {
   .exit:hover {
     text-decoration: underline;
   }
-
 }
-
 
 .exception-title {
   margin: auto;
@@ -156,9 +153,7 @@ body::-webkit-scrollbar {
   background-color: $menu-background;
   -webkit-box-shadow: -8px 1px 5px 4px rgba(0, 0, 0, 0.9);
 
-
   .back {
-
     cursor: pointer;
     width: 95%;
     margin-left: 10px;
@@ -213,7 +208,6 @@ body::-webkit-scrollbar {
     }
   }
 }
-
 
 #border {
   // z-index: 1001;
@@ -274,7 +268,6 @@ body::-webkit-scrollbar {
   flex-direction: column;
 
   .back {
-
     cursor: pointer;
     width: 95%;
     margin-top: 27px;
@@ -329,7 +322,6 @@ body::-webkit-scrollbar {
       flex-grow: 1;
     }
   }
-
 }
 
 .side-bar::-webkit-scrollbar {
@@ -407,7 +399,7 @@ body::-webkit-scrollbar {
     left: 20px;
     top: 40px;
 
-    background-image: url('../images/nl-logo.svg') !important;
+    background-image: url("../images/nl-logo.svg") !important;
     background-size: cover;
     background-repeat: no-repeat;
   }
@@ -447,9 +439,6 @@ body::-webkit-scrollbar {
   .logout {
     margin-top: 3px;
   }
-
-
-
 
   .menu-items {
     position: relative;
@@ -491,7 +480,6 @@ body::-webkit-scrollbar {
         color: $error-color;
         // text-decoration-color: $error-color !important;
       }
-
     }
 
     .menu-active {
@@ -500,7 +488,6 @@ body::-webkit-scrollbar {
         // text-decoration: underline;
         // text-decoration-color: $c-teal;
         // text-decoration-thickness: 3px;
-
       }
 
       // background: $menu-background-hover;
@@ -514,16 +501,8 @@ body::-webkit-scrollbar {
     .menu-list-icon {
       float: left;
     }
-
-
-
-
   }
-
-
 }
-
-
 
 .fake-bg {
   background: $body-dark-bg;
@@ -536,7 +515,7 @@ body::-webkit-scrollbar {
 }
 
 .world-map-bg {
-  background-image: url('../images/worldmap.png') !important;
+  background-image: url("../images/worldmap.png") !important;
   height: 100%;
   width: 100%;
   position: fixed;
@@ -579,12 +558,9 @@ body::-webkit-scrollbar {
     // opacity: 0.99;
   }
 
-  .close {}
-
-
+  .close {
+  }
 }
-
-
 
 .content-container {
   animation-name: fade;
@@ -596,7 +572,6 @@ body::-webkit-scrollbar {
   top: 20px;
   left: $sidebar-width;
   overflow: scroll;
-
 }
 
 .content-container::-webkit-scrollbar {
@@ -607,11 +582,11 @@ body::-webkit-scrollbar {
   position: absolute;
   width: 204px;
   height: 211px;
-  left: calc(50% - 204px/2);
+  left: calc(50% - 204px / 2);
   // left: 20px;
   top: 20px;
 
-  background-image: url('../images/logo.png') !important;
+  background-image: url("../images/logo.png") !important;
   background-repeat: no-repeat;
   opacity: 0.8;
 }
@@ -624,17 +599,17 @@ body::-webkit-scrollbar {
 }
 
 .anon-button {
-  background-image: url('../images/anon-lightblue.png') !important;
+  background-image: url("../images/anon-lightblue.png") !important;
   background-repeat: no-repeat;
   background-size: contain;
-
 }
 
 .anon-button:hover {
-  background-image: url('../images/anon-teal.png') !important;
+  background-image: url("../images/anon-teal.png") !important;
 }
 
-.anon-icon {}
+.anon-icon {
+}
 
 button {
   height: fit-content; // height: 45px;
@@ -647,7 +622,7 @@ button {
   border: none;
   outline: none;
 
-  font-family: 'Poppins', 'system-ui';
+  font-family: "Poppins", "system-ui";
   font-size: 2em !important;
   font-weight: bold;
   color: white;
@@ -655,7 +630,6 @@ button {
 
   cursor: pointer;
 }
-
 
 .form {
   background-color: $main-bg-color;
@@ -694,9 +668,7 @@ button {
       margin-top: -5px;
       margin-bottom: -20px;
       padding: 0px;
-
     }
-
 
     input {
       min-width: 250px;
@@ -721,7 +693,6 @@ button {
     .icon {
       flex-wrap: nowrap;
     }
-
   }
 
   .buttons {
@@ -752,8 +723,6 @@ button {
     .neutral-button:hover {
       background: $c-teal-hover;
     }
-
-
   }
 
   .get-code-button {
@@ -780,8 +749,6 @@ button {
   .color-error {
     color: $error-color;
   }
-
-
 }
 
 .login-options {
@@ -808,7 +775,6 @@ button {
   button:hover {
     color: $c-teal-hover;
   }
-
 }
 
 .login-wrapper {
@@ -819,7 +785,6 @@ button {
 }
 
 .reset-wrapper {
-
   .error {
     width: max-content;
     min-width: 100px;
@@ -863,10 +828,7 @@ button {
     left: calc(50% - 220px);
     top: 100px;
 
-
     background: rgba(21, 24, 28, 0.9);
-
-
 
     .pass2-input {
       top: 160px;
@@ -884,7 +846,7 @@ button {
       position: absolute;
       width: 177px;
       height: 44px;
-      left: calc(50% - 177px/2 - 0.5px);
+      left: calc(50% - 177px / 2 - 0.5px);
       bottom: 20px;
 
       background: $c-teal;
@@ -899,37 +861,32 @@ button {
       bottom: 80px;
       left: 85px;
     }
-
   }
-
 }
 
 .register-wrapper {
   .form-error {
-
     z-index: 3;
     position: absolute;
     width: 400px;
     height: auto;
-    left: calc(50% - 400px/2);
+    left: calc(50% - 400px / 2);
     bottom: 530px;
 
-    border: 1px solid #3D3D3D;
+    border: 1px solid #3d3d3d;
     border-radius: 20px;
     background: #101116;
 
     opacity: 0.8;
     padding: 20px;
     font-size: 1em;
-
-
   }
 
   .register-token-warning {
     z-index: 4;
     width: 400px;
     height: 110px;
-    opacity: .9;
+    opacity: 0.9;
     color: $c-orange;
     // background: #101116;
     border-bottom: none;
@@ -943,7 +900,6 @@ button {
     top: 0px;
     left: calc(50% - 220px);
     font-size: 1.1em;
-
   }
 
   .register-form {
@@ -953,7 +909,6 @@ button {
     height: 460px;
     left: calc(50% - 220px);
     top: 70px;
-
 
     background: rgba(21, 24, 28, 0.9);
 
@@ -967,7 +922,6 @@ button {
       padding-right: 10px;
       padding-left: 25px;
     }
-
 
     .email-error {
       position: absolute;
@@ -986,8 +940,6 @@ button {
       top: 172px;
       left: 326px;
     }
-
-
 
     .email-input {
       top: 54px;
@@ -1015,7 +967,6 @@ button {
       padding-left: 44px;
     }
 
-
     .code-input {
       top: 210px;
       background: url("../images/password_icon.png") no-repeat scroll 12px 20px;
@@ -1041,12 +992,8 @@ button {
 
       background: $c-teal;
     }
-
-
   }
-
 }
-
 
 .server-wrapper {
   height: 100%;
@@ -1068,7 +1015,8 @@ button {
   }
 
   .simple-connect-display {
-    .flag {}
+    .flag {
+    }
   }
 
   .simple-stats-bar {
@@ -1107,16 +1055,11 @@ button {
           color: $c-teal;
         }
       }
-
     }
 
     .connected {
       border: 2px solid $c-teal !important;
-
     }
-
-
-
 
     .item {
       width: fit-content;
@@ -1133,7 +1076,6 @@ button {
       flex-direction: row;
       background: $menu-background;
       // gap: 10px;
-
 
       .icon {
         height: 50px;
@@ -1175,9 +1117,6 @@ button {
 
       }
 
-
-
-
       .connected-flag {
         // border: 3px solid $c-teal !important;
       }
@@ -1196,11 +1135,7 @@ button {
         color: $c-red;
       }
     }
-
-
   }
-
-
 
   .advanced-private {
     z-index: 1000;
@@ -1276,7 +1211,6 @@ button {
         padding-left: 20px;
       }
 
-
       .ip {
         min-width: 120px;
         max-width: 120px;
@@ -1290,10 +1224,8 @@ button {
 
       .x3 {
         min-width: 75px;
-        max-width: 75px
+        max-width: 75px;
       }
-
-
     }
 
     .server:hover {
@@ -1301,10 +1233,9 @@ button {
       border-bottom: 1px solid $c-teal;
 
       .tag {
-        color: $c-teal
+        color: $c-teal;
       }
     }
-
 
     .is-connected {
       // border: 2px solid $c-teal-border !important;
@@ -1323,7 +1254,6 @@ button {
     }
 
     .new-server {
-
       width: 50px !important;
       background: #00000000 !important;
       border: none !important;
@@ -1338,10 +1268,7 @@ button {
         color: $c-teal;
         cursor: pointer;
         width: 50px;
-
       }
-
-
     }
 
     .server {
@@ -1376,7 +1303,6 @@ button {
         margin-left: 12px;
       }
 
-
       .item {
         text-align: center;
         float: left;
@@ -1390,7 +1316,6 @@ button {
           margin-bottom: -5px;
           margin-right: 5px;
           margin-left: -10px;
-
         }
 
         // .flag {
@@ -1409,9 +1334,6 @@ button {
           padding-top: 6px;
         }
       }
-
-
-
 
       .ip {
         min-width: 120px;
@@ -1465,7 +1387,6 @@ button {
         margin-top: -1px;
         font-size: 1em;
         color: $c-red;
-
       }
 
       .x3 {
@@ -1473,11 +1394,9 @@ button {
         max-width: 75px;
         padding-top: 3px;
       }
-
     }
   }
 }
-
 
 .router-wrapper {
   height: 100%;
@@ -1492,7 +1411,6 @@ button {
     cursor: pointer;
   }
 
-
   .router-list {
     display: flex;
     flex-direction: column;
@@ -1504,7 +1422,6 @@ button {
     margin-left: 20px;
     height: auto;
     margin-top: 5px;
-
 
     opacity: 0.89;
     border-radius: 12px 12px 0px 0px;
@@ -1556,13 +1473,10 @@ button {
         padding-left: 20px;
       }
 
-
       .x3 {
         min-width: 75px;
-        max-width: 77px
+        max-width: 77px;
       }
-
-
     }
 
     .server:hover {
@@ -1570,12 +1484,9 @@ button {
       border-bottom: 1px solid $c-teal;
 
       .ip {
-        color: $c-teal
+        color: $c-teal;
       }
-
     }
-
-
 
     .server {
       // border-bottom: 1px solid rgba(128, 128, 128, 0.322);
@@ -1611,7 +1522,6 @@ button {
         .name {
           float: left;
           width: 30px;
-
         }
       }
 
@@ -1621,7 +1531,6 @@ button {
         font-size: 1em;
         align-items: center;
 
-
         .icon {
           color: $c-teal;
           height: 20px;
@@ -1629,7 +1538,6 @@ button {
           margin-bottom: -5px;
           margin-right: 5px;
           margin-left: -10px;
-
         }
 
         .text {
@@ -1647,18 +1555,12 @@ button {
         // color: $c-teal;
         text-align: left;
         padding-left: 20px;
-
       }
-
-
-
-
 
       .x3 {
         min-width: 75px;
         max-width: 75px;
       }
-
     }
   }
 }
@@ -1690,7 +1592,6 @@ button {
   margin-top: 40px;
 
   .tab {
-
     cursor: pointer;
     width: 250px;
     text-align: center;
@@ -1701,7 +1602,7 @@ button {
     // padding-top: 10px;
     background: rgba(23, 26, 30, 0.568);
     border-radius: 10px;
-    border: 3px solid #3D3D3D;
+    border: 3px solid #3d3d3d;
   }
 
   .tab:hover {
@@ -1714,7 +1615,8 @@ button {
     border: 3px solid $c-teal;
   }
 
-  .monthly {}
+  .monthly {
+  }
 
   .onetime {
     margin-left: 2%;
@@ -1722,7 +1624,6 @@ button {
 }
 
 .sub-wrapper {
-
   height: auto;
   margin-top: 50px;
   padding-bottom: 1000px !important;
@@ -1732,8 +1633,6 @@ button {
     font-size: 0.6em;
     margin-bottom: 5px;
     text-align: center;
-
-
   }
 
   .seperator-title {
@@ -1742,18 +1641,16 @@ button {
     text-align: center;
     font-size: 2em;
     margin-bottom: 40px;
-
   }
 
   .sub {
-
     cursor: pointer;
     margin-left: 20px;
     padding-top: 10px;
     float: left;
     width: 250px;
     height: auto;
-    border: 1px solid #3D3D3D;
+    border: 1px solid #3d3d3d;
     // border-radius: 10px;
     background: rgba(23, 26, 30, 0.9);
     // border-radius: 20px;
@@ -1782,8 +1679,6 @@ button {
       text-align: center;
       font-size: 1.1em;
     }
-
-
   }
 
   .sub:hover {
@@ -1793,9 +1688,7 @@ button {
       color: $c-teal;
       // font-size: 3.3em;
     }
-
   }
-
 }
 
 .settings-wrapper {
@@ -1821,7 +1714,6 @@ button {
     margin-right: 20px;
     font-size: 1.2em !important;
   }
-
 
   .panel {
     margin-left: 20px;
@@ -1852,7 +1744,6 @@ button {
     left: 58px;
     top: -23px;
     color: $c-orange;
-
   }
 
   .extra-space {
@@ -1900,7 +1791,6 @@ button {
     // }
   }
 
-
   .input {
     box-sizing: border-box;
 
@@ -1930,13 +1820,11 @@ button {
     font-size: 1em;
   }
 
-
   .item-extra-margin {
     margin-top: 10px;
   }
 
   .item {
-
     .title {
       color: $c-orange;
     }
@@ -1950,11 +1838,9 @@ button {
     }
 
     .toggle-button {
-
       .subtext {
         color: white;
         font-size: 0.8em;
-
       }
     }
 
@@ -1991,7 +1877,6 @@ button {
       //   }
       // }
     }
-
   }
 
   .blocking-toggles {
@@ -2008,14 +1893,10 @@ button {
     color: white !important;
   }
 
-
   .warning-color {
     cursor: pointer;
     color: $c-warning-red !important;
-
   }
-
-
 
   .neutral-color {
     cursor: pointer;
@@ -2025,8 +1906,6 @@ button {
   .neutral-color:hover {
     color: $c-teal-hover !important;
   }
-
-
 }
 
 .toggle-button {
@@ -2055,7 +1934,9 @@ button {
     left: 0;
     right: 0;
     // border-radius: 30px;
-    box-shadow: 0 0 0 2px #777, 0 0 4px #777;
+    box-shadow:
+      0 0 0 2px #777,
+      0 0 4px #777;
     cursor: pointer;
     border: 4px solid transparent;
     overflow: hidden;
@@ -2074,18 +1955,17 @@ button {
     transition: 0.2s;
   }
 
-  input:checked+.slider:before {
+  input:checked + .slider:before {
     transform: translateX(20px);
     /*translateX(w-h)*/
     background-color: $c-lightblue;
   }
 
-  input:checked+.slider {
-    box-shadow: 0 0 0 2px $c-lightblue, 0 0 8px $c-lightblue;
+  input:checked + .slider {
+    box-shadow:
+      0 0 0 2px $c-lightblue,
+      0 0 8px $c-lightblue;
   }
-
-
-
 }
 
 .debug-wrapper {
@@ -2100,9 +1980,7 @@ button {
   // background: rgba(23, 26, 30, 0.9);
   margin-bottom: 20px;
 
-
   .logs-window {
-
     position: relative;
     width: calc(100% - 10px);
     height: 97%;
@@ -2132,12 +2010,11 @@ button {
   }
 
   .logs-window-bg {
-
     position: absolute;
     width: calc(100% - 50px);
     height: 84.5%;
 
-    border: 1px solid #3D3D3D;
+    border: 1px solid #3d3d3d;
     background: rgb(13, 15, 17);
     // border-radius: 20px;
     font-size: 0.7em;
@@ -2145,7 +2022,6 @@ button {
     opacity: 0.8;
     z-index: 40;
   }
-
 
   .input {
     box-sizing: border-box;
@@ -2165,7 +2041,7 @@ button {
   .input::placeholder {
     color: grey;
     font-size: 1em;
-    // 
+    //
   }
 
   .search-bar {
@@ -2186,15 +2062,12 @@ button {
     font-weight: 600;
     font-size: 22px;
     line-height: 1.4;
-    color: #FFFFFF;
+    color: #ffffff;
 
     background: $c-orange;
-    border: 1px solid #EF7503;
+    border: 1px solid #ef7503;
     cursor: pointer;
   }
-
-
-
 }
 
 .logs-wrapper {
@@ -2204,7 +2077,6 @@ button {
   border-radius: 20px;
 
   .logs-window {
-
     margin-left: 20px;
     position: relative;
     width: calc(100% - 40px);
@@ -2238,11 +2110,6 @@ button {
       font-weight: bold;
     }
   }
-
-
-
-
-
 }
 
 @keyframes fade {
@@ -2263,8 +2130,6 @@ button {
   }
 }
 
-
-
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -2274,8 +2139,6 @@ button {
     transform: rotate(360deg);
   }
 }
-
-
 
 .screen-loader {
   background: black;
@@ -2293,7 +2156,6 @@ button {
   padding-left: 40px;
   padding-top: 30px;
 
-
   .title {
     width: fit-content;
     font-size: 2em;
@@ -2308,7 +2170,6 @@ button {
     // font-size: 1em;
     font-weight: 500;
     margin-top: 1%;
-
   }
 
   .line {
@@ -2326,7 +2187,8 @@ button {
     .line {
       display: flex;
 
-      .timestamp {}
+      .timestamp {
+      }
 
       .error {
         color: $c-orange;
@@ -2337,17 +2199,14 @@ button {
         margin-inline: 5px;
       }
 
-      .data {}
+      .data {
+      }
     }
-
   }
-
-
 }
 
 .payment-wrapper {
   .secure {
-
     margin-top: 30px;
     width: 400px;
     margin-left: calc(50% - 200px);
@@ -2357,7 +2216,6 @@ button {
     margin-top: 100px;
     margin-left: 45%;
     font-size: 1.1em;
-
   }
 
   .spinner-text {
@@ -2402,11 +2260,9 @@ button {
       font-size: 0.8em;
       color: white;
     }
-
   }
 
   .form {
-
     margin-top: 20px;
     width: 400px;
     margin-left: calc(50% - 200px);
@@ -2418,7 +2274,6 @@ button {
       // text-align: center;
       color: $error-color;
       margin-bottom: 20px;
-
     }
 
     .card-logo {
@@ -2429,7 +2284,7 @@ button {
         float: left;
         height: 30px;
         width: 30px;
-        background-image: url('../images/card/visa.png') !important;
+        background-image: url("../images/card/visa.png") !important;
         background-size: contain;
       }
 
@@ -2439,7 +2294,7 @@ button {
         height: 23px;
         width: 30px;
         margin-left: 4px;
-        background-image: url('../images/card/mc.svg') !important;
+        background-image: url("../images/card/mc.svg") !important;
         background-size: contain;
       }
 
@@ -2447,7 +2302,7 @@ button {
         float: left;
         height: 30px;
         width: 30px;
-        background-image: url('../images/card/amx.png') !important;
+        background-image: url("../images/card/amx.png") !important;
         background-size: contain;
       }
     }
@@ -2460,9 +2315,7 @@ button {
       column-gap: 0.2em;
     }
 
-
     .cvc {
-
       margin-top: 10px;
 
       .input {
@@ -2490,7 +2343,6 @@ button {
       border: 2px solid rgb(167, 0, 0) !important;
     }
 
-
     .date {
       margin-top: 10px;
       width: 100%;
@@ -2510,7 +2362,6 @@ button {
         float: left;
         margin-left: 10px;
         width: 50px;
-
       }
     }
 
@@ -2539,23 +2390,19 @@ button {
       color: white;
       border: 1px solid rgba(216, 216, 216, 0.16);
       // border-radius: 5px;
-
     }
 
     input::placeholder {
       color: rgb(211, 211, 211);
     }
 
-
-
     .terms {
       margin-top: 20px;
 
       a {
-        color: $c-orange
+        color: $c-orange;
       }
     }
-
 
     .discount {
       margin-top: 5px;
@@ -2579,21 +2426,16 @@ button {
       cursor: pointer;
       color: white;
       font-size: 1.3em;
-
     }
 
     .confirm:hover {
       background-color: $c-teal;
       border: 4px solid white;
     }
-
-
   }
-
 }
 
 .support-wrapper {
-
   .social-wrapper {
     margin-top: 50px;
     display: flex;
@@ -2632,8 +2474,6 @@ button {
       .copy:hover {
         text-decoration: underline;
       }
-
-
     }
 
     .email {
@@ -2645,7 +2485,7 @@ button {
     }
 
     .reddit {
-      color: #FF5700;
+      color: #ff5700;
     }
 
     .slack {
@@ -2653,7 +2493,7 @@ button {
     }
 
     .twitter {
-      color: #1DA1F2;
+      color: #1da1f2;
     }
 
     .element {
@@ -2661,16 +2501,11 @@ button {
     }
 
     .telegram {
-      color: #229ED9;
+      color: #229ed9;
     }
-
-
   }
 
-
-
   .info {
-
     margin-top: 20px;
     // padding-top: 450px;
     width: 390px;
@@ -2685,7 +2520,7 @@ button {
       top: 35px;
       left: 30px;
 
-      background-image: url('../images/help_icon.svg') !important;
+      background-image: url("../images/help_icon.svg") !important;
       background-size: cover;
     }
 
@@ -2697,7 +2532,7 @@ button {
       top: 30px;
 
       font-size: 2em;
-      color: #D2D2D2;
+      color: #d2d2d2;
     }
 
     .text {
@@ -2707,7 +2542,7 @@ button {
       left: 30px;
       top: 90px;
       font-size: 0.9em;
-      color: #EDF3FF;
+      color: #edf3ff;
     }
 
     .emails {
@@ -2717,9 +2552,7 @@ button {
       left: 30px;
       top: 150px;
 
-
       .email {
-
         position: absolute;
         width: 135.39px;
         height: 50.79px;
@@ -2744,11 +2577,9 @@ button {
         left: 0px;
         top: 0px;
         color: $c-orange;
-
       }
 
       .email {
-
         position: absolute;
         width: 135.39px;
         height: 50.79px;
@@ -2759,8 +2590,6 @@ button {
       }
     }
   }
-
-
 }
 
 .two-factor-wrapper {
@@ -2814,8 +2643,6 @@ button {
       overflow-wrap: anywhere;
     }
   }
-
-
 }
 
 .device-wrapper {
@@ -2841,7 +2668,6 @@ button {
     height: 34px !important;
   }
 
-
   .row {
     cursor: pointer;
     font-size: 0.9em;
@@ -2864,7 +2690,7 @@ button {
 
     .logout {
       font-size: 1.2em !important;
-      color: $error-color
+      color: $error-color;
     }
 
     .logout:hover {
@@ -2875,7 +2701,8 @@ button {
       color: $c-teal;
     }
 
-    .date {}
+    .date {
+    }
 
     .current {
       color: $c-orange;
@@ -2899,10 +2726,8 @@ button {
   align-items: left;
   margin-bottom: 200px;
 
-
   .panel {
-
-    border: 2px solid #3D3D3D;
+    border: 2px solid #3d3d3d;
     border-radius: 20px;
     background: #101116;
     width: 100%;
@@ -2919,7 +2744,6 @@ button {
       margin-bottom: 10px;
       margin-top: 10px;
     }
-
 
     .save {
       padding-top: 4px;
@@ -2953,14 +2777,12 @@ button {
       grid-template-columns: repeat(3, 1fr);
       grid-template-columns: 120px 20px 220px;
 
-
       .label {
         grid-column: 1;
         grid-row: 1;
         font-size: 1.1em;
         line-height: 2.5;
         color: $c-orange;
-
       }
 
       .toggle-button {
@@ -2987,7 +2809,6 @@ button {
         font-size: 1em;
       }
 
-
       .input {
         grid-column: 3;
         grid-row: 1;
@@ -3003,13 +2824,11 @@ button {
         // border-radius: 12px;
       }
 
-
       .select {
         .option {
           background: black;
           color: $c-teal;
         }
-
       }
 
       select.editable {
@@ -3019,7 +2838,6 @@ button {
         -moz-appearance: none;
         appearance: none;
       }
-
     }
 
     .delete {
@@ -3042,7 +2860,6 @@ button {
       margin-top: -50px;
       float: right;
     }
-
   }
 
   .info {
@@ -3058,7 +2875,6 @@ button {
   .network {
     grid-column: 1;
     grid-row: 2;
-
   }
 
   .access {
@@ -3071,7 +2887,6 @@ button {
       grid-template-columns: 50px 20px 240px 50px 80px 20px 230px 90px;
 
       .label {
-
         margin-top: 5px;
       }
 
@@ -3094,10 +2909,8 @@ button {
         margin-top: 5px;
         margin-left: 20px;
       }
-
     }
   }
-
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -3119,7 +2932,7 @@ button {
 }
 
 .search-wrapper {
-  width: 250px;
+  width: 100%;
   height: 44px;
   position: relative;
   top: 10px;
@@ -3140,11 +2953,11 @@ button {
     background: none;
     background-color: none;
     padding-left: 10px;
-    padding-top: 12px;
+    padding-top: 10px;
     z-index: 2000;
     outline: none;
     border: none;
     color: white;
   }
-
 }
+

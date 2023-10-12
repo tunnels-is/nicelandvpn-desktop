@@ -99,6 +99,18 @@ curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v
 	}],
 }
 ```
+6. Deleting the VPN
+```bash
+```bash
+curl -v -H "Content-Type: application/json" -X POST https://api.atodoslist.net/v2/device/delete --resolve 'api.atodoslist.net:443:167.235.34.77' -d @vpn.json
+
+# Example vpn.json (detailed documentation further down)
+{
+  "_id": "[ REPLCE ]", // NEW: this is the _id returned from step 2
+	"UID": "64a582dd8d9eb9e39599b522",
+	"APIKey": "[ REPLACE ]", // NEW: Replace the User APIKey with the APIKey returned from step 2
+}
+```
 
 # Installation
  1. Download the binary (niceland-network) here: https://drive.google.com/file/d/1l6zSu5f-9tXqMgdgyyXmWKzZ5Cs33thY/view?usp=drive_link

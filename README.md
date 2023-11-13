@@ -9,7 +9,7 @@ This repository contains the Niceland VPN desktop application. </br>
 Anyone is welcome to contribute, just fork and make a pull request, or you can ask to become a collaborator. 
 
 # GPU Acceleration
-If you are running NicelandVPN on Linux, you might need to disable GPU acceleration. That can be done by running Niclenad with the -disableGPU flag
+If you are running NicelandVPN on Linux, you might need to disable GPU acceleration. That can be done by running Niceland with the -disableGPU flag
 ```
 $ ./NicelandVPN -disableGPU
 ```

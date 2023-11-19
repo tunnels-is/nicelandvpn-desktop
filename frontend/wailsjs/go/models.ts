@@ -35,6 +35,7 @@ export namespace core {
 	    PrevSlot?: CONTROLLER_SESSION_REQUEST;
 	    DisableIPv6OnConnect: boolean;
 	    CloseConnectionsOnConnect: boolean;
+	    CustomDNS: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CONFIG_FORM(source);
@@ -54,6 +55,7 @@ export namespace core {
 	        this.PrevSlot = this.convertValues(source["PrevSlot"], CONTROLLER_SESSION_REQUEST);
 	        this.DisableIPv6OnConnect = source["DisableIPv6OnConnect"];
 	        this.CloseConnectionsOnConnect = source["CloseConnectionsOnConnect"];
+	        this.CustomDNS = source["CustomDNS"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

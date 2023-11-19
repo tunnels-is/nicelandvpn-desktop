@@ -1,12 +1,10 @@
-package main
+package termlib
 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
@@ -15,26 +13,25 @@ import (
 type loginForm struct {
 	focusIndex int
 	inputs     []textinput.Model
-	cursorMode cursor.Mode
 }
 
-func intialModel() loginForm {
+func intialModel(userInputs []textinput.Model) loginForm {
 	m := loginForm{
-		inputs: make([]textinput.Model, 4),
+		inputs: userInputs,
 	}
 
 	var t textinput.Model
 	for i := range m.inputs {
 		t = textinput.New()
-		t.Cursor.Style = cursorStyle
+		t.Cursor.Style = CursorStyle
 		t.CharLimit = 32
 
 		switch i {
 		case 0:
 			t.Placeholder = "Email"
 			t.Focus()
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
+			t.PromptStyle = FocusedStyle
+			t.TextStyle = FocusedStyle
 		case 1:
 			t.Placeholder = "Password"
 			t.EchoMode = textinput.EchoPassword
@@ -60,15 +57,14 @@ func (m loginForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
-			// core.CleanupOnClose()
-			sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
+			// sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
 			return m, tea.Quit
 		case "tab", "shift-tab", "enter", "up", "down":
 			s := msg.String()
 
 			// if hit enter while the submit button was focused
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-				sendLoginRequest(m.inputs)
+				// sendLoginRequest(m.inputs)
 				return m, tea.Quit
 			}
 
@@ -87,13 +83,13 @@ func (m loginForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i := 0; i <= len(m.inputs)-1; i++ {
 				if i == m.focusIndex {
 					cmds[i] = m.inputs[i].Focus()
-					m.inputs[i].PromptStyle = focusedStyle
-					m.inputs[i].TextStyle = focusedStyle
+					m.inputs[i].PromptStyle = FocusedStyle
+					m.inputs[i].TextStyle = FocusedStyle
 					continue
 				}
 				m.inputs[i].Blur()
-				m.inputs[i].PromptStyle = noStyle
-				m.inputs[i].TextStyle = noStyle
+				m.inputs[i].PromptStyle = NoStyle
+				m.inputs[i].TextStyle = NoStyle
 			}
 			return m, tea.Batch(cmds...)
 		}
@@ -122,25 +118,25 @@ func (m loginForm) View() string {
 		}
 	}
 
-	button := &blurredButton
+	button := &BlurredButton
 	if m.focusIndex == len(m.inputs) {
-		button = &focusedButton
+		button = &FocusedButton
 	}
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
 	return b.String()
 }
 
-func login() {
-	_, err := tea.NewProgram(intialModel()).Run()
+func Login(userInputs []textinput.Model) {
+	_, err := tea.NewProgram(intialModel(userInputs)).Run()
 	if err != nil {
 		fmt.Printf("Could not start the login form: %s\n", err)
-		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
+
 }
 
-func sendLoginRequest(creds []textinput.Model) {
+func SendLoginRequest(creds []textinput.Model) (user *core.User) {
 	var FR core.FORWARD_REQUEST
 
 	// fill the login form
@@ -163,14 +159,17 @@ func sendLoginRequest(creds []textinput.Model) {
 		fmt.Println("\nCode: ", code)
 		fmt.Println("Log in error: ", err)
 		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
 
+	user = new(core.User)
 	// unfold it in the user global
 	err = json.Unmarshal(respBytes, &user)
 	if err != nil {
 		fmt.Println("Response error: ", err)
 		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
+
+	return
 }

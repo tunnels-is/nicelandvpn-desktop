@@ -7,10 +7,10 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
-	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/go-ping/ping"
@@ -170,7 +170,6 @@ func StateMaintenance(MONITOR chan int) {
 		BUFFER_ERROR = false
 		_ = AutoReconnect()
 	}
-
 }
 
 func AutoReconnect() (connected bool) {
@@ -258,7 +257,6 @@ func LoadConfig() {
 	var config *os.File
 	var err error
 	defer func() {
-
 		if config != nil {
 			_ = config.Close()
 		}
@@ -289,6 +287,8 @@ func LoadConfig() {
 		NC.AutoReconnect = true
 		NC.KillSwitch = false
 		NC.DisableIPv6OnConnect = true
+		NC.LogBlockedDomains = true
+		NC.CustomDNS = false
 
 		var cb []byte
 		cb, err = json.Marshal(NC)
@@ -305,7 +305,7 @@ func LoadConfig() {
 			return
 		}
 
-		err = os.Chmod(GLOBAL_STATE.ConfigPath, 0777)
+		err = os.Chmod(GLOBAL_STATE.ConfigPath, 0o777)
 		if err != nil {
 			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to change ownership of log file: ", err)
@@ -353,7 +353,7 @@ func LoadDNSWhitelist() (err error) {
 		return nil
 	}
 
-	WFile, err := os.OpenFile(C.DomainWhitelist, os.O_RDWR|os.O_CREATE, 0777)
+	WFile, err := os.OpenFile(C.DomainWhitelist, os.O_RDWR|os.O_CREATE, 0o777)
 	if err != nil {
 		return err
 	}
@@ -494,7 +494,6 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 	}
 
 	return
-
 }
 
 func DownloadRoutersFromOnlineSource() ([][]byte, error) {
@@ -657,14 +656,13 @@ func BackupSettingsToFile(NewDefault *CONNECTION_SETTINGS) {
 		return
 	}
 
-	err = os.Chmod(GLOBAL_STATE.LogFileName, 0777)
+	err = os.Chmod(GLOBAL_STATE.LogFileName, 0o777)
 	if err != nil {
 		CreateErrorLog("", "Unable to change ownership of log file: ", err)
 		return
 	}
 
 	defer func() {
-
 		if backupFile != nil {
 			_ = backupFile.Close()
 		}
@@ -682,7 +680,6 @@ func BackupSettingsToFile(NewDefault *CONNECTION_SETTINGS) {
 		CreateErrorLog("", "Unable to write backup settings to file: ", err)
 		return
 	}
-
 }
 
 func InterfaceMaintenenceAndBackup() {

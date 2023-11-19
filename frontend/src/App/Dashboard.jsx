@@ -327,18 +327,17 @@ const Dashboard = (props) => {
 					</div>
 				}
 
-
 				<div className="info">
 					<div className="tag">
 						{ap.Tag}
 					</div>
-					<div className="score">Quality Score: {ap.Router.Score}</div>
-
+					{ap.Online &&
+						<div className="score">Quality Score: {ap.Router.Score}</div>
+					}
+					{!ap.Online &&
+						<div className="score offline">OFFLINE</div>
+					}
 				</div>
-
-
-
-
 
 			</div>)
 	}
@@ -417,7 +416,6 @@ const Dashboard = (props) => {
 							<span className="tooltiptext">{STORE.VPN_Tooltips[4]}</span>
 						</div>
 					</div>
-
 
 					{(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
 						<Loader

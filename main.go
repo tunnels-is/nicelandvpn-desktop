@@ -17,18 +17,21 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-const VERSION = "1.1.5"
-const PRODUCTION = false
-const ENABLE_INSTERFACE = false
+const (
+	VERSION          = "1.1.5"
+	PRODUCTION       = true
+	ENABLE_INTERFACE = true
+)
 
 var MONITOR = make(chan int, 200)
 
-var APP = NewApp()
-var SERVICE = NewService()
+var (
+	APP     = NewApp()
+	SERVICE = NewService()
+)
 
 func main() {
-
-	var WebViewGPUPolicy = 0
+	WebViewGPUPolicy := 0
 	for i := range os.Args {
 		argToLower := strings.ToLower(os.Args[i])
 		if argToLower == "-disablegpu" {
@@ -37,7 +40,7 @@ func main() {
 	}
 
 	core.PRODUCTION = PRODUCTION
-	core.ENABLE_INSTERFACE = ENABLE_INSTERFACE
+	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
 
 	go core.StartService(MONITOR)
@@ -105,10 +108,12 @@ func main() {
 		},
 
 		Debug: options.Debug{
-			OpenInspectorOnStartup: !PRODUCTION,
+			OpenInspectorOnStartup: true,
 		},
+		// Debug: options.Debug{
+		// 	OpenInspectorOnStartup: !PRODUCTION,
+		// },
 	})
-
 	if err != nil {
 		if core.LogFile != nil {
 			_, _ = core.LogFile.WriteString("Unable to start the GUI(wails.io): " + err.Error())

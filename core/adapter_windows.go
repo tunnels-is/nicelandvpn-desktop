@@ -249,7 +249,6 @@ func (A *Adapter) Close() (err error) {
 }
 
 func (A *Adapter) Start(cap uint32) (err error) {
-
 	r1, _, err1 := syscall.SyscallN(procWintunStartSession.Addr(), uintptr(A.AdapterHandle.handle), uintptr(cap))
 	if r1 == 0 {
 		err = err1
@@ -408,7 +407,6 @@ func AdapterCleanup(AH *AdapterHandle) {
 }
 
 func initialize_tunnel_adapter() (err error) {
-
 	A.Name = TUNNEL_ADAPTER_NAME
 	A.TunHandle = windows.InvalidHandle
 	A.Events = make(chan Event, 10)
@@ -427,9 +425,9 @@ func initialize_tunnel_adapter() (err error) {
 
 	// TRY GENERATING A STATIC UID
 	// A.GUID = new(windows.GUID)
-	//https://github.com/microsoft/go-winio/blob/main/pkg/guid/guid.go
+	// https://github.com/microsoft/go-winio/blob/main/pkg/guid/guid.go
 
-	//https://github.com/WireGuard/wintun/blob/master/README.md#wintuncreateadapter
+	// https://github.com/WireGuard/wintun/blob/master/README.md#wintuncreateadapter
 
 	// A.wt = (*Adapter)(&A.Finalizer)
 
@@ -450,7 +448,7 @@ func initialize_tunnel_adapter() (err error) {
 	CreateLog("", "Starting buffer with 8MB capacity")
 	runtime.SetFinalizer(&A.AdapterHandle, AdapterCleanup)
 
-	//0x4000000
+	// 0x4000000
 	err = A.Start(0x4000000)
 	if err != nil {
 		CreateLog("", "Error starting buffer for adapter reader", err)
@@ -459,11 +457,12 @@ func initialize_tunnel_adapter() (err error) {
 	return
 }
 
-var OUTPacket []byte
-var OUTErr error
+var (
+	OUTPacket []byte
+	OUTErr    error
+)
 
 func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) {
-
 	GetDnsSettings(PotentialDefault)
 	GetIPv6Settings(PotentialDefault)
 
@@ -476,7 +475,6 @@ func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) 
 }
 
 func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
-
 	PotentialDefault, err := FindDefaultInterfaceAndGateway()
 	if err != nil {
 		CreateErrorLog("", "Could not find default interface and gateway >> ", err)
@@ -499,7 +497,6 @@ func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
 }
 
 func GetDnsSettings(PotentialDefault *CONNECTION_SETTINGS) {
-
 	cmd := exec.Command("netsh", "interface", "ipv4", "show", "dnsservers", `name=`+PotentialDefault.IFName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
@@ -544,11 +541,9 @@ func GetDnsSettings(PotentialDefault *CONNECTION_SETTINGS) {
 			}
 		}
 	}
-
 }
 
 func RestoreSettingsFromFile(PotentialDefault *CONNECTION_SETTINGS) {
-
 	CreateLog("", "ADAPTER: ", PotentialDefault)
 	CreateLog("", "RESTORING SETTINGS FROM FILE")
 
@@ -581,9 +576,8 @@ func RestoreSettingsFromFile(PotentialDefault *CONNECTION_SETTINGS) {
 		CreateErrorLog("", "Backup file contained broken DNS")
 	}
 
-	RestoreDNS()
+	RestoreDNS(false)
 	RestoreIPv6()
-
 }
 
 func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
@@ -619,7 +613,6 @@ func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
 			CreateLog("", "IPv6 BACKUP: ", PotentialDefault.IFName, " || IPv6: ", true)
 		}
 	}
-
 }
 
 func RestoreIPv6() {
@@ -646,18 +639,20 @@ func RestoreIPv6() {
 
 		CreateLog("", "IPv6 Restored on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
 	}
-
 }
 
 func ResetAfterFailedConnectionAttempt() {
 	CreateLog("connect", "Connection attempt failed, reseting network configurations")
 	_ = DisableAdapter()
 	RestoreIPv6()
-	RestoreDNS()
+	RestoreDNS(false)
 }
 
-func RestoreDNS() error {
+func RestoreDNS(force bool) error {
 	defer RecoverAndLogToFile()
+	if !C.CustomDNS && !force {
+		return nil
+	}
 
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateErrorLog("", "Unable to restore DNS, no interface backup settings found")
@@ -736,7 +731,6 @@ func DisableIPv6() error {
 	CreateLog("connect", "Finished disabling IPv6 // time: ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds")
 
 	return nil
-
 }
 
 func AddRoute(IP string) (err error) {
@@ -811,7 +805,6 @@ func DisableAdapter() (err error) {
 	cmd := exec.Command("netsh", "interface", "ipv4", "delete", "address", `name="`+TUNNEL_ADAPTER_NAME+`"`, "addr=", TUNNEL_ADAPTER_ADDRESS, "gateway=", "All")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.Output()
-
 	if err != nil {
 		CreateErrorLog("", "Error disabling adapter || msg: ", err, " || output: ", string(out))
 		return err
@@ -845,9 +838,11 @@ func EnablePacketRouting() (err error) {
 		return
 	}
 
-	err = ChangeDNS()
-	if err != nil {
-		return
+	if C.CustomDNS {
+		err = ChangeDNS()
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -898,7 +893,6 @@ func ClearDNS(Interface string) error {
 	}
 	CreateLog("file", "DNS cleared on interface: ", Interface)
 	return nil
-
 }
 
 func SetDNS(Interface, IP string, index string) error {
@@ -907,7 +901,6 @@ func SetDNS(Interface, IP string, index string) error {
 	cmd := exec.Command("netsh", "interface", "ipv4", "add", "dnsservers", `name=`+Interface, "address="+IP, "index="+index)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.Output()
-
 	if err != nil {
 		CreateErrorLog("", "NETSH || Error setting DNS: ", IP, " || interface: ", Interface, " || msg: ", err, " || output: ", string(out))
 		return err
@@ -1051,7 +1044,6 @@ func PrintDNS() ([]byte, error) {
 // WINDOWS DLL STUFF
 
 func CloseAllOpenSockets() error {
-
 	if !C.CloseConnectionsOnConnect {
 		CreateLog("", "Leaving open sockets intact")
 		return nil

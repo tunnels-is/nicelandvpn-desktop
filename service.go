@@ -196,7 +196,6 @@ func (s *Service) DisableDNSWhitelist() {
 
 func (s *Service) StartDNSCapture() {
 	core.StartCapturing()
-	return
 }
 
 func (s *Service) StopDNSCapture() string {
@@ -223,6 +222,11 @@ func (s *Service) StopDNSCapture() string {
 	}
 
 	return ""
+}
+
+func (s *Service) BlockedDomainLogging(enabled bool) {
+	core.GLOBAL_STATE.C.LogBlockedDomains = enabled
+	_ = core.SaveConfig()
 }
 
 func (s *Service) RebuildDomainBlocklist() {

@@ -4,6 +4,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
@@ -15,8 +16,9 @@ const (
 )
 
 var (
-	MONITOR = make(chan int, 200)
-	TUI     *tea.Program
+	MONITOR         = make(chan int, 200)
+	TUI             *tea.Program
+	userLoginInputs = make([]textinput.Model, 4)
 )
 
 func main() {

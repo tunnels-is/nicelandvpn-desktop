@@ -30,7 +30,6 @@ func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
 }
 
 func GetDnsSettings(PotentialDefault *CONNECTION_SETTINGS) {
-
 	dnsout, err := exec.Command("networksetup", "-getdnsservers", PotentialDefault.IFName).Output()
 	if err != nil {
 		CreateErrorLog("", "Unable to find DNS settings >>", err)
@@ -55,6 +54,7 @@ func GetDnsSettings(PotentialDefault *CONNECTION_SETTINGS) {
 func ChangeDNS() {
 	defer RecoverAndLogToFile()
 }
+
 func ChangeDNSWhileConnected() error {
 	defer RecoverAndLogToFile()
 	return nil
@@ -70,7 +70,6 @@ func InitializeTunnelAdapter() error {
 }
 
 func EnablePacketRouting() error {
-
 	DisableIPv6()
 	CreateLog("connect", "Creating default route")
 
@@ -120,14 +119,12 @@ func RestoreOriginalDefaultRoute() (err error) {
 }
 
 func RestoreIPv6() {
-
 	if !C.DisableIPv6OnConnect {
 		CreateLog("connect", "IPv6 settings unchanged")
 		return
 	}
 
 	if GLOBAL_STATE.DefaultInterface.IP6Method == "Manual" {
-
 	} else if GLOBAL_STATE.DefaultInterface.IP6Method == "Automatic" {
 
 		_, err := exec.Command("networksetup", "-setv6automatic", GLOBAL_STATE.DefaultInterface.IFName).Output()
@@ -144,7 +141,6 @@ func RestoreIPv6() {
 }
 
 func DisableIPv6() {
-
 	if !C.DisableIPv6OnConnect {
 		CreateLog("connect", "IPv6 settings unchanged")
 		return
@@ -162,8 +158,7 @@ func ResetAfterFailedConnectionAttempt() {
 	RestoreIPv6()
 }
 
-func RestoreDNS() {
-
+func RestoreDNS(force false) {
 }
 
 func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) {
@@ -171,7 +166,6 @@ func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) 
 }
 
 func FindDefaultInterfaceAndGateway() (PotentialDefault *CONNECTION_SETTINGS, err error) {
-
 	cmd := exec.Command("netstat", "-nr", "-f", "inet")
 	routeList, err := cmd.CombinedOutput()
 	if err != nil {
@@ -253,7 +247,6 @@ func FindDefaultInterfaceAndGateway() (PotentialDefault *CONNECTION_SETTINGS, er
 }
 
 func LaunchPreperation() (err error) {
-
 	A.Interface, err = water.New(water.Config{
 		DeviceType: water.TUN,
 	})
@@ -283,9 +276,7 @@ func LaunchPreperation() (err error) {
 }
 
 func SetInterfaceStateToUp(name string) error {
-
 	ipOut, err := exec.Command("ifconfig", A.Interface.Name(), "10.4.3.2", "10.4.3.1", "up").Output()
-
 	if err != nil {
 		CreateErrorLog("", err, "unable to bring up tunnel adapter ", "STDOUT", string(ipOut))
 		return err
@@ -344,7 +335,6 @@ func DeleteRoute(IP string, ignoreActiveRouterIP bool) (err error) {
 }
 
 func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
-
 	PotentialDefault, err := FindDefaultInterfaceAndGateway()
 	if err != nil {
 		CreateErrorLog("", "Could not find default interface and gateway >> ", err)
@@ -373,7 +363,6 @@ func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
 }
 
 func RestoreSettingsFromFile() {
-
 }
 
 func PrintInterfaces() (error, []byte) {
@@ -393,7 +382,7 @@ func PrintRouters() (error, []byte) {
 }
 
 func PrintDNS() (error, []byte) {
-	var out = make([]byte, 0)
+	out := make([]byte, 0)
 	dnsout, err := exec.Command("networksetup", "-getdnsservers", GLOBAL_STATE.DefaultInterface.IFName).Output()
 	if err != nil {
 		out = append(out, []byte("Error: "+err.Error())...)

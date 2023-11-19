@@ -32,7 +32,6 @@ func LocalhostCustomDialer(ctx context.Context, network, addr string) (net.Conn,
 }
 
 func OpenProxyTunnelToRouter(ctx context.Context) (TCP_CONN net.Conn, err error) {
-
 	TCP_CONN, err = net.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
 	if err != nil {
 		CreateErrorLog("", "Could not dial router: ", GLOBAL_STATE.ActiveRouter.IP, err)
@@ -58,7 +57,7 @@ func CleanupWithStateLock() {
 	_ = SetInterfaceStateToDown()
 
 	RestoreIPv6()
-	RestoreDNS()
+	RestoreDNS(false)
 	InstantlyClearPortMaps()
 
 	SetGlobalStateAsDisconnected()
@@ -116,7 +115,6 @@ func SwitchRouter(Tag string) (code int, err error) {
 	}
 
 	return 200, nil
-
 }
 
 func SendRawBytesToLocalhostProxy(method string, route string, data []byte, timeoutMS int) ([]byte, int, error) {
@@ -290,7 +288,6 @@ func SendRequestToControllerProxy(method string, route string, data interface{},
 var LAST_PRIVATE_ACCESS_POINT_UPDATE = time.Now()
 
 func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
-
 	if GLOBAL_STATE.ActiveRouter == nil {
 		return nil, 500, errors.New("active router not found, please wait a moment")
 	}
@@ -299,7 +296,6 @@ func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 }
 
 func LoadRoutersUnAuthenticated() (interface{}, int, error) {
-
 	log.Println("GET ROUTERS UN_AHUTH")
 	GLOBAL_STATE.Routers = nil
 	GLOBAL_STATE.Routers = make([]*ROUTER, 0)
@@ -387,7 +383,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 
 	PrivateAccessPoints := make([]*AccessPoint, 0)
 	if code == 200 {
-		CreateLog("", "RESPONSE:", string(responseBytes))
+		// CreateLog("", "RESPONSE:", string(responseBytes))
 		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
 		if err != nil {
 			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
@@ -513,11 +509,9 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			return false
 		}
 		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
-
 			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
 				return true
 			}
-
 		}
 
 		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
@@ -575,7 +569,6 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			if GLOBAL_STATE.AccessPoints[a].Router.MS < GLOBAL_STATE.AccessPoints[b].Router.MS {
 				return true
 			}
-
 		}
 		return GLOBAL_STATE.AccessPoints[a].Router.Score > GLOBAL_STATE.AccessPoints[b].Router.Score
 	})
@@ -591,7 +584,6 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			if GLOBAL_STATE.PrivateAccessPoints[a].Router.MS < GLOBAL_STATE.PrivateAccessPoints[b].Router.MS {
 				return true
 			}
-
 		}
 		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
 	})
@@ -722,6 +714,11 @@ func SetConfig(SF *CONFIG_FORM) error {
 		return errors.New("unable to change config while nicelandVPN is exiting")
 	}
 
+	if (C.CustomDNS != SF.CustomDNS) && GLOBAL_STATE.Connected {
+		CreateLog("loader", "unable to change custom DNS state while connected")
+		return errors.New("unable to change custom DNS state while connected")
+	}
+
 	if SF.Version != "" {
 		C.Version = SF.Version
 	}
@@ -732,6 +729,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 	C.KillSwitch = SF.KillSwitch
 	C.DisableIPv6OnConnect = SF.DisableIPv6OnConnect
 	C.CloseConnectionsOnConnect = SF.CloseConnectionsOnConnect
+	C.CustomDNS = SF.CustomDNS
 
 	// if SF.PrevSession != nil {
 	// 	C.PrevSession = SF.PrevSession
@@ -837,7 +835,6 @@ func PrepareState() {
 	// 	}
 	// }
 	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
-
 }
 
 func GetActiveAccessPointFromActiveSession() *AccessPoint {
@@ -1011,10 +1008,9 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 	var CCDec []byte
 	CC_DATA := new(OTK_REQUEST)
 
-	var FINAL_OTK = new(OTK)
-	var FINAL_OTKR = new(OTK_REQUEST)
+	FINAL_OTK := new(OTK)
+	FINAL_OTKR := new(OTK_REQUEST)
 	defer func() {
-
 		if S != nil {
 			S.PrivateKey = nil
 		}

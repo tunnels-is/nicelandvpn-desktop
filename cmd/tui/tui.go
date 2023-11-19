@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/tunnels-is/nicelandvpn-desktop/cmd/termlib"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
 
@@ -25,8 +26,6 @@ type model struct {
 	logsViewport viewport.Model
 	stats        []table.Model
 	logs         []string
-	ready        bool
-	status       []string
 	keys         keyMap
 	help         help.Model
 	// setting I have no idea how to handle them yet...
@@ -182,9 +181,9 @@ func (m model) View() string {
 		isActive := i == m.activeTab
 
 		if isActive {
-			style = activeTabStyle.Copy()
+			style = termlib.ActiveTabStyle.Copy()
 		} else {
-			style = inactiveTabStyle.Copy()
+			style = termlib.InactiveTabStyle.Copy()
 		}
 
 		renderedTabs = append(renderedTabs, style.Render(t))
@@ -199,19 +198,19 @@ func (m model) View() string {
 	var tabContent string
 	switch m.activeTab {
 	case 0:
-		tabContent = baseStyle.Render(m.serverTable.View())
+		tabContent = termlib.BaseStyle.Render(m.serverTable.View())
 	case 1:
-		tabContent = baseStyle.Render(m.routerTable.View())
+		tabContent = termlib.BaseStyle.Render(m.routerTable.View())
 	case 2:
-		tabContent = baseStyle.Render(m.logsViewport.View())
+		tabContent = termlib.BaseStyle.Render(m.logsViewport.View())
 	case 3: // Breaks if terminal columns < 134 ??? Also if for some reason you change the number the form of the stats your will have to change this too
 		tabContent = lipgloss.JoinHorizontal(
-			lipgloss.Left, baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[0].View(), "\n", m.stats[2].View())),
-			baseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[1].View(), strings.Repeat("\n", 8), m.stats[3].View())))
+			lipgloss.Left, termlib.BaseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[0].View(), "\n", m.stats[2].View())),
+			termlib.BaseStyle.Render(lipgloss.JoinVertical(lipgloss.Left, m.stats[1].View(), strings.Repeat("\n", 8), m.stats[3].View())))
 	default:
-		tabContent = baseStyle.Render("Not implemented yet!")
+		tabContent = termlib.BaseStyle.Render("Not implemented yet!")
 	}
-	doc.WriteString(windowStyle.Render(tabContent))
+	doc.WriteString(termlib.WindowStyle.Render(tabContent))
 	doc.WriteString("\n")
 
 	// Status line at the bottom
@@ -227,12 +226,12 @@ func (m model) View() string {
 	status = lipgloss.JoinHorizontal(lipgloss.Left, status, sep, stats)
 	hlpView := m.help.View(m.keys)
 	if m.help.ShowAll {
-		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, statusStyle.Render(status), hlpView))
+		doc.WriteString(lipgloss.JoinVertical(lipgloss.Left, termlib.StatusStyle.Render(status), hlpView))
 	} else {
-		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, statusStyle.Render(status), sep, hlpView))
+		doc.WriteString(lipgloss.JoinHorizontal(lipgloss.Left, termlib.StatusStyle.Render(status), sep, hlpView))
 	}
 
-	return docStyle.Render(doc.String())
+	return termlib.DocStyle.Render(doc.String())
 }
 
 func StartTui() {
@@ -240,7 +239,8 @@ func StartTui() {
 	// I do not think I can have 2 completely different models
 	// in bubbletea this is the only way I could figure out
 	// how to do it...
-	login()
+	termlib.Login(userLoginInputs)
+	user = termlib.SendLoginRequest(userLoginInputs)
 
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the
@@ -256,7 +256,7 @@ func StartTui() {
 	}
 
 	if PAFR.JSONData != nil {
-		core.GetRoutersAndAccessPoints(&PAFR)
+		_, _, _ = core.GetRoutersAndAccessPoints(&PAFR)
 	}
 
 	// Configure tabs and their number
@@ -298,13 +298,13 @@ func StartTui() {
 		table.WithColumns(s_col),
 		table.WithRows(s_row),
 	)
-	s_t.SetStyles(table_style)
+	s_t.SetStyles(termlib.TableStyle)
 
 	r_t := table.New(
 		table.WithColumns(r_col),
 		table.WithRows(r_row),
 	)
-	r_t.SetStyles(table_style)
+	r_t.SetStyles(termlib.TableStyle)
 
 	detes := detailedStatsInit()
 	// Initial tables finished ---
@@ -312,7 +312,7 @@ func StartTui() {
 	// Initialize the viewport for the logs
 	vp := viewport.New(50, 22)
 	vp.SetContent("Loading...")
-	vp.Style = baseStyle.UnsetBorderStyle()
+	vp.Style = termlib.BaseStyle.UnsetBorderStyle()
 
 	// make the model and give some starting values
 	m := model{tabs: tabs, serverTable: s_t, routerTable: r_t, logsViewport: vp, stats: detes}
@@ -452,7 +452,7 @@ func detailedStatsInit() []table.Model {
 		table.WithHeight(10),
 	)
 
-	as_t.SetStyles(detailedStatsStyle)
+	as_t.SetStyles(termlib.DetailedStatsStyle)
 	as_t.Blur()
 
 	// Interface table
@@ -478,7 +478,7 @@ func detailedStatsInit() []table.Model {
 		table.WithHeight(3),
 	)
 
-	i_t.SetStyles(detailedStatsStyle)
+	i_t.SetStyles(termlib.DetailedStatsStyle)
 	i_t.Blur()
 
 	// Connection table
@@ -504,7 +504,7 @@ func detailedStatsInit() []table.Model {
 		table.WithHeight(3),
 	)
 
-	c_t.SetStyles(detailedStatsStyle)
+	c_t.SetStyles(termlib.DetailedStatsStyle)
 	c_t.Blur()
 
 	// Network Stats table
@@ -532,7 +532,7 @@ func detailedStatsInit() []table.Model {
 		table.WithHeight(5),
 	)
 
-	n_t.SetStyles(detailedStatsStyle)
+	n_t.SetStyles(termlib.DetailedStatsStyle)
 	n_t.Blur()
 
 	return []table.Model{as_t, i_t, c_t, n_t}

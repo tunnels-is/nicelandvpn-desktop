@@ -6,7 +6,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import dayjs from "dayjs";
 
 import "./assets/style/app.scss";
-
 import { CloseApp, IsProduction } from '../wailsjs/go/main/App';
 import { Disconnect, LoadRoutersUnAuthenticated, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
 
@@ -26,14 +25,6 @@ import STORE from "./store";
 import StatsSideBar from "./App/StatsSideBar";
 
 const root = createRoot(document.getElementById('app'));
-
-// window.addEventListener('focus',
-//   STORE.Cache.Set("focus", true)
-// );
-
-// window.addEventListener('blur',
-//   STORE.Cache.Set("focus", false)
-// );
 
 const ToggleError = (e) => {
 	let lastFetch = STORE.Cache.Get("error-timeout")
@@ -104,8 +95,8 @@ const LaunchApp = () => {
 
 		try {
 
-			console.dir(state.ActiveRouter)
-			console.log("getting access points")
+			// console.dir(state.ActiveRouter)
+			// console.log("getting access points")
 			if (STORE.ActiveRouterSet(state)) {
 				let user = STORE.GetUser()
 				if (user) {
@@ -152,9 +143,8 @@ const LaunchApp = () => {
 
 		try {
 
-			console.log("GET STATE!!!!")
 			GetState().then((x) => {
-				console.dir(x)
+				// console.debug(x)
 				if (x.Err) {
 					ToggleError(x.Err)
 					setState(newState)
@@ -330,6 +320,7 @@ class ErrorBoundary extends React.Component {
 				console.info = function() { }
 				console.warn = function() { }
 				console.error = function() { }
+				console.debug = function() { }
 				window.console = console
 			}
 

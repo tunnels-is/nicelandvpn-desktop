@@ -38,10 +38,11 @@ var (
 
 	// This IP gets over-written on connect
 	EP_VPNSrcIP [4]byte
+
+	EP_NEW_RST int
 )
 
 func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
-
 	packet := *p
 
 	EP_Version = packet[0] >> 4
@@ -63,10 +64,14 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 	// DROP RST packets
 	if EP_Protocol == 6 {
 		EP_RST = EP_TPHeader[13] & 0x7 >> 2
-		// fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
 		if EP_RST == 1 {
+			EP_NEW_RST = int(EP_TPHeader[13])
+			EP_NEW_RST |= int(0b00010100)
+			EP_TPHeader[13] = byte(EP_NEW_RST)
+			// fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
+			// fmt.Printf("POST TRANSFORM: %08b\n", EP_TPHeader[13])
 			// log.Println("RST PACKET")
-			return false, false
+			// return false, false
 		}
 	}
 
@@ -134,7 +139,6 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 
 				return false, true
 			} else {
-
 				if IS_UNIX {
 					PREV_DNS_IP[0] = EP_IPv4Header[16]
 					PREV_DNS_IP[1] = EP_IPv4Header[17]
@@ -146,7 +150,6 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 					EP_IPv4Header[18] = C.DNS1Bytes[2]
 					EP_IPv4Header[19] = C.DNS1Bytes[3]
 				}
-
 			}
 
 		}
@@ -217,7 +220,6 @@ var (
 )
 
 func ProcessIngressPacket(packet []byte) bool {
-
 	IP_SrcIP[0] = packet[12]
 	IP_SrcIP[1] = packet[13]
 	IP_SrcIP[2] = packet[14]
@@ -289,7 +291,6 @@ func ProcessIngressPacket(packet []byte) bool {
 }
 
 func IsDNSQuery(UDPData []byte) bool {
-
 	if len(UDPData) < 12 {
 		// log.Println("NOT ENOUGH UDP DATA")
 		return false
@@ -315,10 +316,10 @@ func IsDNSQuery(UDPData []byte) bool {
 
 	return true
 }
-func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bool) {
 
+func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bool) {
 	q := new(dns.Msg)
-	q.Unpack(UDPData)
+	_ = q.Unpack(UDPData)
 
 	x := new(dns.Msg)
 	x.SetReply(q)
@@ -327,7 +328,6 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 
 	isCustomDNS := false
 	for i := range x.Question {
-
 		if x.Question[i].Qtype == dns.TypeA {
 			domain := x.Question[i].Name[0 : len(x.Question[i].Name)-1]
 
@@ -335,7 +335,9 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 			// CreateLog("", "DNS Q: ", domain, len(GLOBAL_BLOCK_LIST), ok)
 			if ok {
 
-				CreateLog("", "Domain blocked:", domain)
+				if GLOBAL_STATE.C.LogBlockedDomains {
+					CreateLog("", "Domain blocked:", domain)
+				}
 				isCustomDNS = true
 				x.Answer = append(x.Answer, &dns.A{
 					Hdr: dns.RR_Header{
@@ -416,7 +418,6 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 			}
 
 		}
-
 	}
 
 	if isCustomDNS {
@@ -436,7 +437,6 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 }
 
 func ProcessIngressDNSQuery(TPHeader []byte) bool {
-
 	return true
 }
 
@@ -466,7 +466,6 @@ func RecalculateAndReplaceIPv4HeaderChecksum(bytes []byte) {
 }
 
 func RecalculateAndReplaceTransportChecksum(IPv4Header []byte, TPPacket []byte) {
-
 	if IPv4Header[9] == 6 {
 		TPPacket[16] = 0
 		TPPacket[17] = 0

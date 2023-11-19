@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"runtime/debug"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/muesli/termenv"
 	"github.com/tunnels-is/nicelandvpn-desktop/cmd/termlib"
 	"github.com/tunnels-is/nicelandvpn-desktop/core"
 )
@@ -23,10 +26,27 @@ var (
 	FLAG_PASSWORD string
 	MONITOR       = make(chan int, 200)
 	TUI           *tea.Program
-	user          *core.User
+
+	user        *core.User
+	output      = termenv.NewOutput(os.Stdout)
+	color       = output.ForegroundColor()
+	bgcolor     = output.BackgroundColor()
+	resetString = output.String("... exiting")
+
+	userLoginInputs = make([]textinput.Model, 4)
 )
 
 func main() {
+	defer func() {
+		// This will reset the forground and background of the terminal when exiting
+		resetString.Foreground(color)
+		resetString.Background(bgcolor)
+		fmt.Print("\033[H\033[2J")
+		fmt.Print("\033[H\033[2J")
+		fmt.Print("\033[H\033[2J")
+		fmt.Println(resetString)
+	}()
+
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INSTERFACE
 	core.GLOBAL_STATE.Version = VERSION
@@ -40,7 +60,7 @@ func main() {
 	case "connect":
 		Connect()
 	case "getApiKey":
-		GetAPIKEy()
+		GetAPIKey()
 	case "createConfig":
 		CreateDummyConfig()
 	default:
@@ -49,8 +69,10 @@ func main() {
 
 }
 
-func GetAPIKEy() {
-	log.Println("LOADING ROUTER LIST AND STUFF ...")
+func GetAPIKey() {
+	s := termlib.NewSpinner()
+	go s.Start()
+
 	core.C = new(core.Config)
 	core.C.DebugLogging = true
 	core.InitPaths()
@@ -58,12 +80,22 @@ func GetAPIKEy() {
 	core.InitLogfile()
 	go core.StartLogQueueProcessor(MONITOR)
 	err := core.RefreshRouterList()
+	time.Sleep(2 * time.Second)
+	s.Stop()
 	if err != nil {
 		core.CreateErrorLog("", "Unable to find the best router for your connection: ", err)
+		os.Exit(1)
 	}
 
-	user = termlib.Login()
-	log.Println("API KEY:", user.APIKey)
+	fmt.Print("\033[H\033[2J")
+	termlib.Login(userLoginInputs)
+	log.Println("USER INPUT:", userLoginInputs[0].Value())
+	user = termlib.SendLoginRequest(userLoginInputs)
+	if user != nil {
+		log.Println("API KEY:", user.APIKey)
+	} else {
+		log.Println("Invalid login..")
+	}
 }
 
 func CreateDummyConfig() {

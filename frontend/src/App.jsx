@@ -95,8 +95,8 @@ const LaunchApp = () => {
 
 		try {
 
-			console.dir(state.ActiveRouter)
-			console.log("getting access points")
+			// console.dir(state.ActiveRouter)
+			// console.log("getting access points")
 			if (STORE.ActiveRouterSet(state)) {
 				let user = STORE.GetUser()
 				if (user) {
@@ -143,9 +143,8 @@ const LaunchApp = () => {
 
 		try {
 
-			console.log("GET STATE!!!!")
 			GetState().then((x) => {
-				console.debug(x)
+				// console.debug(x)
 				if (x.Err) {
 					ToggleError(x.Err)
 					setState(newState)

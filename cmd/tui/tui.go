@@ -239,7 +239,8 @@ func StartTui() {
 	// I do not think I can have 2 completely different models
 	// in bubbletea this is the only way I could figure out
 	// how to do it...
-	user = termlib.Login()
+	termlib.Login(userLoginInputs)
+	user = termlib.SendLoginRequest(userLoginInputs)
 
 	// Initial VPNs and Routers tables
 	// I thought it's a good idea to have the

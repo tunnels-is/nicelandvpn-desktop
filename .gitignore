@@ -12,6 +12,13 @@ build/windows-custom/NicelandVPN-windows.exe
 build/darwin-custom/NicelandVPN.app/Contents/MacOS/*
 build/darwin-custom/NicelandVPN.app/Contents/_CodeSignature/*
 
+cmd/tui/*.exe
+cmd/tui/niceland-static-tui
+cmd/tui/tui
+
+cmd/cli/cli
+cmd/cli/*.exe
+
 node_modules
 frontend/dist
 files

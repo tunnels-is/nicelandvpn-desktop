@@ -3,7 +3,6 @@ package termlib
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -16,9 +15,9 @@ type loginForm struct {
 	inputs     []textinput.Model
 }
 
-func intialModel() loginForm {
+func intialModel(userInputs []textinput.Model) loginForm {
 	m := loginForm{
-		inputs: make([]textinput.Model, 4),
+		inputs: userInputs,
 	}
 
 	var t textinput.Model
@@ -58,15 +57,14 @@ func (m loginForm) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
-			// core.CleanupOnClose()
-			sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
+			// sendLoginRequest(m.inputs) // I guess this is one way to exit without going into the TUI
 			return m, tea.Quit
 		case "tab", "shift-tab", "enter", "up", "down":
 			s := msg.String()
 
 			// if hit enter while the submit button was focused
 			if s == "enter" && m.focusIndex == len(m.inputs) {
-				sendLoginRequest(m.inputs)
+				// sendLoginRequest(m.inputs)
 				return m, tea.Quit
 			}
 
@@ -129,20 +127,16 @@ func (m loginForm) View() string {
 	return b.String()
 }
 
-var user *core.User
-
-func Login() (u *core.User) {
-	_, err := tea.NewProgram(intialModel()).Run()
+func Login(userInputs []textinput.Model) {
+	_, err := tea.NewProgram(intialModel(userInputs)).Run()
 	if err != nil {
 		fmt.Printf("Could not start the login form: %s\n", err)
-		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
-	u = user
-	return
+
 }
 
-func sendLoginRequest(creds []textinput.Model) {
+func SendLoginRequest(creds []textinput.Model) (user *core.User) {
 	var FR core.FORWARD_REQUEST
 
 	// fill the login form
@@ -165,15 +159,17 @@ func sendLoginRequest(creds []textinput.Model) {
 		fmt.Println("\nCode: ", code)
 		fmt.Println("Log in error: ", err)
 		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
 
+	user = new(core.User)
 	// unfold it in the user global
 	err = json.Unmarshal(respBytes, &user)
 	if err != nil {
 		fmt.Println("Response error: ", err)
 		core.CleanupOnClose()
-		os.Exit(1)
+		return
 	}
 
+	return
 }

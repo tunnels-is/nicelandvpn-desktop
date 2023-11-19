@@ -26,6 +26,7 @@ func (A *Adapter) Close() (err error) {
 	}
 	return
 }
+
 func (A *Adapter) Uninstall() (err error) {
 	return
 }
@@ -53,7 +54,6 @@ func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) 
 }
 
 func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
-
 	PotentialDefault, err := FindDefaultInterfaceAndGateway()
 	if err != nil {
 		CreateErrorLog("", "Could not find default interface and gateway >> ", err)
@@ -122,7 +122,7 @@ func ChangeDNS() error {
 	return nil
 }
 
-func RestoreDNS() {
+func RestoreDNS(force bool) {
 }
 
 func ChangeDNSWhileConnected() error {
@@ -156,7 +156,6 @@ func EnablePacketRouting() (err error) {
 }
 
 func InitializeTunnelInterface() (err error) {
-
 	err = AdjustRoutersForTunneling()
 	if err != nil {
 		CreateErrorLog("", "Unable to fix route metrics: ", err)
@@ -172,7 +171,6 @@ func InitializeTunnelInterface() (err error) {
 		if v.Name == TUNNEL_ADAPTER_NAME {
 			interfaceAlreadyExists = true
 		}
-
 	}
 
 	if !interfaceAlreadyExists {
@@ -234,7 +232,6 @@ func SetInterfaceStateToUp() (err error) {
 }
 
 func SetInterfaceStateToDown() (err error) {
-
 	ipOut, err := exec.Command("ip", "link", "set", "dev", TUNNEL_ADAPTER_NAME, "down").Output()
 	if err != nil {
 		CreateErrorLog("", "IP || unable to bring the tunnel interface down (link down) || msg: ", err, " || output: ", string(ipOut))
@@ -254,7 +251,7 @@ func AdjustRoutersForTunneling() (err error) {
 		return err
 	}
 	split := strings.Split(string(out), "\n")
-	var DefaultRoutes = make(map[string]string)
+	DefaultRoutes := make(map[string]string)
 	for _, v := range split {
 		if strings.Contains(v, "default") {
 			// log.Println(v)
@@ -324,7 +321,6 @@ func InitializeTunnelAdapter() (err error) {
 }
 
 func DeleteTunnelInterfaceRoutes(IP string) (err error) {
-
 	out, err := exec.Command("ip", "route", "del", IP, "via", TUNNEL_ADAPTER_ADDRESS, "metric", "0").Output()
 	if err != nil {
 		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
@@ -335,7 +331,6 @@ func DeleteTunnelInterfaceRoutes(IP string) (err error) {
 }
 
 func AddRouteToTunnelInterface(IP string) (err error) {
-
 	out, err := exec.Command("ip", "route", "add", IP, "via", TUNNEL_ADAPTER_ADDRESS, "metric", "0").Output()
 	if err != nil {
 
@@ -364,7 +359,6 @@ func AddRoute(IP string) (err error) {
 }
 
 func DeleteRoute(IP string, ignoreActiveRouter bool) (err error) {
-
 	if GLOBAL_STATE.DefaultInterface == nil {
 		CreateLog("", "Not deleting route, no default interface")
 		return errors.New("no default interface")
@@ -386,7 +380,6 @@ func DeleteRoute(IP string, ignoreActiveRouter bool) (err error) {
 }
 
 func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, err error) {
-
 	INTERFACE_SETTINGS := FindAllInterfaces()
 
 	var out []byte
@@ -483,7 +476,6 @@ func RestoreIPv6() {
 	}
 
 	return
-
 }
 
 func DisableIPv6() error {

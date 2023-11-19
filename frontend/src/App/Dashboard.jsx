@@ -417,7 +417,6 @@ const Dashboard = (props) => {
 						</div>
 					</div>
 
-
 					{(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
 						<Loader
 							className="spinner"

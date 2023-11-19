@@ -12,6 +12,14 @@ html,
 html a {
   background-color: $body-dark-bg;
 }
+      .big-loader {
+--wails-draggable: drag;
+position: relative;
+width: 120px;
+height: 120px;
+left: 20px;
+top: 40px;
+      }
 
 body {
   height: auto;
@@ -335,6 +343,11 @@ body::-webkit-scrollbar {
   width: 300px;
 
   .popover {
+
+		.popover-click{
+			cursor: pointer;
+			text-decoration: underline;
+		}
     // margin-top: 20px;
     padding: 10px;
     color: $popover-color;
@@ -1114,7 +1127,6 @@ button {
           color: rgb(151, 41, 41);
           font-weight: bold;
         }
-
       }
 
       .connected-flag {
@@ -1716,6 +1728,7 @@ button {
   }
 
   .panel {
+		max-width:500px;
     margin-left: 20px;
     width: 250px;
     min-width: 250px;
@@ -2953,11 +2966,10 @@ button {
     background: none;
     background-color: none;
     padding-left: 10px;
-    padding-top: 10px;
+    padding-top: 6px;
     z-index: 2000;
     outline: none;
     border: none;
     color: white;
   }
 }
-

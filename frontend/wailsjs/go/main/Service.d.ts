@@ -3,6 +3,8 @@
 import {core} from '../models';
 import {main} from '../models';
 
+export function BlockedDomainLogging(arg1:boolean):Promise<void>;
+
 export function Connect(arg1:core.CONTROLLER_SESSION_REQUEST):Promise<main.ReturnObject>;
 
 export function DisableAllBlocklists():Promise<void>;

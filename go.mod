@@ -2,14 +2,13 @@ module github.com/tunnels-is/nicelandvpn-desktop
 
 go 1.21
 
-toolchain go1.21.1
-
 require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/go-ping/ping v1.1.0
 	github.com/miekg/dns v1.1.55
+	github.com/muesli/termenv v0.15.1
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/wailsapp/wails/v2 v2.6.0
 	github.com/xlzd/gotp v0.1.0
@@ -42,7 +41,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
-	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect

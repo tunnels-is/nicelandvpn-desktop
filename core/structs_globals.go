@@ -18,38 +18,50 @@ var PRODUCTION = false
 
 var ENABLE_INSTERFACE = false
 
-var A = new(Adapter)
-var AS = new(AdapterSettings)
-var C = new(Config)
-var GLOBAL_STATE = new(State)
+var (
+	A            = new(Adapter)
+	AS           = new(AdapterSettings)
+	C            = new(Config)
+	GLOBAL_STATE = new(State)
+)
 
 var letterRunes = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
 
 // var LastRouterPing = time.Now()
 var LastConnectionAttemp = time.Now()
 
-var BUFFER_ERROR bool
-var IGNORE_NEXT_BUFFER_ERROR bool
+var (
+	BUFFER_ERROR             bool
+	IGNORE_NEXT_BUFFER_ERROR bool
+)
 
 var STATE_LOCK = sync.Mutex{}
 
-var TUNNEL_ADAPTER_NAME = "NicelandVPN"
-var TUNNEL_ADAPTER_ADDRESS = "10.4.3.2"
-var TUNNEL_ADAPTER_ADDRESS_IP = net.IP{10, 4, 3, 2}
+var (
+	TUNNEL_ADAPTER_NAME       = "NicelandVPN"
+	TUNNEL_ADAPTER_ADDRESS    = "10.4.3.2"
+	TUNNEL_ADAPTER_ADDRESS_IP = net.IP{10, 4, 3, 2}
+)
 
 var MAC_CONNECTION_SETTINGS *CONNECTION_SETTINGS
 
-var CURRENT_UBBS int = 0
-var CURRENT_DBBS int = 0
-var EGRESS_PACKETS uint64 = 0
-var INGRESS_PACKETS uint64 = 0
+var (
+	CURRENT_UBBS    int    = 0
+	CURRENT_DBBS    int    = 0
+	EGRESS_PACKETS  uint64 = 0
+	INGRESS_PACKETS uint64 = 0
+)
 
 // NETWORKING STUFF
-var TCP_MAP = make(map[[4]byte]*IP)
-var TCP_MAP_LOCK = sync.RWMutex{}
+var (
+	TCP_MAP      = make(map[[4]byte]*IP)
+	TCP_MAP_LOCK = sync.RWMutex{}
+)
 
-var UDP_MAP = make(map[[4]byte]*IP)
-var UDP_MAP_LOCK = sync.RWMutex{}
+var (
+	UDP_MAP      = make(map[[4]byte]*IP)
+	UDP_MAP_LOCK = sync.RWMutex{}
+)
 
 var DNSWhitelist = make(map[string]bool)
 
@@ -67,14 +79,15 @@ type RemotePort struct {
 	LastActivity time.Time
 }
 
-var L = new(Logs)
-var LogQueue = make(chan LogItem, 10000)
-var TAG_ERROR = "ERROR"
-var TAG_GENERAL = "GENERAL"
-var LogFile *os.File
+var (
+	L           = new(Logs)
+	LogQueue    = make(chan LogItem, 10000)
+	TAG_ERROR   = "ERROR"
+	TAG_GENERAL = "GENERAL"
+	LogFile     *os.File
+)
 
-type LoggerInterface struct {
-}
+type LoggerInterface struct{}
 
 type Logs struct {
 	PING       [100]string
@@ -177,6 +190,7 @@ type CONFIG_FORM struct {
 	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
 	DisableIPv6OnConnect      bool                        `json:"DisableIPv6OnConnect"`
 	CloseConnectionsOnConnect bool                        `json:"CloseConnectionsOnConnect"`
+	CustomDNS                 bool                        `json:"CustomDNS"`
 }
 
 type Config struct {
@@ -191,13 +205,14 @@ type Config struct {
 	Version        string
 	RouterFilePath string
 
-	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"-"`
 	DomainWhitelist           string
 	EnabledBlockLists         []string
+	LogBlockedDomains         bool
 	DisableIPv6OnConnect      bool
 	CloseConnectionsOnConnect bool
+	CustomDNS                 bool
 
-	CLI bool `json:"-"`
+	PrevSession *CONTROLLER_SESSION_REQUEST `json:"-"`
 }
 
 type AdapterSettings struct {

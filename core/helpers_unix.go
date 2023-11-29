@@ -28,7 +28,7 @@ func CreateBaseFolder() {
 
 	_, err := os.Stat(GLOBAL_STATE.BasePath)
 	if err != nil {
-		err = os.Mkdir(GLOBAL_STATE.BasePath, 0777)
+		err = os.Mkdir(GLOBAL_STATE.BasePath, 0o777)
 		if err != nil {
 			CreateErrorLog("", "Unable to create base folder: ", err)
 			return
@@ -39,7 +39,6 @@ func CreateBaseFolder() {
 }
 
 func AdminCheck() {
-
 	CreateLog("loader", "Admin check")
 	isAdmin := getProcessOwner()
 	if isAdmin == "root" {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -33,6 +34,7 @@ func StartService(MONITOR chan int) {
 	// LoadDNSWhitelist()
 	LoadBlockLists()
 
+	log.Println("start?")
 	go StartLogQueueProcessor(MONITOR)
 	go StateMaintenance(MONITOR)
 	go CalculateBandwidth(MONITOR)
@@ -118,7 +120,7 @@ func StateMaintenance(MONITOR chan int) {
 				AS.TCPTunnelSocket = nil
 			}
 
-			SetGlobalStateAsDisconnected()
+			GLOBAL_STATE.Connected = false
 			var connected bool = false
 			if C.AutoReconnect {
 				connected = AutoReconnect()
@@ -126,6 +128,7 @@ func StateMaintenance(MONITOR chan int) {
 
 			if !connected {
 				if !C.KillSwitch {
+					SetGlobalStateAsDisconnected()
 					CleanupWithStateLock()
 				}
 			}
@@ -135,13 +138,13 @@ func StateMaintenance(MONITOR chan int) {
 
 		if time.Since(GLOBAL_STATE.PingReceivedFromRouter).Seconds() > 29 {
 			CreateErrorLog("", "VPN has not responded in the last 30 seconds, disconnecting.")
-			GLOBAL_STATE.Connected = false
 
 			if AS.TCPTunnelSocket != nil {
 				_ = AS.TCPTunnelSocket.Close()
 				AS.TCPTunnelSocket = nil
 			}
 
+			GLOBAL_STATE.Connected = false
 			var connected bool = false
 			if C.AutoReconnect {
 				connected = AutoReconnect()
@@ -149,6 +152,7 @@ func StateMaintenance(MONITOR chan int) {
 
 			if !connected {
 				if !C.KillSwitch {
+					SetGlobalStateAsDisconnected()
 					CleanupWithStateLock()
 				}
 			}
@@ -161,13 +165,8 @@ func StateMaintenance(MONITOR chan int) {
 	}
 
 	if BUFFER_ERROR {
-		// if AS.TCPTunnelSocket != nil {
-		// 	_ = AS.TCPTunnelSocket.Close()
-		// 	AS.TCPTunnelSocket = nil
-		// }
-
-		SetGlobalStateAsDisconnected()
 		BUFFER_ERROR = false
+		SetGlobalStateAsDisconnected()
 		_ = AutoReconnect()
 	}
 }
@@ -963,3 +962,17 @@ func FindAllInterfaces() (IFList map[string]*INTERFACE_SETTINGS) {
 
 // 	return OUT
 // }
+
+type Event struct {
+	Tag    string
+	Action func()
+}
+
+var GLOBAL_EventQueue = make(chan func(), 100)
+
+func EventAndStateManager() {
+	for event := range GLOBAL_EventQueue {
+		log.Println(GET_FUNC(0))
+		event()
+	}
+}

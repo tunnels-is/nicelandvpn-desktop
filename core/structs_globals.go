@@ -165,9 +165,9 @@ type State struct {
 	Version string `json:"Version"`
 
 	// BLOCKING AND PARENTAL CONTROLS
-	BLists              []*List `json:"BlockLists"`
-	DNSCaptureEnabled   bool    `json:"DNSCaptureEnabled"`
-	DNSWhitelistEnabled bool    `json:"DNSWhitelistEnabled"`
+	BLists []*List `json:"BlockLists"`
+	// DNSCaptureEnabled bool    `json:"DNSCaptureEnabled"`
+	// DNSWhitelistEnabled bool    `json:"DNSWhitelistEnabled"`
 }
 
 type List struct {
@@ -191,6 +191,8 @@ type CONFIG_FORM struct {
 	DisableIPv6OnConnect      bool                        `json:"DisableIPv6OnConnect"`
 	CloseConnectionsOnConnect bool                        `json:"CloseConnectionsOnConnect"`
 	CustomDNS                 bool                        `json:"CustomDNS"`
+	EnabledBlockLists         []string                    `json:"EnabledBlockLists"`
+	LogBlockedDomains         bool                        `json:"LogBlockedDomains"`
 }
 
 type Config struct {

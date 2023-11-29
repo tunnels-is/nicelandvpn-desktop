@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -731,6 +732,15 @@ func SetConfig(SF *CONFIG_FORM) error {
 	C.CloseConnectionsOnConnect = SF.CloseConnectionsOnConnect
 	C.CustomDNS = SF.CustomDNS
 
+	C.LogBlockedDomains = SF.LogBlockedDomains
+	if slices.Compare(C.EnabledBlockLists, SF.EnabledBlockLists) != 0 {
+		C.EnabledBlockLists = SF.EnabledBlockLists
+		for i := range C.EnabledBlockLists {
+			GLOBAL_STATE.BLists[i].Enabled = true
+		}
+		BuildDomainBlocklist()
+	}
+	// C.EnabledBlockLists = SF.EnabledBlockLists
 	// if SF.PrevSession != nil {
 	// 	C.PrevSession = SF.PrevSession
 	// }
@@ -1273,7 +1283,6 @@ func GetQRCode(LF *TWO_FACTOR_CONFIRM) (QR *QR_CODE, err error) {
 
 	// According to golang 1.20 this is deprecated
 	// Remove once we upgrade to 1.20
-	rand.Seed(time.Now().UnixNano())
 
 	b := make([]rune, 16)
 	for i := range b {

@@ -136,7 +136,7 @@ func ChangeDNSOnTunnelInterface() error {
 func EnablePacketRouting() (err error) {
 	defer RecoverAndLogToFile()
 
-	DisableIPv6()
+	_ = DisableIPv6()
 
 	err = SetInterfaceStateToUp()
 	if err != nil {

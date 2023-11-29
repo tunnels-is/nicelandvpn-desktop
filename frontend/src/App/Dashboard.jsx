@@ -98,11 +98,8 @@ const Dashboard = (props) => {
 					props.toggleError(x.Err)
 				} else {
 					if (x.Code === 200) {
-
 						STORE.Cache.Set("connected_quick", "XX")
-
 						props.showSuccessToast("Connected to VPN " + a.Tag, undefined)
-
 					} else {
 						props.toggleError(x.Data)
 					}

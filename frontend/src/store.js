@@ -1,7 +1,16 @@
 import dayjs from "dayjs";
+import axios from "axios"
 const DATA = "data_";
 
 var STORE = {
+	// async GetState(){
+	//
+	// },
+	// async CallMethod(method, data) {
+	// 	let out = JSON.stringify(data)
+	// 	let response = axios.post("127.0.0.1:9999", {}, out)
+	// 	let data = await response.data
+	// },
   Config: {
     EnableConsoleLogs: false,
     AdvancedMode: false,

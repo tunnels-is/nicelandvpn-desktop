@@ -187,42 +187,42 @@ func (s *Service) OpenFileDialogForRouterFile(clearFile bool) string {
 }
 
 func (s *Service) EnableDNSWhitelist() {
-	core.GLOBAL_STATE.DNSWhitelistEnabled = true
+	// core.GLOBAL_STATE.DNSWhitelistEnabled = true
 }
 
 func (s *Service) DisableDNSWhitelist() {
-	core.GLOBAL_STATE.DNSWhitelistEnabled = false
+	// core.GLOBAL_STATE.DNSWhitelistEnabled = false
 }
 
-func (s *Service) StartDNSCapture() {
-	core.StartCapturing()
-}
+// func (s *Service) StartDNSCapture() {
+// 	core.StartCapturing()
+// }
 
-func (s *Service) StopDNSCapture() string {
-	core.CreateLog("START", "")
-
-	path := ""
-	var err error
-	path, err = runtime.SaveFileDialog(APP.ctx, runtime.SaveDialogOptions{
-		Title:                "Create A File",
-		DefaultFilename:      "allowed_websites",
-		ShowHiddenFiles:      true,
-		CanCreateDirectories: true,
-	})
-
-	if err != nil {
-		core.CreateErrorLog("", "Unable to save capture file", err.Error())
-		return err.Error()
-	}
-
-	err = core.StopCapturing(path)
-	if err != nil {
-		core.CreateErrorLog("", "Unable to save capture file", err.Error())
-		return err.Error()
-	}
-
-	return ""
-}
+// func (s *Service) StopDNSCapture() string {
+// 	core.CreateLog("START", "")
+//
+// 	path := ""
+// 	var err error
+// 	path, err = runtime.SaveFileDialog(APP.ctx, runtime.SaveDialogOptions{
+// 		Title:                "Create A File",
+// 		DefaultFilename:      "allowed_websites",
+// 		ShowHiddenFiles:      true,
+// 		CanCreateDirectories: true,
+// 	})
+//
+// 	if err != nil {
+// 		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+// 		return err.Error()
+// 	}
+//
+// 	err = core.StopCapturing(path)
+// 	if err != nil {
+// 		core.CreateErrorLog("", "Unable to save capture file", err.Error())
+// 		return err.Error()
+// 	}
+//
+// 	return ""
+// }
 
 func (s *Service) BlockedDomainLogging(enabled bool) {
 	core.GLOBAL_STATE.C.LogBlockedDomains = enabled
@@ -241,38 +241,31 @@ func (s *Service) RebuildDomainBlocklist() {
 
 	_ = core.SaveConfig()
 }
-func (s *Service) DisableAllBlocklists() {
 
+func (s *Service) DisableAllBlocklists() {
 	for i := range core.GLOBAL_STATE.BLists {
 		core.GLOBAL_STATE.BLists[i].Enabled = false
 	}
-
 }
 
 func (s *Service) EnableAllBlocklists() {
-
 	for i := range core.GLOBAL_STATE.BLists {
 		core.GLOBAL_STATE.BLists[i].Enabled = true
 	}
-
 }
 
 func (s *Service) DisableBlocklist(tag string) {
-
 	for i := range core.GLOBAL_STATE.BLists {
 		if core.GLOBAL_STATE.BLists[i].Tag == tag {
 			core.GLOBAL_STATE.BLists[i].Enabled = false
 		}
 	}
-
 }
 
 func (s *Service) EnableBlocklist(tag string) {
-
 	for i := range core.GLOBAL_STATE.BLists {
 		if core.GLOBAL_STATE.BLists[i].Tag == tag {
 			core.GLOBAL_STATE.BLists[i].Enabled = true
 		}
 	}
-
 }

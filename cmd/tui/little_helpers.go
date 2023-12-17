@@ -57,12 +57,16 @@ func logout() {
 	}
 
 	// Send logout request
-	core.Disconnect()
+	TUI_Disconnect()
 	data, code, err := core.ForwardToController(&FR)
 	fmt.Println("Logging out...")
 	fmt.Println(data)
 	fmt.Println(code)
 	fmt.Println(err)
+}
+
+func TUI_Disconnect() {
+	// core.Disconnect()
 }
 
 func max(a, b int) int {

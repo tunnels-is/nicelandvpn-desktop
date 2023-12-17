@@ -1,14 +1,16 @@
 import { useNavigate, Navigate } from "react-router-dom";
 import React, { useState } from "react";
 
-import toast from 'react-hot-toast';
+import {
+	DesktopIcon,
+	EnterIcon,
+	MagnifyingGlassIcon
+} from "@radix-ui/react-icons";
+
 import Loader from "react-spinners/ScaleLoader";
-
-import { Connect, Switch } from "../../wailsjs/go/main/Service";
-
+import toast from 'react-hot-toast';
 import STORE from "../store";
-import { DesktopIcon, EnterIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
-
+import API from "../api";
 
 const Dashboard = (props) => {
 
@@ -65,13 +67,10 @@ const Dashboard = (props) => {
 
 			let method = undefined
 			if (props.state?.ActiveAccessPoint) {
-				method = Switch
+				method = "switch"
 			} else {
-				method = Connect
+				method = "connect"
 			}
-
-			// console.log("CONNECTING TO:", a.Tag, a.GROUP, a.ROUTERID)
-			// console.log("SECOND ROUTER:", ar.GROUP, ar.ROUTERID)
 
 			let ConnectForm = {
 				UserID: user._id,
@@ -89,26 +88,20 @@ const Dashboard = (props) => {
 				ConnectForm.Networks = a.Networks
 			}
 
-			method(ConnectForm).then((x) => {
-				if (x.Code === 401) {
+			let x = await API.method(method, ConnectForm)
+			if (x === undefined) {
+				props.toggleError("Unknown error, please try again in a moment")
+			} else {
+				if (x.status === 401) {
 					LogOut()
 				}
-
-				if (x.Err) {
-					props.toggleError(x.Err)
+				if (x.status === 200) {
+					STORE.Cache.Set("connected_quick", "XX")
+					props.showSuccessToast("Connected to VPN " + a.Tag, undefined)
 				} else {
-					if (x.Code === 200) {
-						STORE.Cache.Set("connected_quick", "XX")
-						props.showSuccessToast("Connected to VPN " + a.Tag, undefined)
-					} else {
-						props.toggleError(x.Data)
-					}
+					props.toggleError(x.data)
 				}
-
-			}).catch((e) => {
-				console.dir(e)
-				props.toggleError("Unknown error, please try again in a moment")
-			})
+			}
 
 		} catch (error) {
 			console.dir(error)
@@ -121,15 +114,11 @@ const Dashboard = (props) => {
 	const NavigateToEditAP = (id) => {
 		navigate("/accesspoint/" + id)
 	}
-	const NavigateToCreateAP = () => {
-		navigate("create/accesspoint")
-	}
 
 	let user = STORE.GetUser()
 	if (!user) {
 		return (<Navigate to={"/login"} />)
 	}
-
 
 
 	const RenderServer = (ap, ar, editButton, isConnected) => {

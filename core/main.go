@@ -36,12 +36,10 @@ func StartService(MONITOR chan int) {
 
 	log.Println("start?")
 	go StartLogQueueProcessor(MONITOR)
-	go StateMaintenance(MONITOR)
-	go CalculateBandwidth(MONITOR)
-	go CleanPorts(MONITOR)
 
-	go ReadFromLocalSocket(MONITOR)
-	go ReadFromRouterSocket(MONITOR)
+	// REFACTOR:
+	// go StateMaintenance(MONITOR)
+	// go CalculateBandwidth(MONITOR)
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")
@@ -179,9 +177,9 @@ func AutoReconnect() (connected bool) {
 		if connectingStateChangedLocally {
 			GLOBAL_STATE.Connecting = false
 		}
-		STATE_LOCK.Unlock()
+		// STATE_LOCK.Unlock()
 	}()
-	STATE_LOCK.Lock()
+	// STATE_LOCK.Lock()
 
 	if !C.AutoReconnect {
 		return false
@@ -205,7 +203,7 @@ func AutoReconnect() (connected bool) {
 	LastConnectionAttemp = time.Now()
 	CreateLog("", "Automatic reconnect..")
 
-	s, _, err := ConnectToAccessPoint(C.PrevSession, true)
+	s, _, err := REF_ConnectToAccessPoint(C.PrevSession, true)
 	if s == nil || err != nil {
 		CreateErrorLog("", "Auto reconnect failed")
 		return false
@@ -620,6 +618,40 @@ func GetLowestLatencyRouter() (int, error) {
 	}
 
 	return 0, errors.New("no routers")
+}
+
+func REF_ConnectToActiveRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNEL net.Conn, err error) {
+	defer RecoverAndLogToFile()
+
+	if port == "" {
+		if proto == "tcp" {
+			port = "443"
+		} else {
+			port = "444"
+		}
+	}
+
+	var routerIP string
+	for _, v := range GLOBAL_STATE.RoutersList {
+		if v == nil {
+			continue
+		}
+		if v.ROUTERID == ROUTERID && v.GROUP == GROUP {
+			routerIP = v.IP
+		}
+	}
+
+	if routerIP == "" {
+		return nil, errors.New("unable to find router")
+	}
+
+	dialer := net.Dialer{Timeout: time.Duration(10 * time.Second)}
+	TUNNEL, err = dialer.Dial(proto, routerIP+":"+port)
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 func ConnectToActiveRouter(RoutingBuffer [8]byte) (TUNNEL net.Conn, err error) {

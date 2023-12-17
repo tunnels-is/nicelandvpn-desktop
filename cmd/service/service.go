@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"runtime"
 	"runtime/debug"
 	"time"
 
@@ -22,6 +23,9 @@ func main() {
 			core.CreateErrorLog("", r, string(debug.Stack()))
 		}
 	}()
+
+	runtime.GOMAXPROCS(1)
+
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
@@ -36,22 +40,22 @@ func main() {
 			if ID == 1 {
 				go core.StateMaintenance(MONITOR)
 			} else if ID == 2 {
-				go core.ReadFromRouterSocket(MONITOR)
+				// go core.ReadFromRouterSocket(MONITOR)
 			} else if ID == 4 {
-				go core.ReadFromLocalSocket(MONITOR)
+				// go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
 				go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {
 				go core.StartLogQueueProcessor(MONITOR)
 			} else if ID == 9 {
-				go core.CleanPorts(MONITOR)
+				// go core.CleanPorts(MONITOR)
 			} else if ID == 7 {
 				go core.START_API(MONITOR)
-			} else if ID == 8 {
-				go core.EventAndStateManager()
+			} else if ID == 10 {
+				// go core.EventAndStateManager()
 			}
 		default:
-			log.Println("default")
+			// log.Println("default")
 			time.Sleep(500 * time.Millisecond)
 		}
 	}

@@ -1,12 +1,13 @@
 module github.com/tunnels-is/nicelandvpn-desktop
 
-go 1.21
+go 1.21.1
 
 require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/go-ping/ping v1.1.0
+	github.com/google/uuid v1.3.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/miekg/dns v1.1.55
 	github.com/muesli/termenv v0.15.1
@@ -14,8 +15,8 @@ require (
 	github.com/wailsapp/wails/v2 v2.6.0
 	github.com/xlzd/gotp v0.1.0
 	go.mongodb.org/mongo-driver v1.12.0
-	golang.org/x/crypto v0.14.0
-	golang.org/x/sys v0.13.0
+	golang.org/x/crypto v0.16.0
+	golang.org/x/sys v0.15.0
 )
 
 require (
@@ -25,7 +26,6 @@ require (
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/leaanthony/go-ansi-parser v1.6.0 // indirect
@@ -48,12 +48,15 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.7 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
+	github.com/zveinn/tcpcrypt v0.0.0-20231217173458-893a02d49351
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 )
+
+replace github.com/zveinn/tcpcrypt => ../tcpcrypt

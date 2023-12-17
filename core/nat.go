@@ -13,9 +13,9 @@ func inc(ip net.IP) {
 	}
 }
 
-func BUILD_NAT_MAP(AP *AccessPoint) (err error) {
-	AP.NAT_CACHE = make(map[[4]byte][4]byte)
-	AP.REVERSE_NAT_CACHE = make(map[[4]byte][4]byte)
+func (V *VPNConnection) BuildNATMap(AP *VPNNode) (err error) {
+	V.NAT_CACHE = make(map[[4]byte][4]byte)
+	V.REVERSE_NAT_CACHE = make(map[[4]byte][4]byte)
 
 	for _, v := range AP.NAT {
 		ip2, ip2net, err := net.ParseCIDR(v.Nat)
@@ -32,8 +32,8 @@ func BUILD_NAT_MAP(AP *AccessPoint) (err error) {
 
 		for ipnet.Contains(ip) && ip2net.Contains(ip2) {
 
-			AP.NAT_CACHE[[4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}] = [4]byte{ip[0], ip[1], ip[2], ip[3]}
-			AP.REVERSE_NAT_CACHE[[4]byte{ip[0], ip[1], ip[2], ip[3]}] = [4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}
+			V.NAT_CACHE[[4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}] = [4]byte{ip[0], ip[1], ip[2], ip[3]}
+			V.REVERSE_NAT_CACHE[[4]byte{ip[0], ip[1], ip[2], ip[3]}] = [4]byte{ip2[0], ip2[1], ip2[2], ip2[3]}
 
 			inc(ip)
 			inc(ip2)

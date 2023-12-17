@@ -12,15 +12,15 @@ var (
 	UDP_o0 [256]*O1
 )
 
-func InstantlyClearPortMaps() {
-	for i := range TCP_o0 {
-		TCP_o0[i] = nil
-		TCP_o0[i] = new(O1)
+func (V *VPNConnection) InstantlyClearPortMaps() {
+	for i := range V.TCP_MAP {
+		V.TCP_MAP[i] = nil
+		V.TCP_MAP[i] = new(O1)
 	}
 
-	for i := range UDP_o0 {
-		UDP_o0[i] = nil
-		UDP_o0[i] = new(O1)
+	for i := range V.UDP_MAP {
+		V.UDP_MAP[i] = nil
+		V.UDP_MAP[i] = new(O1)
 	}
 }
 
@@ -50,7 +50,7 @@ type RP struct {
 	LastActivity time.Time
 }
 
-func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport [2]byte) *RP {
+func (V *VPNConnection) CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport [2]byte) *RP {
 	if protoMap[ip[0]] == nil {
 		protoMap[ip[0]] = new(O1)
 	}
@@ -83,7 +83,7 @@ func CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, lport, rport [2]byte
 	}
 
 	newPort := [2]byte{}
-	for i := AS.StartPort; i <= AS.EndPort; i++ {
+	for i := V.StartPort; i <= V.EndPort; i++ {
 
 		binary.BigEndian.PutUint16(newPort[:], i)
 		m.Lock.Lock()
@@ -138,17 +138,17 @@ func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port [2]byte) (mappin
 
 func CleanPorts(MONITOR chan int) {
 	defer func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(10 * time.Second)
 		if !GLOBAL_STATE.Exiting {
 			MONITOR <- 9
 		}
 	}()
 
-	GLOBAL_EventQueue <- func() {
-		defer RecoverAndLogToFile()
-		CleanPortMap(&TCP_o0, "tcp")
-		CleanPortMap(&UDP_o0, "udp")
-	}
+	// GLOBAL_EventQueue <- func() {
+	defer RecoverAndLogToFile()
+	// CleanPortMap(&TCP_o0, "tcp")
+	// CleanPortMap(&UDP_o0, "udp")
+	// }
 
 	// CleanPortMap(&TCP_o0, "tcp")
 	// CleanPortMap(&UDP_o0, "udp")

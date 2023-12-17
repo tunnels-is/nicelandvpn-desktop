@@ -6,8 +6,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import dayjs from "dayjs";
 
 import "./assets/style/app.scss";
-import { CloseApp, IsProduction } from '../wailsjs/go/main/App';
-import { Disconnect, LoadRoutersUnAuthenticated, GetRoutersAndAccessPoints, GetState } from '../wailsjs/go/main/Service';
 
 import ScreenLoader from "./App/ScreenLoader";
 import DeviceLogins from "./App/DeviceLogins";
@@ -23,6 +21,7 @@ import Login from "./App/Login";
 import Logs from "./App/Logs";
 import STORE from "./store";
 import StatsSideBar from "./App/StatsSideBar";
+import API from "./api";
 
 const root = createRoot(document.getElementById('app'));
 
@@ -74,19 +73,16 @@ const LaunchApp = () => {
 
 	const DisconnectFromVPN = async () => {
 
-		ToggleLoading({ logTag: "disconnect", tag: "LOGOUT", show: true, msg: "Disconnecting", includeLogs: true })
-
-		await Disconnect().then(() => {
-			ShowSuccessToast("Disconnected", { Title: "DISCONNECTED", Body: "You have been disconnected from your VPN", TimeoutType: "default" })
-			STORE.CleanupOnDisconnect()
-		}).catch((e) => {
+		let x = await API.method("disconnect", undefined)
+		if (x === undefined) {
 			console.dir(e)
 			ToggleError("Unknown error, please try again in a moment")
-		})
-
-		setTimeout(() => {
 			setLoading(undefined)
-		}, 1000)
+		} else {
+			ShowSuccessToast("Disconnected", { Title: "DISCONNECTED", Body: "You have been disconnected from your VPN", TimeoutType: "default" })
+			STORE.CleanupOnDisconnect()
+			setLoading(undefined)
+		}
 
 	}
 
@@ -94,7 +90,6 @@ const LaunchApp = () => {
 		let newState = { ...state }
 
 		try {
-
 			// console.dir(state.ActiveRouter)
 			// console.log("getting access points")
 			if (STORE.ActiveRouterSet(state)) {
@@ -108,33 +103,9 @@ const LaunchApp = () => {
 							DeviceToken: user.DeviceToken.DT
 						},
 					}
-					GetRoutersAndAccessPoints(FR).then((x) => {
-						if (x.Code === 401) {
-							ToggleError(ERROR_LOGIN)
-							STORE.Cache.Clear()
-						}
-
-						if (x.Err) {
-							ToggleError(x.Err)
-						} else {
-							if (x.Code !== 200) {
-								ToggleError(x.Data)
-							}
-						}
-
-					}).catch((e) => {
-						console.dir(e)
-						ToggleError("Unknown error while trying to get VPN list")
-					})
-
+					await API.method("getRoutersAndAccessPoints", FR)
 				} else {
-
-					LoadRoutersUnAuthenticated().then((x) => {
-					}).catch((e) => {
-						console.dir(e)
-						ToggleError("Unknown error while loading routers un-authenticated")
-					})
-
+					await API.method("getRoutersUnAuthenticated", {})
 				}
 			}
 		} catch (error) {
@@ -142,31 +113,20 @@ const LaunchApp = () => {
 		}
 
 		try {
-
-			GetState().then((x) => {
-				// console.debug(x)
-				if (x.Err) {
-					ToggleError(x.Err)
-					setState(newState)
-					return
-				}
-
-				if (x.Data) {
-					newState = { ...x.Data }
-					STORE.Cache.SetObject("state", newState)
-
-					if (newState.C) {
-						STORE.Cache.SetObject("config", newState.C)
-					}
-				}
-
-				setState(newState)
-
-			}).catch(error => {
-				console.dir(error)
+			let x = await API.method("getState", {})			// GetState().then((x) => {
+			console.dir(x)
+			if (x === undefined) {
 				ToggleError("Unknown error, please try again in a moment")
+			} else {
+				newState = { ...x.data }
+				STORE.Cache.SetObject("state", newState)
+
+				if (newState.C) {
+					STORE.Cache.SetObject("config", newState.C)
+				}
 				setState(newState)
-			});
+
+			}
 
 		} catch (error) {
 			console.dir(error)

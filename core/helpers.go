@@ -1,21 +1,13 @@
 package core
 
 import (
-	"crypto/cipher"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	crand "crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"io"
 	"log"
-	"math/big"
 	"net"
 	"runtime/debug"
 	"strings"
-
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 func InitPaths() {
@@ -42,7 +34,6 @@ func CopySlice(in []byte) (out []byte) {
 }
 
 func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int, err error) {
-
 	n, err = io.ReadAtLeast(CONN, TunnelBuffer[:MIDBufferLength], MIDBufferLength)
 	if err != nil {
 		CreateErrorLog("", "TUNNEL READER ERROR: ", err)
@@ -68,39 +59,39 @@ func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int
 	return
 }
 
-func GenerateEllipticCurveAndPrivateKey() (PK *ecdsa.PrivateKey, R *OTK_REQUEST, err error) {
-	defer RecoverAndLogToFile()
+// func GenerateEllipticCurveAndPrivateKey() (PK *ecdsa.PrivateKey, R *OTK_REQUEST, err error) {
+// 	defer RecoverAndLogToFile()
+//
+// 	E := elliptic.P521()
+// 	PK, err = ecdsa.GenerateKey(E, crand.Reader)
+// 	if err != nil {
+// 		CreateErrorLog("", "Unable to generate private key: ", err)
+// 		return nil, nil, err
+// 	}
+//
+// 	R = new(OTK_REQUEST)
+// 	R.X = PK.PublicKey.X
+// 	R.Y = PK.PublicKey.Y
+// 	return
+// }
 
-	E := elliptic.P521()
-	PK, err = ecdsa.GenerateKey(E, crand.Reader)
-	if err != nil {
-		CreateErrorLog("", "Unable to generate private key: ", err)
-		return nil, nil, err
-	}
-
-	R = new(OTK_REQUEST)
-	R.X = PK.PublicKey.X
-	R.Y = PK.PublicKey.Y
-	return
-}
-
-func GenerateAEADFromPrivateKey(PK *ecdsa.PrivateKey, R *OTK_REQUEST) (AEAD cipher.AEAD, err error) {
-	var CCKeyb *big.Int
-	var CCKey [32]byte
-	defer func() {
-		CCKeyb = nil
-		CCKey = [32]byte{}
-	}()
-	defer RecoverAndLogToFile()
-
-	CCKeyb, _ = PK.Curve.ScalarMult(R.X, R.Y, PK.D.Bytes())
-	CCKey = sha256.Sum256(CCKeyb.Bytes())
-	AEAD, err = chacha20poly1305.NewX(CCKey[:])
-	if err != nil {
-		CreateErrorLog("", "Unable to generate AEAD: ", err)
-	}
-	return
-}
+// func GenerateAEADFromPrivateKey(PK *ecdsa.PrivateKey, R *OTK_REQUEST) (AEAD cipher.AEAD, err error) {
+// 	var CCKeyb *big.Int
+// 	var CCKey [32]byte
+// 	defer func() {
+// 		CCKeyb = nil
+// 		CCKey = [32]byte{}
+// 	}()
+// 	defer RecoverAndLogToFile()
+//
+// 	CCKeyb, _ = PK.Curve.ScalarMult(R.X, R.Y, PK.D.Bytes())
+// 	CCKey = sha256.Sum256(CCKeyb.Bytes())
+// 	AEAD, err = chacha20poly1305.NewX(CCKey[:])
+// 	if err != nil {
+// 		CreateErrorLog("", "Unable to generate AEAD: ", err)
+// 	}
+// 	return
+// }
 
 func SetGlobalStateAsDisconnected() {
 	CreateLog("", "App state set to -Disconnected-")
@@ -109,7 +100,6 @@ func SetGlobalStateAsDisconnected() {
 }
 
 func GetDomainAndSubDomain(domain string) (d, s string) {
-
 	parts := strings.Split(domain, ".")
 	// parts = parts[:len(parts)-1]
 	if len(parts) == 2 {
@@ -124,27 +114,23 @@ func GetDomainAndSubDomain(domain string) (d, s string) {
 	return
 }
 
-func DNSCNameMapping(domain string) (CNAME string) {
+func (N *VPNNode) DNSCNameMapping(domain string) (CNAME string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
-		return ""
-	}
-
-	if AS.AP == nil {
 		return ""
 	}
 
 	var m *DeviceDNSRegistration
 	var ok bool
 	if s != "" {
-		m, ok = AS.AP.DNS[s+"."+d]
+		m, ok = N.DNS[s+"."+d]
 		if ok {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
 			return m.CNAME
 		}
 	}
 
-	m, ok = AS.AP.DNS[d]
+	m, ok = N.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
@@ -153,28 +139,18 @@ func DNSCNameMapping(domain string) (CNAME string) {
 	}
 
 	return ""
-
 }
 
-func DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
+func (N *VPNNode) DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
 		return nil, ""
 	}
 
-	if AS.AP == nil {
-		return nil, ""
-	}
-	// CreateLog("DNS", "PARTS: ", parts)
-	// CreateLog("DNS", "DOMAIN: ", d)
-	// CreateLog("DNS", "SUBDOMAIN: ", s)
-	// CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
-
-	// DNS A RECORD
 	var m *DeviceDNSRegistration
 	var ok bool
 	if s != "" {
-		m, ok = AS.AP.DNS[s+"."+d]
+		m, ok = N.DNS[s+"."+d]
 		if ok {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
 			if m.CNAME != "" {
@@ -188,7 +164,7 @@ func DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 		}
 	}
 
-	m, ok = AS.AP.DNS[d]
+	m, ok = N.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
@@ -206,15 +182,12 @@ func DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 	return nil, ""
 }
 
-func DNSTXTMapping(domain string) (TXTS []string) {
+func (N *VPNNode) DNSTXTMapping(domain string) (TXTS []string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
 		return nil
 	}
 
-	if AS.AP == nil {
-		return nil
-	}
 	// CreateLog("DNS", "PARTS: ", parts)
 	// CreateLog("DNS", "DOMAIN: ", d)
 	// CreateLog("DNS", "SUBDOMAIN: ", s)
@@ -224,7 +197,7 @@ func DNSTXTMapping(domain string) (TXTS []string) {
 	var m *DeviceDNSRegistration
 	var ok bool
 	if s != "" {
-		m, ok = AS.AP.DNS[s+"."+d]
+		m, ok = N.DNS[s+"."+d]
 		if ok {
 			// CreateLog("DNS", "TXT FOUND: ", m.TXT)
 			for _, v := range m.TXT {
@@ -234,7 +207,7 @@ func DNSTXTMapping(domain string) (TXTS []string) {
 		}
 	}
 
-	m, ok = AS.AP.DNS[d]
+	m, ok = N.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			for _, v := range m.TXT {

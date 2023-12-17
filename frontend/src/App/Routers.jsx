@@ -1,7 +1,6 @@
 import { Navigate } from "react-router-dom";
 import React, { useState } from "react";
 
-import { SwitchRouter } from '../../wailsjs/go/main/Service';
 
 import STORE from "../store";
 import { DesktopIcon, MagnifyingGlassIcon, EnterIcon } from "@radix-ui/react-icons";
@@ -97,7 +96,7 @@ const Routers = (props) => {
 				{s.Country === "" &&
 					<div className="item country-item x3">
 						<span className="name">
-						...
+							...
 						</span>
 					</div>
 

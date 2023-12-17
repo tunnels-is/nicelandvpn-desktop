@@ -2,7 +2,8 @@ package core
 
 import (
 	cipher "crypto/cipher"
-	"crypto/ecdsa"
+	"crypto/ecdh"
+	"crypto/rand"
 	"math/big"
 	"net"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-ping/ping"
+	"github.com/google/uuid"
+	"github.com/zveinn/tcpcrypt"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -19,8 +22,8 @@ var PRODUCTION = false
 var ENABLE_INSTERFACE = false
 
 var (
-	A            = new(Adapter)
-	AS           = new(AdapterSettings)
+	// A = new(Adapter)
+	// AS           = new(AdapterSettings)
 	C            = new(Config)
 	GLOBAL_STATE = new(State)
 )
@@ -35,12 +38,12 @@ var (
 	IGNORE_NEXT_BUFFER_ERROR bool
 )
 
-var STATE_LOCK = sync.Mutex{}
+// var STATE_LOCK = sync.Mutex{}
 
 var (
-	TUNNEL_ADAPTER_NAME       = "NicelandVPN"
-	TUNNEL_ADAPTER_ADDRESS    = "10.4.3.2"
-	TUNNEL_ADAPTER_ADDRESS_IP = net.IP{10, 4, 3, 2}
+	TUNNEL_ADAPTER_NAME       = "nvpn"
+	TUNNEL_ADAPTER_ADDRESS    = "10.0.0.3"
+	TUNNEL_ADAPTER_ADDRESS_IP = net.IP{10, 0, 0, 3}
 )
 
 var MAC_CONNECTION_SETTINGS *CONNECTION_SETTINGS
@@ -90,11 +93,7 @@ var (
 type LoggerInterface struct{}
 
 type Logs struct {
-	PING       [100]string
-	CONNECT    [100]string
-	DISCONNECT [100]string
-	SWITCH     [100]string
-	GENERAL    [5000]string
+	LOGS [2000]string
 }
 
 type LogItem struct {
@@ -148,10 +147,10 @@ type State struct {
 	AvailableCountries            []string        `json:"AvailableCountries"`
 	RoutersList                   [2000]*ROUTER   `json:"-"`
 	Routers                       []*ROUTER       `json:"Routers"`
-	AccessPoints                  []*AccessPoint  `json:"AccessPoints"`
-	PrivateAccessPoints           []*AccessPoint  `json:"PrivateAccessPoints"`
+	AccessPoints                  []*VPNNode      `json:"AccessPoints"`
+	PrivateAccessPoints           []*VPNNode      `json:"PrivateAccessPoints"`
 	ActiveRouter                  *ROUTER         `json:"ActiveRouter"`
-	ActiveAccessPoint             *AccessPoint    `json:"ActiveAccessPoint"`
+	ActiveAccessPoint             *VPNNode        `json:"ActiveAccessPoint"`
 	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
 
 	// FILE PATHS
@@ -195,6 +194,114 @@ type CONFIG_FORM struct {
 	LogBlockedDomains         bool                        `json:"LogBlockedDomains"`
 }
 
+var CONNECTIONS = make(map[string]*VPNConnection, 100)
+
+type VPNConnection struct {
+	Name string
+
+	// TUN/TAP
+	Tun          *Adapter
+	Address      string
+	AddressNetIP net.IP
+	Routes       []string
+
+	// ??????
+	Session *CLIENT_SESSION
+	EVPNS   *tcpcrypt.SocketWrapper
+
+	// STATES
+	PingReceived time.Time
+	Connected    bool
+	Connecting   bool
+	Exiting      bool
+
+	// VPN NODE
+	Node       *VPNNode
+	NodeSrcIP  net.IP
+	PingBuffer [8]byte
+	StartPort  uint16
+	EndPort    uint16
+
+	// Stats
+	EgressBytes    int
+	EgressPackets  int
+	IngressBytes   int
+	IngressPackets int
+
+	// DNS
+	PrevDNS  net.IP
+	DNSBytes [4]byte
+	DNSIP    net.IP
+
+	//  NAT
+	NAT_CACHE         map[[4]byte][4]byte `json:"-"`
+	REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
+
+	// PORT MAPPING
+	TCP_MAP [256]*O1
+	UDP_MAP [256]*O1
+
+	//  PACKET MANIPULATION
+	EP_Version  byte
+	EP_Protocol byte
+
+	EP_DstIP [4]byte
+
+	EP_IPv4HeaderLength byte
+	EP_IPv4Header       []byte
+	EP_TPHeader         []byte
+
+	EP_SrcPort    [2]byte
+	EP_DstPort    [2]byte
+	EP_MappedPort *RP
+
+	EP_NAT_IP [4]byte
+	EP_NAT_OK bool
+
+	EP_RST byte
+
+	EP_DNS_Response         []byte
+	EP_DNS_OK               bool
+	EP_DNS_Port_Placeholder [2]byte
+	EP_DNS_Packet           []byte
+
+	// This IP gets over-written on connect
+	EP_VPNSrcIP [4]byte
+
+	EP_NEW_RST  int
+	PREV_DNS_IP [4]byte
+	IS_UNIX     bool
+
+	IP_Version  byte
+	IP_Protocol byte
+
+	IP_DstIP [4]byte
+	IP_SrcIP [4]byte
+
+	IP_IPv4HeaderLength byte
+	IP_IPv4Header       []byte
+	IP_TPHeader         []byte
+
+	IP_SrcPort    [2]byte
+	IP_DstPort    [2]byte
+	IP_MappedPort *RP
+
+	IP_NAT_IP [4]byte
+	IP_NAT_OK bool
+
+	// This IP gets over-written on connect
+	// IP_VPNSrcIP [4]byte
+	IP_InterfaceIP [4]byte
+}
+
+func (V *VPNConnection) Disconnect() {
+	// TODO
+	// 1. clean port mappings
+	// 2. clean nat nat cache
+	// 3. disconnect tunnel
+	// 4. delete tuntap ???????
+}
+
 type Config struct {
 	AutoReconnect  bool
 	KillSwitch     bool
@@ -217,23 +324,6 @@ type Config struct {
 	PrevSession *CONTROLLER_SESSION_REQUEST `json:"-"`
 }
 
-type AdapterSettings struct {
-	// SleepTrigger bool
-	Session *CLIENT_SESSION
-
-	TCPTunnelSocket net.Conn
-
-	RoutingBuffer [8]byte
-	PingBuffer    [8]byte
-
-	StartPort uint16
-	EndPort   uint16
-
-	AEAD cipher.AEAD
-
-	AP *AccessPoint
-}
-
 type LOADING_LOGS_RESPONSE struct {
 	Lines [100]string
 }
@@ -252,21 +342,88 @@ type DEBUG_OUT struct {
 	File  string
 }
 
-type OTK struct {
+type FINAL_SEAL struct {
 	Created    time.Time
-	Key        [32]byte
-	PrivateKey *ecdsa.PrivateKey
-	AEAD       cipher.AEAD // used to open client data
+	Key        []byte
+	PrivateKey *N_PrivateKey
+	PublicKey  *N_PublicKey
+	AEAD       cipher.AEAD
+}
+
+func (S *FINAL_SEAL) ECDH() (err error) {
+	S.Key, err = S.PrivateKey.KEY.ECDH(S.PublicKey.KEY)
+	return
+}
+
+func (S *FINAL_SEAL) PublicKeyFromRequest(R *N_KeyRequest) (err error) {
+	S.PublicKey = new(N_PublicKey)
+	S.PublicKey.KEY, err = ecdh.P521().NewPublicKey(R.PB)
+	if err != nil {
+		return
+	}
+	S.PublicKey.UUID = string(R.UUID)
+	return
+}
+
+func NewNicelandPrivateKey() (PK *N_PrivateKey, err error) {
+	PK = new(N_PrivateKey)
+	PK.KEY, err = ecdh.P521().GenerateKey(rand.Reader)
+	if err != nil {
+		return
+	}
+	PK.UUID = uuid.NewString()
+	return
+}
+
+func NewNicelandPublicKeyFromBytes(b []byte) (PK *N_PublicKey, err error) {
+	PK = new(N_PublicKey)
+	PK.KEY, err = ecdh.P521().NewPublicKey(b)
+	if err != nil {
+		return
+	}
+	PK.UUID = uuid.NewString()
+	return
+}
+
+type N_KeyRequest struct {
+	PB   []byte
+	UUID []byte
+}
+
+type N_PrivateKey struct {
+	KEY  *ecdh.PrivateKey
+	UUID string
+}
+
+func (NP *N_PrivateKey) PublicKeyToRequest() *N_KeyRequest {
+	return &N_KeyRequest{
+		PB:   NP.KEY.PublicKey().Bytes(),
+		UUID: []byte(NP.UUID),
+	}
+}
+
+type N_PublicKey struct {
+	KEY  *ecdh.PublicKey
+	UUID string
+}
+
+func (NP *N_PublicKey) ToRequest() *N_KeyRequest {
+	return &N_KeyRequest{
+		PB:   NP.KEY.Bytes(),
+		UUID: []byte(NP.UUID),
+	}
 }
 
 type OTK_REQUEST struct {
 	X *big.Int
 	Y *big.Int
+	// B []byte
 }
 
 type OTK_RESPONSE struct {
-	X    *big.Int
-	Y    *big.Int
+	X *big.Int
+	Y *big.Int
+	// B    []byte
 	UUID []byte
 }
 
@@ -278,7 +435,7 @@ type CHACHA_RESPONSE struct {
 
 type CONTROLL_PUBLIC_DEVCE_RESPONSE struct {
 	Routers      []*ROUTER
-	AccessPoints []*AccessPoint
+	AccessPoints []*VPNNode
 }
 
 type FORWARD_REQUEST struct {
@@ -353,9 +510,11 @@ type CONTROLLER_SESSION_REQUEST struct {
 	Permanent bool `json:",omitempty"`
 	Count     int  `json:",omitempty"`
 
-	GROUP     uint8 `json:"GROUP"`
-	ROUTERID  uint8 `json:"ROUTERID"`
-	SESSIONID uint8 `json:"SESSIONID"`
+	Proto     string `json:"Proto"`
+	Port      string `json:"Port"`
+	GROUP     uint8  `json:"GROUP"`
+	ROUTERID  uint8  `json:"ROUTERID"`
+	SESSIONID uint8  `json:"SESSIONID"`
 
 	XGROUP    uint8 `json:"XGROUP"`
 	XROUTERID uint8 `json:"XROUTERID"`
@@ -364,17 +523,16 @@ type CONTROLLER_SESSION_REQUEST struct {
 	// QUICK CONNECT
 	Country string `json:",omitempty"`
 
-	TempKey *OTK_REQUEST
+	// NEW REF
+	Name string `json:"-"`
 }
 
 type CLIENT_SESSION struct {
 	Created time.Time
 	CONTROLLER_SESSION
-	PrivateKey        *ecdsa.PrivateKey `json:"-"`
-	StartPort         uint16
-	EndPort           uint16
-	VPNIP             []byte
-	ClientKeyResponse []byte `json:"CKR"`
+	StartPort uint16
+	EndPort   uint16
+	VPNIP     []byte
 }
 
 type CONTROLLER_SESSION struct {
@@ -397,7 +555,7 @@ type CONTROLLER_SESSION struct {
 	ShouldDelete bool      `bson:"-"`
 }
 
-type AccessPoint struct {
+type VPNNode struct {
 	ID primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
 
 	UID primitive.ObjectID `json:"-" bson:"UID"`
@@ -433,8 +591,8 @@ type AccessPoint struct {
 
 	Router *ROUTER `json:"Router"`
 
-	NAT_CACHE         map[[4]byte][4]byte `json:"-"`
-	REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
+	// NAT_CACHE         map[[4]byte][4]byte `json:"-"`
+	// REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
 }
 
 // type DNSMap struct {

@@ -1,19 +1,28 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
-import { ActivityLogIcon, BarChartIcon, ChatBubbleIcon, DesktopIcon, EnterIcon, ExitIcon, ExternalLinkIcon, FileTextIcon, GearIcon, GlobeIcon, HamburgerMenuIcon, LinkBreak2Icon, MobileIcon, Share1Icon, } from '@radix-ui/react-icons'
-import Loader from "react-spinners/ClockLoader";
+import {
+	BarChartIcon,
+	ChatBubbleIcon,
+	EnterIcon,
+	ExitIcon,
+	ExternalLinkIcon,
+	FileTextIcon,
+	GearIcon,
+	GlobeIcon,
+	MobileIcon,
+} from '@radix-ui/react-icons'
 import toast from 'react-hot-toast';
-import x from "../assets/images/ripple.svg"
-
-import { OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
+
+const OpenURL = (url) => {
+	window.open(url, "_blank")
+}
 
 const SideBar = (props) => {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const [menuTab, setMenuTab] = useState(1)
 
 	let { pathname } = location
 	let sp = pathname.split("/")
@@ -116,7 +125,6 @@ const SideBar = (props) => {
 	if (!props.state) {
 		return (
 			<div className="stats-bar">
-				<div className="back" onClick={() => setMenuTab(1)}> {`<`} Menu</div>
 				<div className="title">Loading state ...</div>
 			</div>
 		)
@@ -126,20 +134,6 @@ const SideBar = (props) => {
 	return (
 		<div className="side-bar">
 			{RenderPopovers()}
-			{props.loading &&
-				<img className="big-loader" src={x}></img>
-				// <div className="loader-wrapper">
-				// 	<Loader
-				// 		className="loader"
-				// 		size={56}
-				// 		color={"#FF922D"}
-				// 	></Loader>
-				// </div>
-			}
-			{!props.loading &&
-				<div className={`logo`}  >
-				</div>
-			}
 
 			<div className="menu-items">
 				{!user &&

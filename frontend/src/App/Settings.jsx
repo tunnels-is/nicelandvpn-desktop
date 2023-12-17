@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import dayjs from "dayjs";
 import { DesktopIcon, FileTextIcon, LockClosedIcon, Pencil2Icon, PersonIcon } from '@radix-ui/react-icons'
 
-import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist, EnableAllBlocklists, DisableAllBlocklists, BlockedDomainLogging } from "../../wailsjs/go/main/Service";
-import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
+// import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist, EnableAllBlocklists, DisableAllBlocklists, BlockedDomainLogging } from "../../wailsjs/go/main/Service";
+// import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
 

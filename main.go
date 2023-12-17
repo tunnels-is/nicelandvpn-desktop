@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"os"
 	"strings"
 
@@ -14,9 +13,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
-//go:embed all:frontend/dist
-var assets embed.FS
-
 const (
 	VERSION          = "1.1.5"
 	PRODUCTION       = true
@@ -25,10 +21,7 @@ const (
 
 var MONITOR = make(chan int, 200)
 
-var (
-	APP     = NewApp()
-	SERVICE = NewService()
-)
+var APP = NewApp()
 
 func main() {
 	WebViewGPUPolicy := 0
@@ -96,7 +89,7 @@ func main() {
 		CSSDragValue:    "drag",
 
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			// Assets: assets,
 		},
 
 		OnStartup:  APP.startup,
@@ -104,7 +97,6 @@ func main() {
 
 		Bind: []interface{}{
 			APP,
-			SERVICE,
 		},
 
 		Debug: options.Debug{

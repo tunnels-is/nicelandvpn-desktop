@@ -49,11 +49,13 @@ func START_API(MONITOR chan int) {
 	}
 	E.Use(m.CORSWithConfig(corsConfig))
 
+	E.File("/", "./public/index.html")
+	E.Static("/assets", "./public/assets/")
 	v1 := E.Group("/v1")
 	// v1.Static("/", "dist")
 	v1.POST("/method/:method", serveMethod)
 
-	err := E.Start("127.0.0.1:")
+	err := E.Start("0.0.0.0:9999")
 	if err != nil {
 		log.Println(err)
 	}
@@ -88,15 +90,15 @@ func serveMethod(e echo.Context) error {
 	// WS ????
 	case "getState":
 		return HTTP_GetState(e)
-	case "getLoadingLogs":
 	case "getLogs":
+		return HTTPS_GetLogs(e)
 	default:
 	}
 	return e.JSON(200, nil)
 }
 
 func HTTP_GetState(e echo.Context) (err error) {
-	PrepareState()
+	// PrepareState()
 	return e.JSON(200, GLOBAL_STATE)
 }
 
@@ -129,7 +131,7 @@ func HTTP_Switch(e echo.Context) (err error) {
 }
 
 func HTTP_Disconnect(e echo.Context) (err error) {
-	Disconnect()
+	// Disconnect()
 	return e.JSON(200, nil)
 }
 
@@ -192,6 +194,7 @@ func HTTP_ForwardToController(e echo.Context) (err error) {
 	if err != nil {
 		return e.JSON(400, err)
 	}
+	log.Println("FR:", form)
 	data, code, err := ForwardToController(form)
 	if err != nil {
 		return e.JSON(code, err)

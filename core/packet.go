@@ -7,67 +7,32 @@ import (
 	"github.com/miekg/dns"
 )
 
-var (
-	PREV_DNS_IP [4]byte
-	IS_UNIX     bool = false
-)
-
-var (
-	EP_Version  byte
-	EP_Protocol byte
-
-	EP_DstIP [4]byte
-
-	EP_IPv4HeaderLength byte
-	EP_IPv4Header       []byte
-	EP_TPHeader         []byte
-
-	EP_SrcPort    [2]byte
-	EP_DstPort    [2]byte
-	EP_MappedPort *RP
-
-	EP_NAT_IP [4]byte
-	EP_NAT_OK bool
-
-	EP_RST byte
-
-	EP_DNS_Response         []byte
-	EP_DNS_OK               bool
-	EP_DNS_Port_Placeholder [2]byte
-	EP_DNS_Packet           []byte
-
-	// This IP gets over-written on connect
-	EP_VPNSrcIP [4]byte
-
-	EP_NEW_RST int
-)
-
-func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
+func (V *VPNConnection) ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 	packet := *p
 
-	EP_Version = packet[0] >> 4
-	if EP_Version != 4 {
+	V.EP_Version = packet[0] >> 4
+	if V.EP_Version != 4 {
 		return false, false
 	}
 
-	EP_Protocol = packet[9]
-	if EP_Protocol != 6 && EP_Protocol != 17 {
+	V.EP_Protocol = packet[9]
+	if V.EP_Protocol != 6 && V.EP_Protocol != 17 {
 		return false, false
 	}
 
 	// Get the full IPv4Header length in bytes
-	EP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
+	V.EP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
 
-	EP_IPv4Header = packet[:EP_IPv4HeaderLength]
-	EP_TPHeader = packet[EP_IPv4HeaderLength:]
+	V.EP_IPv4Header = packet[:V.EP_IPv4HeaderLength]
+	V.EP_TPHeader = packet[V.EP_IPv4HeaderLength:]
 
 	// DROP RST packets
-	if EP_Protocol == 6 {
-		EP_RST = EP_TPHeader[13] & 0x7 >> 2
-		if EP_RST == 1 {
-			EP_NEW_RST = int(EP_TPHeader[13])
-			EP_NEW_RST |= int(0b00010100)
-			EP_TPHeader[13] = byte(EP_NEW_RST)
+	if V.EP_Protocol == 6 {
+		V.EP_RST = V.EP_TPHeader[13] & 0x7 >> 2
+		if V.EP_RST == 1 {
+			V.EP_NEW_RST = int(V.EP_TPHeader[13])
+			V.EP_NEW_RST |= int(0b00010100)
+			V.EP_TPHeader[13] = byte(V.EP_NEW_RST)
 			// fmt.Printf("%08b - RST:%08b\n", EP_TPHeader[13], EP_RST)
 			// fmt.Printf("POST TRANSFORM: %08b\n", EP_TPHeader[13])
 			// log.Println("RST PACKET")
@@ -75,217 +40,192 @@ func ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLocal bool) {
 		}
 	}
 
-	EP_DstIP[0] = packet[16]
-	EP_DstIP[1] = packet[17]
-	EP_DstIP[2] = packet[18]
-	EP_DstIP[3] = packet[19]
+	V.EP_DstIP[0] = packet[16]
+	V.EP_DstIP[1] = packet[17]
+	V.EP_DstIP[2] = packet[18]
+	V.EP_DstIP[3] = packet[19]
 
 	// This drops NETBIOS DNS packets to the VPN interface
-	if EP_DstIP == [4]byte{10, 4, 3, 255} {
+	if V.EP_DstIP == [4]byte{10, 4, 3, 255} {
 		return false, false
 	}
 
-	EP_SrcPort[0] = EP_TPHeader[0]
-	EP_SrcPort[1] = EP_TPHeader[1]
+	V.EP_SrcPort[0] = V.EP_TPHeader[0]
+	V.EP_SrcPort[1] = V.EP_TPHeader[1]
 
-	EP_DstPort[0] = EP_TPHeader[2]
-	EP_DstPort[1] = EP_TPHeader[3]
+	V.EP_DstPort[0] = V.EP_TPHeader[2]
+	V.EP_DstPort[1] = V.EP_TPHeader[3]
 
 	// CUSTOM DNS
 	// https://stackoverflow.com/questions/7565300/identifying-dns-packets
-	if EP_Protocol == 17 {
-		if IsDNSQuery(EP_TPHeader[8:]) {
+	if V.EP_Protocol == 17 {
+		if IsDNSQuery(V.EP_TPHeader[8:]) {
 			// log.Println("DNS FOUND!!!!!!")
-
 			// log.Println("UDP HEADER:", EP_TPHeader[:8])
 			// log.Println("UDP DATA:", EP_TPHeader[8:])
 			// log.Println("UDP HEADER:", EP_TPHeader[:8], EP_DstIP, EP_DstPort)
-			EP_DNS_Response, EP_DNS_OK = ProcessEgressDNSQuery(EP_TPHeader[8:])
-			if EP_DNS_OK {
+			V.EP_DNS_Response, V.EP_DNS_OK = V.ProcessEgressDNSQuery(V.EP_TPHeader[8:])
+			if V.EP_DNS_OK {
 				// Replace Source IP
-				EP_IPv4Header[12] = EP_IPv4Header[16]
-				EP_IPv4Header[13] = EP_IPv4Header[17]
-				EP_IPv4Header[14] = EP_IPv4Header[18]
-				EP_IPv4Header[15] = EP_IPv4Header[19]
+				V.EP_IPv4Header[12] = V.EP_IPv4Header[16]
+				V.EP_IPv4Header[13] = V.EP_IPv4Header[17]
+				V.EP_IPv4Header[14] = V.EP_IPv4Header[18]
+				V.EP_IPv4Header[15] = V.EP_IPv4Header[19]
 
 				// Replace Destination IP
-				EP_IPv4Header[16] = IP_InterfaceIP[0]
-				EP_IPv4Header[17] = IP_InterfaceIP[1]
-				EP_IPv4Header[18] = IP_InterfaceIP[2]
-				EP_IPv4Header[19] = IP_InterfaceIP[3]
+				V.EP_IPv4Header[16] = V.IP_InterfaceIP[0]
+				V.EP_IPv4Header[17] = V.IP_InterfaceIP[1]
+				V.EP_IPv4Header[18] = V.IP_InterfaceIP[2]
+				V.EP_IPv4Header[19] = V.IP_InterfaceIP[3]
 
 				// Replace Source Port
-				EP_DNS_Port_Placeholder[0] = EP_TPHeader[0]
-				EP_DNS_Port_Placeholder[1] = EP_TPHeader[1]
+				V.EP_DNS_Port_Placeholder[0] = V.EP_TPHeader[0]
+				V.EP_DNS_Port_Placeholder[1] = V.EP_TPHeader[1]
 
-				EP_TPHeader[0] = EP_TPHeader[2]
-				EP_TPHeader[1] = EP_TPHeader[3]
+				V.EP_TPHeader[0] = V.EP_TPHeader[2]
+				V.EP_TPHeader[1] = V.EP_TPHeader[3]
 
-				EP_TPHeader[2] = EP_DNS_Port_Placeholder[0]
-				EP_TPHeader[3] = EP_DNS_Port_Placeholder[1]
+				V.EP_TPHeader[2] = V.EP_DNS_Port_Placeholder[0]
+				V.EP_TPHeader[3] = V.EP_DNS_Port_Placeholder[1]
 
 				///
-				EP_DNS_Packet = append(packet[:EP_IPv4HeaderLength+8], EP_DNS_Response...)
+				V.EP_DNS_Packet = append(packet[:V.EP_IPv4HeaderLength+8], V.EP_DNS_Response...)
 				// Modify the total Length of the IP Header
-				binary.BigEndian.PutUint16(EP_DNS_Packet[2:4], uint16(int(EP_IPv4HeaderLength)+8+len(EP_DNS_Response)))
+				binary.BigEndian.PutUint16(V.EP_DNS_Packet[2:4], uint16(int(V.EP_IPv4HeaderLength)+8+len(V.EP_DNS_Response)))
 
 				// Modify the length of the Transport Header
-				binary.BigEndian.PutUint16(EP_DNS_Packet[EP_IPv4HeaderLength+4:EP_IPv4HeaderLength+6], uint16(len(EP_DNS_Response))+8)
+				binary.BigEndian.PutUint16(V.EP_DNS_Packet[V.EP_IPv4HeaderLength+4:V.EP_IPv4HeaderLength+6], uint16(len(V.EP_DNS_Response))+8)
 
-				RecalculateAndReplaceIPv4HeaderChecksum(EP_DNS_Packet[:EP_IPv4HeaderLength])
-				RecalculateAndReplaceTransportChecksum(EP_DNS_Packet[:EP_IPv4HeaderLength], EP_DNS_Packet[EP_IPv4HeaderLength:])
+				RecalculateAndReplaceIPv4HeaderChecksum(V.EP_DNS_Packet[:V.EP_IPv4HeaderLength])
+				RecalculateAndReplaceTransportChecksum(V.EP_DNS_Packet[:V.EP_IPv4HeaderLength], V.EP_DNS_Packet[V.EP_IPv4HeaderLength:])
 
-				*p = EP_DNS_Packet
+				*p = V.EP_DNS_Packet
 
 				return false, true
 			} else {
-				if IS_UNIX {
-					PREV_DNS_IP[0] = EP_IPv4Header[16]
-					PREV_DNS_IP[1] = EP_IPv4Header[17]
-					PREV_DNS_IP[2] = EP_IPv4Header[18]
-					PREV_DNS_IP[3] = EP_IPv4Header[19]
+				if V.IS_UNIX {
+					V.PREV_DNS_IP[0] = V.EP_IPv4Header[16]
+					V.PREV_DNS_IP[1] = V.EP_IPv4Header[17]
+					V.PREV_DNS_IP[2] = V.EP_IPv4Header[18]
+					V.PREV_DNS_IP[3] = V.EP_IPv4Header[19]
 
-					EP_IPv4Header[16] = C.DNS1Bytes[0]
-					EP_IPv4Header[17] = C.DNS1Bytes[1]
-					EP_IPv4Header[18] = C.DNS1Bytes[2]
-					EP_IPv4Header[19] = C.DNS1Bytes[3]
+					V.EP_IPv4Header[16] = C.DNS1Bytes[0]
+					V.EP_IPv4Header[17] = C.DNS1Bytes[1]
+					V.EP_IPv4Header[18] = C.DNS1Bytes[2]
+					V.EP_IPv4Header[19] = C.DNS1Bytes[3]
 				}
 			}
 
 		}
 	}
 
-	if EP_Protocol == 6 {
+	if V.EP_Protocol == 6 {
 
-		EP_MappedPort = CreateOrGetPortMapping(&TCP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
-		if EP_MappedPort == nil {
+		V.EP_MappedPort = V.CreateOrGetPortMapping(&V.TCP_MAP, V.EP_DstIP, V.EP_SrcPort, V.EP_DstPort)
+		if V.EP_MappedPort == nil {
 			// log.Println("NO TCP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
 			return false, false
 		}
 
-	} else if EP_Protocol == 17 {
+	} else if V.EP_Protocol == 17 {
 
-		EP_MappedPort = CreateOrGetPortMapping(&UDP_o0, EP_DstIP, EP_SrcPort, EP_DstPort)
-		if EP_MappedPort == nil {
+		V.EP_MappedPort = V.CreateOrGetPortMapping(&V.UDP_MAP, V.EP_DstIP, V.EP_SrcPort, V.EP_DstPort)
+		if V.EP_MappedPort == nil {
 			// log.Println("NO UDP PORT MAPPING", EP_DstIP, EP_SrcPort, EP_DstPort)
 			return false, false
 		}
 
 	}
 
-	EP_NAT_IP, EP_NAT_OK = AS.AP.NAT_CACHE[EP_DstIP]
-	if EP_NAT_OK {
+	V.EP_NAT_IP, V.EP_NAT_OK = V.NAT_CACHE[V.EP_DstIP]
+	if V.EP_NAT_OK {
 		// log.Println("FOUND NAT", EP_DstIP, EP_NAT_IP)
-		EP_IPv4Header[16] = EP_NAT_IP[0]
-		EP_IPv4Header[17] = EP_NAT_IP[1]
-		EP_IPv4Header[18] = EP_NAT_IP[2]
-		EP_IPv4Header[19] = EP_NAT_IP[3]
+		V.EP_IPv4Header[16] = V.EP_NAT_IP[0]
+		V.EP_IPv4Header[17] = V.EP_NAT_IP[1]
+		V.EP_IPv4Header[18] = V.EP_NAT_IP[2]
+		V.EP_IPv4Header[19] = V.EP_NAT_IP[3]
 	}
 
-	EP_TPHeader[0] = EP_MappedPort.Mapped[0]
-	EP_TPHeader[1] = EP_MappedPort.Mapped[1]
+	V.EP_TPHeader[0] = V.EP_MappedPort.Mapped[0]
+	V.EP_TPHeader[1] = V.EP_MappedPort.Mapped[1]
 
-	EP_IPv4Header[12] = EP_VPNSrcIP[0]
-	EP_IPv4Header[13] = EP_VPNSrcIP[1]
-	EP_IPv4Header[14] = EP_VPNSrcIP[2]
-	EP_IPv4Header[15] = EP_VPNSrcIP[3]
+	V.EP_IPv4Header[12] = V.EP_VPNSrcIP[0]
+	V.EP_IPv4Header[13] = V.EP_VPNSrcIP[1]
+	V.EP_IPv4Header[14] = V.EP_VPNSrcIP[2]
+	V.EP_IPv4Header[15] = V.EP_VPNSrcIP[3]
 
-	RecalculateAndReplaceIPv4HeaderChecksum(EP_IPv4Header)
-	RecalculateAndReplaceTransportChecksum(EP_IPv4Header, EP_TPHeader)
+	RecalculateAndReplaceIPv4HeaderChecksum(V.EP_IPv4Header)
+	RecalculateAndReplaceTransportChecksum(V.EP_IPv4Header, V.EP_TPHeader)
 
 	return true, false
 }
 
-var (
-	IP_Version  byte
-	IP_Protocol byte
+func (V *VPNConnection) ProcessIngressPacket(packet []byte) bool {
+	V.IP_SrcIP[0] = packet[12]
+	V.IP_SrcIP[1] = packet[13]
+	V.IP_SrcIP[2] = packet[14]
+	V.IP_SrcIP[3] = packet[15]
 
-	IP_DstIP [4]byte
-	IP_SrcIP [4]byte
+	V.IP_Protocol = packet[9]
 
-	IP_IPv4HeaderLength byte
-	IP_IPv4Header       []byte
-	IP_TPHeader         []byte
+	V.IP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
+	V.IP_IPv4Header = packet[:V.IP_IPv4HeaderLength]
+	V.IP_TPHeader = packet[V.IP_IPv4HeaderLength:]
 
-	IP_SrcPort    [2]byte
-	IP_DstPort    [2]byte
-	IP_MappedPort *RP
+	V.IP_DstPort[0] = V.IP_TPHeader[2]
+	V.IP_DstPort[1] = V.IP_TPHeader[3]
 
-	IP_NAT_IP [4]byte
-	IP_NAT_OK bool
-
-	// This IP gets over-written on connect
-	// IP_VPNSrcIP [4]byte
-	IP_InterfaceIP [4]byte
-)
-
-func ProcessIngressPacket(packet []byte) bool {
-	IP_SrcIP[0] = packet[12]
-	IP_SrcIP[1] = packet[13]
-	IP_SrcIP[2] = packet[14]
-	IP_SrcIP[3] = packet[15]
-
-	IP_Protocol = packet[9]
-
-	IP_IPv4HeaderLength = (packet[0] << 4 >> 4) * 32 / 8
-	IP_IPv4Header = packet[:IP_IPv4HeaderLength]
-	IP_TPHeader = packet[IP_IPv4HeaderLength:]
-
-	IP_DstPort[0] = IP_TPHeader[2]
-	IP_DstPort[1] = IP_TPHeader[3]
-
-	IP_NAT_IP, IP_NAT_OK = AS.AP.REVERSE_NAT_CACHE[IP_SrcIP]
-	if IP_NAT_OK {
+	V.IP_NAT_IP, V.IP_NAT_OK = V.REVERSE_NAT_CACHE[V.IP_SrcIP]
+	if V.IP_NAT_OK {
 		// log.Println("FOUND INGRESS NAT", IP_SrcIP, IP_NAT_IP)
-		IP_IPv4Header[12] = IP_NAT_IP[0]
-		IP_IPv4Header[13] = IP_NAT_IP[1]
-		IP_IPv4Header[14] = IP_NAT_IP[2]
-		IP_IPv4Header[15] = IP_NAT_IP[3]
+		V.IP_IPv4Header[12] = V.IP_NAT_IP[0]
+		V.IP_IPv4Header[13] = V.IP_NAT_IP[1]
+		V.IP_IPv4Header[14] = V.IP_NAT_IP[2]
+		V.IP_IPv4Header[15] = V.IP_NAT_IP[3]
 
-		IP_SrcIP[0] = IP_NAT_IP[0]
-		IP_SrcIP[1] = IP_NAT_IP[1]
-		IP_SrcIP[2] = IP_NAT_IP[2]
-		IP_SrcIP[3] = IP_NAT_IP[3]
+		V.IP_SrcIP[0] = V.IP_NAT_IP[0]
+		V.IP_SrcIP[1] = V.IP_NAT_IP[1]
+		V.IP_SrcIP[2] = V.IP_NAT_IP[2]
+		V.IP_SrcIP[3] = V.IP_NAT_IP[3]
 	}
 
-	if IP_Protocol == 6 {
+	if V.IP_Protocol == 6 {
 
-		IP_MappedPort = GetIngressPortMapping(&TCP_o0, IP_SrcIP, IP_DstPort)
-		if IP_MappedPort == nil {
+		V.IP_MappedPort = GetIngressPortMapping(&V.TCP_MAP, V.IP_SrcIP, V.IP_DstPort)
+		if V.IP_MappedPort == nil {
 			// log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
 
-	} else if IP_Protocol == 17 {
+	} else if V.IP_Protocol == 17 {
 
-		IP_MappedPort = GetIngressPortMapping(&UDP_o0, IP_SrcIP, IP_DstPort)
-		if IP_MappedPort == nil {
+		V.IP_MappedPort = GetIngressPortMapping(&V.UDP_MAP, V.IP_SrcIP, V.IP_DstPort)
+		if V.IP_MappedPort == nil {
 			// log.Println("NO PORT MAPPING", IP_SrcIP, binary.BigEndian.Uint16(IP_DstPort[:]))
 			return false
 		}
-
 	}
 
-	IP_TPHeader[2] = IP_MappedPort.Local[0]
-	IP_TPHeader[3] = IP_MappedPort.Local[1]
+	V.IP_TPHeader[2] = V.IP_MappedPort.Local[0]
+	V.IP_TPHeader[3] = V.IP_MappedPort.Local[1]
 
-	IP_IPv4Header[16] = IP_InterfaceIP[0]
-	IP_IPv4Header[17] = IP_InterfaceIP[1]
-	IP_IPv4Header[18] = IP_InterfaceIP[2]
-	IP_IPv4Header[19] = IP_InterfaceIP[3]
+	V.IP_IPv4Header[16] = V.IP_InterfaceIP[0]
+	V.IP_IPv4Header[17] = V.IP_InterfaceIP[1]
+	V.IP_IPv4Header[18] = V.IP_InterfaceIP[2]
+	V.IP_IPv4Header[19] = V.IP_InterfaceIP[3]
 
-	if EP_Protocol == 17 {
-		if IP_SrcIP == C.DNS1Bytes && IS_UNIX {
+	if V.EP_Protocol == 17 {
+		if V.IP_SrcIP == C.DNS1Bytes && V.IS_UNIX {
 			// if IsDNSQuery(EP_TPHeader[8:]) && IS_UNIX {
-			IP_IPv4Header[12] = PREV_DNS_IP[0]
-			IP_IPv4Header[13] = PREV_DNS_IP[1]
-			IP_IPv4Header[14] = PREV_DNS_IP[2]
-			IP_IPv4Header[15] = PREV_DNS_IP[3]
+			V.IP_IPv4Header[12] = V.PREV_DNS_IP[0]
+			V.IP_IPv4Header[13] = V.PREV_DNS_IP[1]
+			V.IP_IPv4Header[14] = V.PREV_DNS_IP[2]
+			V.IP_IPv4Header[15] = V.PREV_DNS_IP[3]
 		}
 	}
 
-	RecalculateAndReplaceIPv4HeaderChecksum(IP_IPv4Header)
-	RecalculateAndReplaceTransportChecksum(IP_IPv4Header, IP_TPHeader)
+	RecalculateAndReplaceIPv4HeaderChecksum(V.IP_IPv4Header)
+	RecalculateAndReplaceTransportChecksum(V.IP_IPv4Header, V.IP_TPHeader)
 
 	return true
 }
@@ -317,7 +257,7 @@ func IsDNSQuery(UDPData []byte) bool {
 	return true
 }
 
-func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bool) {
+func (V *VPNConnection) ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bool) {
 	q := new(dns.Msg)
 	_ = q.Unpack(UDPData)
 
@@ -351,7 +291,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 
 			} else {
 
-				IPS, CNAME := DNSAMapping(domain)
+				IPS, CNAME := V.Node.DNSAMapping(domain)
 				if CNAME != "" {
 
 					isCustomDNS = true
@@ -385,7 +325,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 
 		} else if x.Question[i].Qtype == dns.TypeTXT {
 
-			TXTS := DNSTXTMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			TXTS := V.Node.DNSTXTMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
 			if TXTS != nil {
 				isCustomDNS = true
 				for ii := range TXTS {
@@ -403,7 +343,7 @@ func ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byte, shouldProcess bo
 
 		} else if x.Question[i].Qtype == dns.TypeCNAME {
 
-			CNAME := DNSCNameMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			CNAME := V.Node.DNSCNameMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
 			if CNAME != "" {
 				isCustomDNS = true
 				x.Answer = append(x.Answer, &dns.CNAME{

@@ -5,6 +5,7 @@ package core
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -12,13 +13,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
+	"unsafe"
 
 	water "github.com/songgao/water"
 )
-
-type Adapter struct {
-	Interface *water.Interface
-}
 
 func (A *Adapter) Close() (err error) {
 	if A.Interface != nil {
@@ -136,31 +135,92 @@ func ChangeDNSOnTunnelInterface() error {
 func EnablePacketRouting() (err error) {
 	defer RecoverAndLogToFile()
 
-	_ = DisableIPv6()
+	// _ = DisableIPv6()
 
-	err = SetInterfaceStateToUp()
-	if err != nil {
-		CreateErrorLog("", "Unable to bring default interface up")
-		return err
-	}
+	// err = SetInterfaceStateToUp()
+	// if err != nil {
+	// 	CreateErrorLog("", "Unable to bring default interface up")
+	// 	return err
+	// }
 
-	out, errx := exec.Command("ip", "route", "add", "default", "via", TUNNEL_ADAPTER_ADDRESS, "dev", TUNNEL_ADAPTER_NAME, "metric", "0").CombinedOutput()
-	if errx != nil {
-		if !strings.Contains(string(out), "File exists") {
-			CreateErrorLog("", "IP || Unable to add default route || msg: ", errx, " || output: ", string(out))
-			return errx
-		}
-	}
+	// out, errx := exec.Command("ip", "route", "add", "default", "via", TUNNEL_ADAPTER_ADDRESS, "dev", TUNNEL_ADAPTER_NAME, "metric", "0").CombinedOutput()
+	// if errx != nil {
+	// 	if !strings.Contains(string(out), "File exists") {
+	// 		CreateErrorLog("", "IP || Unable to add default route || msg: ", errx, " || output: ", string(out))
+	// 		return errx
+	// 	}
+	// }
 
 	return
 }
 
-func InitializeTunnelInterface() (err error) {
-	err = AdjustRoutersForTunneling()
+type Interface struct {
+	io.ReadWriteCloser
+}
+
+type ifReq struct {
+	Name  [0x10]byte
+	Flags uint16
+	pad   [0x28 - 0x10 - 2]byte
+}
+
+func newTunInterface() (IF *Interface, err error) {
+	// Tunnel int.
+	// Name TUNNEL_ADAPTER_NAME
+	// Persist ? bool = false
+	// multiqueue - false
+	// permissions ?
+	// -- owner == 1 (any user)
+	// -- group == -1 (any group)
+	fd, err := syscall.Open("/dev/net/tun", os.O_RDWR|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		CreateErrorLog("", "Unable to fix route metrics: ", err)
-		return err
+		fmt.Println("UNABLE TO OPEN INTERFACE:", err)
+		return nil, err
 	}
+
+	fdUintPtr := uintptr(fd)
+
+	var flags uint16 = 0x1000
+	flags |= 0x0001
+
+	var req ifReq
+	req.Flags = flags
+	copy(req.Name[:], []byte(TUNNEL_ADAPTER_NAME))
+
+	err = ioctl(fdUintPtr, syscall.TUNSETIFF, uintptr(unsafe.Pointer(&req)))
+	if err != nil {
+		fmt.Println("IOCTL ERR: ", err)
+		return
+	}
+	createdIFName := strings.Trim(string(req.Name[:]), "\x00")
+
+	fmt.Println("CREATED IF: ", createdIFName)
+	err = ioctl(fdUintPtr, syscall.TUNSETPERSIST, uintptr(0))
+	if err != nil {
+		fmt.Println("IOCTL ERR 2: ", err)
+		return
+	}
+
+	return &Interface{
+		ReadWriteCloser: os.NewFile(uintptr(fd), "tun"),
+		// name:            TUNNEL_ADAPTER_NAME,
+	}, nil
+}
+
+func ioctl(fd uintptr, request uintptr, argp uintptr) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(request), argp)
+	if errno != 0 {
+		return os.NewSyscallError("ioctl", errno)
+	}
+	return nil
+}
+
+func InitializeTunnelInterface() (err error) {
+	// err = AdjustRoutersForTunneling()
+	// if err != nil {
+	// 	CreateErrorLog("", "Unable to fix route metrics: ", err)
+	// 	return err
+	// }
 
 	IF, err := net.Interfaces()
 	if err != nil {
@@ -184,6 +244,11 @@ func InitializeTunnelInterface() (err error) {
 			CreateErrorLog("", "Unable to create tunnel inteface || msg: ", err)
 			return err
 		}
+		// A.Interface, err = newTunInterface()
+		// if err != nil {
+		// 	CreateErrorLog("", "Unable to create tunnel inteface || msg: ", err)
+		// 	return err
+		// }
 	}
 
 	CreateLog("", "Tunnel interface enabled")
@@ -191,7 +256,7 @@ func InitializeTunnelInterface() (err error) {
 
 	CreateLog("", "adding IP/CIDR "+TUNNEL_ADAPTER_ADDRESS+"/24 to tunnel interface")
 
-	ipOut, err = exec.Command("ip", "addr", "add", TUNNEL_ADAPTER_ADDRESS+"/24", "dev", TUNNEL_ADAPTER_NAME).Output()
+	ipOut, err = exec.Command("ip", "addr", "add", TUNNEL_ADAPTER_ADDRESS+"/32", "dev", TUNNEL_ADAPTER_NAME).Output()
 	if err != nil {
 		if !strings.Contains(string(ipOut), "File exists") {
 			CreateErrorLog("", "IP || Unable to add IP/CIDR range to tunnel interface || msg: ", err, " || output: ", string(ipOut))
@@ -287,6 +352,7 @@ func AdjustRoutersForTunneling() (err error) {
 			}
 			intMetric++
 			cmdMake := "ip route add " + v + " metric " + strconv.Itoa(intMetric)
+			fmt.Println("MAKE: ", cmdMake)
 
 			out, err := exec.Command("bash", "-c", cmdMake).Output()
 			if err != nil {
@@ -294,6 +360,7 @@ func AdjustRoutersForTunneling() (err error) {
 				return err
 			}
 
+			fmt.Println("MAKE: ", cmddel)
 			out, err = exec.Command("bash", "-c", cmddel).Output()
 			if err != nil {
 				CreateErrorLog("", "IP || unable adjust route: ", cmdMake, " || msg: ", err, " || output: ", string(out))

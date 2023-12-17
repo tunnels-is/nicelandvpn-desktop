@@ -16,31 +16,37 @@ func (l *LoggerInterface) Print(message string) {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Trace(message string) {
 	if !PRODUCTION {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Debug(message string) {
 	if !PRODUCTION {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Info(message string) {
 	if !PRODUCTION {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Warning(message string) {
 	if !PRODUCTION {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Error(message string) {
 	if !PRODUCTION {
 		log.Println(message)
 	}
 }
+
 func (l *LoggerInterface) Fatal(message string) {
 	if !PRODUCTION {
 		log.Println(message)
@@ -65,7 +71,7 @@ func InitLogfile() {
 		return
 	}
 
-	err = os.Chmod(GLOBAL_STATE.LogFileName, 0777)
+	err = os.Chmod(GLOBAL_STATE.LogFileName, 0o777)
 	if err != nil {
 		GLOBAL_STATE.ClientStartupError = true
 		CreateErrorLog("", "Unable to change ownership of log file: ", err)
@@ -131,75 +137,39 @@ func StartLogQueueProcessor(MONITOR chan int) {
 	defer RecoverAndLogToFile()
 
 	var assigned bool = false
+	toFile := false
 	CreateLog("general", "Logging module started")
 
 	for {
 		logItem := <-LogQueue
-		if C.DebugLogging && !PRODUCTION {
+		if C.DebugLogging {
 			fmt.Println(logItem.Type, " || ", logItem.Line)
 		}
 
-		if logItem.Type == "START" {
-			DumpLoadingLogs(L)
-			continue
+		if strings.Contains(logItem.Line, "FILE") {
+			toFile = true
+		} else {
+			toFile = false
 		}
 
-		switch logItem.Type {
-		case "connect":
-			for i := range L.CONNECT {
-				if L.CONNECT[i] == "" {
-					L.CONNECT[i] = logItem.Line
-					break
-				}
+		for i := range L.LOGS {
+			if L.LOGS[i] == "" {
+				L.LOGS[i] = logItem.Line
+				assigned = true
 			}
-		case "disconnect":
-			for i := range L.DISCONNECT {
-				if L.DISCONNECT[i] == "" {
-					L.DISCONNECT[i] = logItem.Line
-					break
-				}
-			}
-		case "switch":
-			for i := range L.SWITCH {
-				if L.SWITCH[i] == "" {
-					L.SWITCH[i] = logItem.Line
-					break
-				}
-			}
-		case "loader":
-			for i := range L.PING {
-				if L.PING[i] == "" {
-					L.PING[i] = logItem.Line
-					break
-				}
-			}
-		case "general":
-		case "file":
-		case "":
-		default:
-			ErrorLog("logItem TYPE NOT RECOGNIZED", logItem)
 		}
 
-		if logItem.Type != "file" {
+		if !assigned {
 			// If the general log slice is full
 			// we truncate and start from index 0
 			assigned = false
-			for i := range L.GENERAL {
-				if L.GENERAL[i] == "" {
-					L.GENERAL[i] = logItem.Line
-					assigned = true
-					break
-				}
+			for i := range L.LOGS {
+				L.LOGS[i] = ""
 			}
-			if !assigned {
-				for i := range L.GENERAL {
-					L.GENERAL[i] = ""
-				}
-				L.GENERAL[0] = logItem.Line
-			}
+			L.LOGS[0] = logItem.Line
 		}
 
-		if LogFile != nil {
+		if LogFile != nil && toFile {
 			_, err := LogFile.WriteString(logItem.Line + "\n")
 			if err != nil {
 				ErrorLog(err)
@@ -211,21 +181,6 @@ func StartLogQueueProcessor(MONITOR chan int) {
 			ErrorLog("Log file not initialized")
 		}
 
-	}
-}
-
-func DumpLoadingLogs(L *Logs) {
-	for i := range L.CONNECT {
-		L.CONNECT[i] = ""
-	}
-	for i := range L.DISCONNECT {
-		L.DISCONNECT[i] = ""
-	}
-	for i := range L.SWITCH {
-		L.SWITCH[i] = ""
-	}
-	for i := range L.PING {
-		L.PING[i] = ""
 	}
 }
 

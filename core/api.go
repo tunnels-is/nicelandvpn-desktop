@@ -3,8 +3,6 @@ package core
 import (
 	"bytes"
 	"context"
-	"crypto/elliptic"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -12,16 +10,18 @@ import (
 	"io"
 	"log"
 	"math"
-	"math/big"
 	"math/rand"
 	"net"
 	"net/http"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/xlzd/gotp"
+	tp "github.com/zveinn/tcpcrypt"
 )
 
 func ControllerCustomDialer(ctx context.Context, network string, addr string) (net.Conn, error) {
@@ -46,28 +46,30 @@ func ResetEverything() {
 	defer RecoverAndLogToFile()
 
 	CreateLog("START", "")
-	CleanupWithStateLock()
+	// CleanupWithStateLock("*")
+	CONNECTIONS["?????????"].Disconnect()
 }
 
-func CleanupWithStateLock() {
-	defer STATE_LOCK.Unlock()
-	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
+// func CleanupWithStateLock(ConnectionName string) {
+// defer STATE_LOCK.Unlock()
+// defer RecoverAndLogToFile()
+// STATE_LOCK.Lock()
 
-	DisconnectFromRouter(AS)
-	_ = SetInterfaceStateToDown()
+// CONNECTIONS[ConnectionName].Disconnect()
+// DisconnectFromRouter(AS)
+// _ = SetInterfaceStateToDown()
+// InstantlyClearPortMaps()
 
-	RestoreIPv6()
-	RestoreDNS(false)
-	InstantlyClearPortMaps()
-
-	SetGlobalStateAsDisconnected()
-}
+// RestoreIPv6()
+// RestoreDNS(false)
+//
+// SetGlobalStateAsDisconnected()
+// }
 
 func SwitchRouter(Tag string) (code int, err error) {
-	defer STATE_LOCK.Unlock()
+	// defer STATE_LOCK.Unlock()
 	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
+	// STATE_LOCK.Lock()
 
 	if GLOBAL_STATE.ClientStartupError {
 		return 400, errors.New("there is a problem with the background service, please check your logs")
@@ -259,7 +261,8 @@ func SendRequestToControllerProxy(method string, route string, data interface{},
 		Transport: &http.Transport{
 			DialContext: ControllerCustomDialer,
 			TLSClientConfig: &tls.Config{
-				ServerName: domain,
+				ServerName:         domain,
+				InsecureSkipVerify: true,
 			},
 		},
 	}
@@ -382,7 +385,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		}
 	}
 
-	PrivateAccessPoints := make([]*AccessPoint, 0)
+	PrivateAccessPoints := make([]*VPNNode, 0)
 	if code == 200 {
 		// CreateLog("", "RESPONSE:", string(responseBytes))
 		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
@@ -538,8 +541,6 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	for i := range GLOBAL_STATE.PrivateAccessPoints {
 		A := GLOBAL_STATE.PrivateAccessPoints[i]
 
-		BUILD_NAT_MAP(A)
-
 		for ii := range GLOBAL_STATE.RoutersList {
 			R := GLOBAL_STATE.RoutersList[ii]
 			if R == nil {
@@ -553,7 +554,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	}
 
 	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
-	AS.AP = GLOBAL_STATE.ActiveAccessPoint
+	// AS.AP = GLOBAL_STATE.ActiveAccessPoint
 
 	if len(GLOBAL_STATE.AccessPoints) == 0 {
 		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
@@ -589,6 +590,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
 	})
 
+	fmt.Println("FULL GET ROUTERS CALL")
 	return nil, code, nil
 }
 
@@ -634,6 +636,7 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return nil, 500, errors.New("active router not found, please wait a moment")
 	}
 
+	log.Println("FR:", FR)
 	// The domain being used here is an old domain that needs to be replaced.
 	// This method uses a custom dialer which does not DNS resolve.
 	responseBytes, code, err := SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
@@ -659,9 +662,9 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 var NEXT_SERVER_REFRESH time.Time
 
 func SetRouterFile(path string) error {
-	defer STATE_LOCK.Unlock()
+	// defer STATE_LOCK.Unlock()
 	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
+	// STATE_LOCK.Lock()
 
 	CreateLog("START", "")
 
@@ -701,9 +704,9 @@ func SetRouterFile(path string) error {
 }
 
 func SetConfig(SF *CONFIG_FORM) error {
-	defer STATE_LOCK.Unlock()
+	// defer STATE_LOCK.Unlock()
 	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
+	// STATE_LOCK.Lock()
 
 	CreateLog("START", "")
 
@@ -746,9 +749,8 @@ func SetConfig(SF *CONFIG_FORM) error {
 	// }
 
 	if !SF.DebugLogging {
-		DumpLoadingLogs(L)
-		for i := range L.GENERAL {
-			L.GENERAL[i] = ""
+		for i := range L.LOGS {
+			L.LOGS[i] = ""
 		}
 	}
 
@@ -847,7 +849,7 @@ func PrepareState() {
 	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
 }
 
-func GetActiveAccessPointFromActiveSession() *AccessPoint {
+func GetActiveAccessPointFromActiveSession() *VPNNode {
 	if GLOBAL_STATE.ActiveSession != nil {
 		S := GLOBAL_STATE.ActiveSession
 
@@ -883,12 +885,12 @@ func GetLogsForCLI() (*GeneralLogResponse, error) {
 		Color:   make([]string, 0),
 	}
 
-	for i := range L.GENERAL {
-		if L.GENERAL[i] == "" {
+	for i := range L.LOGS {
+		if L.LOGS[i] == "" {
 			continue
 		}
 
-		splitLine := strings.Split(L.GENERAL[i], " || ")
+		splitLine := strings.Split(L.LOGS[i], " || ")
 
 		R.Content = append(R.Content, strings.Join(splitLine[2:], " "))
 		R.Time = append(R.Time, splitLine[0])
@@ -898,18 +900,14 @@ func GetLogsForCLI() (*GeneralLogResponse, error) {
 	return R, nil
 }
 
-func GetLogs(lengthFromJavascript int) (*GeneralLogResponse, error) {
+func HTTPS_GetLogs(e echo.Context) (err error) {
 	defer RecoverAndLogToFile()
 
 	Count := 0
-	for i := range L.GENERAL {
-		if L.GENERAL[i] != "" {
+	for i := range L.LOGS {
+		if L.LOGS[i] != "" {
 			Count++
 		}
-	}
-
-	if lengthFromJavascript == Count {
-		return nil, nil
 	}
 
 	R := &GeneralLogResponse{
@@ -918,24 +916,24 @@ func GetLogs(lengthFromJavascript int) (*GeneralLogResponse, error) {
 		Color:   make([]string, 0),
 	}
 
-	for i := len(L.GENERAL) - 1; i >= 0; i-- {
-		if L.GENERAL[i] == "" {
+	for i := len(L.LOGS) - 1; i >= 0; i-- {
+		if L.LOGS[i] == "" {
 			continue
 		}
 
-		if strings.Contains(L.GENERAL[i], "ERR") {
+		if strings.Contains(L.LOGS[i], "ERR") {
 			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.GENERAL[i], "ERROR") {
+		} else if strings.Contains(L.LOGS[i], "ERROR") {
 			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.GENERAL[i], "err") {
+		} else if strings.Contains(L.LOGS[i], "err") {
 			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.GENERAL[i], "error") {
+		} else if strings.Contains(L.LOGS[i], "error") {
 			R.Color = append(R.Color, "error")
 		} else {
 			R.Color = append(R.Color, "")
 		}
 
-		splitLine := strings.Split(L.GENERAL[i], " || ")
+		splitLine := strings.Split(L.LOGS[i], " || ")
 
 		R.Content = append(R.Content, strings.Join(splitLine[2:], " "))
 		R.Time = append(R.Time, splitLine[0])
@@ -943,104 +941,15 @@ func GetLogs(lengthFromJavascript int) (*GeneralLogResponse, error) {
 
 	}
 
-	return R, nil
+	return e.JSON(200, R)
 }
 
-func GetLoadingLogs(t string) (Logs *LOADING_LOGS_RESPONSE, err error) {
+func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, startRouting bool) (NewSession *CLIENT_SESSION, code int, errm error) {
 	defer RecoverAndLogToFile()
 
-	switch t {
-	case "connect":
-		return &LOADING_LOGS_RESPONSE{Lines: L.CONNECT}, nil
-	case "disconnect":
-		return &LOADING_LOGS_RESPONSE{Lines: L.DISCONNECT}, nil
-	case "switch":
-		return &LOADING_LOGS_RESPONSE{Lines: L.SWITCH}, nil
-	case "loader":
-		return &LOADING_LOGS_RESPONSE{Lines: L.PING}, nil
-	default:
-		CreateLog("", "Log TYPE not valid || type: ", t)
-	}
-
-	return nil, nil
-}
-
-func Disconnect() {
-	defer RecoverAndLogToFile()
-
-	CreateLog("START", "")
-	C.PrevSession = nil
-	CleanupWithStateLock()
-	EGRESS_PACKETS = 0
-	INGRESS_PACKETS = 0
-	GLOBAL_STATE.ActiveAccessPoint = nil
-	GLOBAL_STATE.ActiveSession = nil
-	GLOBAL_STATE.IngressPackets = 0
-	GLOBAL_STATE.EgressPackets = 0
-	GLOBAL_STATE.UMbps = 0
-	GLOBAL_STATE.DMbps = 0
-	GLOBAL_STATE.DMbpsString = ""
-	GLOBAL_STATE.UMbpsString = ""
-	GLOBAL_STATE.ConnectedTimer = ""
-}
-
-func DisconnectFromRouter(AdapterSettings *AdapterSettings) {
-	defer RecoverAndLogToFile()
-
-	if AdapterSettings == nil {
-		GLOBAL_STATE.Connected = false
-		return
-	}
-
-	if AdapterSettings.TCPTunnelSocket != nil {
-		_ = AdapterSettings.TCPTunnelSocket.Close()
-		AdapterSettings.TCPTunnelSocket = nil
-	}
-
-	AdapterSettings.Session = nil
-	AdapterSettings = nil
-	GLOBAL_STATE.ActiveSession = nil
-	SetGlobalStateAsDisconnected()
-
-	CreateLog("connect", "VPN disconnected")
-}
-
-func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S *CLIENT_SESSION, code int, errm error) {
-	defer RecoverAndLogToFile()
-
-	var router_shared_key [32]byte
-	OTKResp := new(OTK_RESPONSE)
-	OTKReq := new(OTK_REQUEST)
-	CCCR := new(CHACHA_RESPONSE)
-	var NSRespBytes []byte
-	var AESKeyb *big.Int
-	var AESKey [32]byte
-	var CCDec []byte
-	CC_DATA := new(OTK_REQUEST)
-
-	FINAL_OTK := new(OTK)
-	FINAL_OTKR := new(OTK_REQUEST)
 	defer func() {
-		if S != nil {
-			S.PrivateKey = nil
-		}
-
-		router_shared_key = [32]byte{}
-		OTKResp = nil
-		OTKReq = nil
-		CCCR = nil
-		NSRespBytes = nil
-		AESKeyb = nil
-		AESKey = [32]byte{}
-		CCDec = nil
-		CC_DATA = nil
-		FINAL_OTK = nil
-		FINAL_OTKR = nil
+		runtime.GC()
 	}()
-
-	if GLOBAL_STATE.ActiveRouter == nil {
-		return nil, 400, errors.New("no active router has been found, please wait for a few seconds")
-	}
 
 	if !GLOBAL_STATE.ConfigInitialized {
 		return nil, 400, errors.New("the application is still initializing default configurations, please wait a few seconds")
@@ -1050,211 +959,175 @@ func ConnectToAccessPoint(NS *CONTROLLER_SESSION_REQUEST, startRouting bool) (S 
 		return nil, 400, errors.New("the VPN is not ready to connect, please wait a moment and try again")
 	}
 
-	start := time.Now()
+	// start := time.Now()
 
 	CreateLog("connect", "Starting Session")
 
-	if NS.SLOTID == 0 {
-		NS.SLOTID = 1
+	if SessionFromUser.SLOTID == 0 {
+		SessionFromUser.SLOTID = 1
 	}
-	if NS.Country == "" {
-		NS.Type = "connect-specific"
+	if SessionFromUser.Country == "" {
+		SessionFromUser.Type = "connect-specific"
 	} else {
-		NS.Type = "connect"
+		SessionFromUser.Type = "connect"
 	}
 
 	CreateLog("connect", "Creating a route to VPN")
 	_ = AddRoute(GLOBAL_STATE.ActiveRouter.IP)
 
-	E := elliptic.P521()
-	S = new(CLIENT_SESSION)
-	S.Created = time.Now()
-
+	// E := elliptic.P521()
+	// S = new(CLIENT_SESSION)
+	NAS := new(VPNConnection)
 	var err error
 
-	CreateLog("connect", "Generating Encryption Keys")
-	S.PrivateKey, OTKReq, err = GenerateEllipticCurveAndPrivateKey()
-	if err != nil {
-		CreateErrorLog("connect", "Unable to generate encryption keys: ", err)
-		return nil, 500, errors.New("unable to generate encryption keys")
-	}
-
-	FINAL_OTK.PrivateKey, FINAL_OTKR, err = GenerateEllipticCurveAndPrivateKey()
-	if err != nil {
-		CreateErrorLog("connect", "Unable to generate encryption keys: ", err)
-		return nil, 500, errors.New("unable to exchange encryption keys with the server")
-	}
-
-	responseBytes, code, err := SendRequestToLocalhostProxy("POST", "v1/api", OTKReq, 10000)
-	if code != http.StatusOK {
-		return nil, 500, errors.New(string(responseBytes))
-	}
-	if err != nil {
-		CreateErrorLog("connect", "Unable to exchange encryption keys: ", code, err)
-		return nil, 500, errors.New("unknown Error")
-	}
-
-	err = json.Unmarshal(responseBytes, OTKResp)
-	if err != nil {
-		CreateErrorLog("connect", "unable to parse encryption key response from router: ", err)
-		return nil, 500, errors.New("unable to exchange encryption keys with router, please try again in a moment")
-	}
-
-	a, _ := E.ScalarMult(OTKResp.X, OTKResp.Y, S.PrivateKey.D.Bytes())
-	router_shared_key = sha256.Sum256(a.Bytes())
-
-	UUID := Decrypt(OTKResp.UUID, router_shared_key[:])
-
-	CreateLog("connect", "Key exchange complete")
-
-	NS.TempKey = FINAL_OTKR
-
-	NSbytes, err := json.Marshal(NS)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to marshal hello response: ", err)
-		return nil, 500, errors.New("unable to exchange encryption keys with the VPN")
-	}
-
-	NSEncBytes := Encrypt(NSbytes, router_shared_key[:])
-
-	data := append(UUID, NSEncBytes...)
-
-	responseBytes, code, err = SendRawBytesToLocalhostProxy("POST", "v2/api", data, 30000)
-	if code != http.StatusOK {
-		CreateErrorLog("connect", "Error code from router during proxy request: ", code)
-		return nil, code, errors.New(string(responseBytes))
-	}
-
-	if err != nil {
-		CreateErrorLog("connect", " >> Unable to create session: ", err)
-		return nil, 500, errors.New("unknown Error")
-	}
-
-	CreateLog("connect", "OK from Router")
-	NSRespBytes = Decrypt(responseBytes, router_shared_key[:])
-
-	err = json.Unmarshal(NSRespBytes, S)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to parse response from router: ", err)
-		return nil, 500, errors.New("unable to create a session")
-	}
-
-	err = json.Unmarshal(S.ClientKeyResponse, CCCR)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to parse encryption key exchange: ", err)
-		return nil, 500, errors.New("unable to create a session")
-	}
-
-	AESKeyb, _ = FINAL_OTK.PrivateKey.Curve.ScalarMult(CCCR.X, CCCR.Y, FINAL_OTK.PrivateKey.D.Bytes())
-	AESKey = sha256.Sum256(AESKeyb.Bytes())
-
-	CCDec = Decrypt(CCCR.CHACHA, AESKey[:])
-	err = json.Unmarshal(CCDec, CC_DATA)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to parse encryption key exchange: ", err)
-		return nil, 500, errors.New("unable to create a session")
-	}
-
-	NewAdapterSettings := new(AdapterSettings)
-	NewAdapterSettings.AEAD, err = GenerateAEADFromPrivateKey(FINAL_OTK.PrivateKey, CC_DATA)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to exchange encryption keys with the VPN: ", err)
-		return nil, 500, errors.New("unable to create a session")
-	}
-
-	NewAdapterSettings.EndPort = S.EndPort
-	NewAdapterSettings.StartPort = S.StartPort
-	// NewAdapterSettings.VPNIP = net.IP{S.VPNIP[0], S.VPNIP[1], S.VPNIP[2], S.VPNIP[3]}
-
-	EP_VPNSrcIP[0] = S.VPNIP[0]
-	EP_VPNSrcIP[1] = S.VPNIP[1]
-	EP_VPNSrcIP[2] = S.VPNIP[2]
-	EP_VPNSrcIP[3] = S.VPNIP[3]
-
-	IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
-	IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
-	IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
-	IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
-
-	NewAdapterSettings.RoutingBuffer = CreateMETABuffer(
-		CODE_CLIENT_connect_tunnel_with_handshake,
-		S.GROUP,
-		S.ROUTERID,
-		S.SESSIONID,
-		S.DEVICEID,
-		0,
-		0,
-	)
-
-	NewAdapterSettings.PingBuffer = CreateMETABuffer(
-		CODE_CLIENT_ping,
-		S.GROUP,
-		S.ROUTERID,
-		S.SESSIONID,
-		0,
-		0,
-		0,
-	)
-
 	CreateLog("connect", "Connecting to router")
-	ROUTER_TUNNEL, err := ConnectToActiveRouter(NewAdapterSettings.RoutingBuffer)
+	ARS, err := REF_ConnectToActiveRouter(
+		SessionFromUser.GROUP,
+		SessionFromUser.ROUTERID,
+		SessionFromUser.Proto,
+		SessionFromUser.Port,
+	)
 	if err != nil {
 		CreateErrorLog("", "Unable to open tunnel to active router: ", err)
 		return nil, 500, errors.New("error in router tunnel")
 	}
 
-	NewAdapterSettings.RoutingBuffer[0] = 0
-
-	CreateLog("connect", "Session is ready - it took ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds to connect")
-
-	if startRouting {
-		err = EnablePacketRouting()
-		if err != nil {
-			if !GLOBAL_STATE.Connected {
-				ResetAfterFailedConnectionAttempt()
-				DisconnectFromRouter(NewAdapterSettings)
-			}
-			return nil, 500, errors.New("unable to start routing")
-		}
+	EARS, err := tp.NewSocketWrapper(ARS, tp.AES256)
+	if err != nil {
+		CreateErrorLog("connect", "unable to create encryption seal", err)
+		return nil, 500, errors.New("")
+	}
+	err = EARS.InitHandshake()
+	if err != nil {
+		CreateErrorLog("connect", "unable to handshake with router:", err)
+		return nil, 500, errors.New("")
 	}
 
-	IGNORE_NEXT_BUFFER_ERROR = true
-	if AS.TCPTunnelSocket != nil {
-		_ = AS.TCPTunnelSocket.Close()
+	SessionFromUserBytes, err := json.Marshal(SessionFromUser)
+	if err != nil {
+		CreateErrorLog("connect", "Unable to marshal hello response: ", err)
+		return nil, 500, errors.New("")
 	}
 
-	GLOBAL_STATE.ActiveRouter.TCPTunnelConnection = ROUTER_TUNNEL
-	NewAdapterSettings.TCPTunnelSocket = ROUTER_TUNNEL
+	outBuff := make([]byte, math.MaxUint16)
+	_, err = EARS.Write(outBuff, SessionFromUserBytes, len(SessionFromUserBytes))
+	if err != nil {
+		CreateErrorLog("connect", "unable to send session to router:", err)
+		return nil, 500, errors.New("")
+	}
 
-	// Client key response needs to be removed before
-	// the session can be returned to the GUI
-	S.ClientKeyResponse = nil
+	encryptedBytes := make([]byte, math.MaxUint16)
+	decryptedBytes := make([]byte, math.MaxUint16)
+	_, responseBytes, err := EARS.Read(encryptedBytes, decryptedBytes)
+	if err != nil {
+		CreateErrorLog("connect", "unable to receive session from router:", err)
+		return nil, 500, errors.New("")
+	}
 
-	AS = NewAdapterSettings
-	AS.Session = S
+	err = json.Unmarshal(responseBytes, NAS.Session)
+	if err != nil {
+		CreateErrorLog("connect", "Unable to parse response from router: ", err)
+		return nil, 500, errors.New("")
+	}
+	NAS.Session.Created = time.Now()
 
-	GLOBAL_STATE.ActiveSession = AS.Session
-	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
-	AS.AP = GLOBAL_STATE.ActiveAccessPoint
+	NAS.EVPNS, err = tp.NewSocketWrapper(ARS, tp.AES256)
+	if err != nil {
+		CreateErrorLog("connect", "unable to create encryption seal for vpn endpoint", err)
+		return nil, 500, errors.New("")
+	}
+	err = NAS.EVPNS.InitHandshake()
+	if err != nil {
+		CreateErrorLog("connect", "unable to handshake with VPN endpoint", err)
+		return nil, 500, errors.New("")
+	}
 
-	// AS.LastActivity = time.Now()
-	GLOBAL_STATE.Connected = true
-	BUFFER_ERROR = false
-	C.PrevSession = NS
-	GLOBAL_STATE.PingReceivedFromRouter = time.Now()
+	// NAS := new(VPNConnection)
+	NAS.Name = SessionFromUser.Name
+
+	// TODO
+	NAS.Address = "10.4.3.2"
+	NAS.AddressNetIP = net.ParseIP(NAS.Address)
+
+	NAS.EP_VPNSrcIP[0] = NAS.Session.VPNIP[0]
+	NAS.EP_VPNSrcIP[1] = NAS.Session.VPNIP[1]
+	NAS.EP_VPNSrcIP[2] = NAS.Session.VPNIP[2]
+	NAS.EP_VPNSrcIP[3] = NAS.Session.VPNIP[3]
+	NAS.NodeSrcIP[0] = NAS.Session.VPNIP[0]
+	NAS.NodeSrcIP[1] = NAS.Session.VPNIP[1]
+	NAS.NodeSrcIP[2] = NAS.Session.VPNIP[2]
+	NAS.NodeSrcIP[3] = NAS.Session.VPNIP[3]
+
+	// TODO ??????????
+	NAS.IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
+	NAS.IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
+	NAS.IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
+	NAS.IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
+
+	// TOOD CHANGE !!!!
+	NAS.PingBuffer = CreateMETABuffer(
+		CODE_CLIENT_ping,
+		SessionFromUser.GROUP,
+		SessionFromUser.ROUTERID,
+		SessionFromUser.SESSIONID,
+		0,
+		0,
+		0,
+	)
+
+	NAS.PingReceived = time.Now()
+	CONNECTIONS[NAS.Name] = NAS
+	// TODO
+	// TODO
+	// TODO
+	// TODO
+	// CREATE TUN TAP
+	// CONFIGURE TUN TAP
+	// START ROUTING
+	NAS.BuildNATMap(NAS.Node)
+
+	// LAUNCH READ/WRITER
+	go NAS.ReadFromLocalSocket()
+	go NAS.ReadFromRouterSocket()
+
+	// CreateLog("connect", "Session is ready - it took ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds to connect")
+
+	// if startRouting {
+	// 	err = EnablePacketRouting()
+	// 	if err != nil {
+	// 		if !GLOBAL_STATE.Connected {
+	// 			ResetAfterFailedConnectionAttempt()
+	// 			DisconnectFromRouter(NAS)
+	// 		}
+	// 		return nil, 500, errors.New("unable to start routing")
+	// 	}
+	// }
+
+	// IGNORE_NEXT_BUFFER_ERROR = true
+
+	// GLOBAL_STATE.ActiveRouter.TCPTunnelConnection = ARS
+
+	// GLOBAL_STATE.ActiveSession = NAS.Session
+	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	// NAS.AP = GLOBAL_STATE.ActiveAccessPoint
+	//
+	// // AS.LastActivity = time.Now()
+	// GLOBAL_STATE.Connected = true
+	// BUFFER_ERROR = false
+	// C.PrevSession = SessionFromUser
 
 	CreateLog("connect", "VPN connection ready")
 
-	return S, 200, nil
+	return NAS.Session, 200, nil
 }
 
 func Connect(NS *CONTROLLER_SESSION_REQUEST, initializeRouting bool) (S *CLIENT_SESSION, code int, err error) {
 	defer func() {
 		GLOBAL_STATE.Connecting = false
-		STATE_LOCK.Unlock()
+		// STATE_LOCK.Unlock()
 	}()
 	defer RecoverAndLogToFile()
-	STATE_LOCK.Lock()
+	// STATE_LOCK.Lock()
 
 	if GLOBAL_STATE.Connecting {
 		return nil, 400, errors.New("the app is already trying to connect, please wait a moment")
@@ -1268,7 +1141,7 @@ func Connect(NS *CONTROLLER_SESSION_REQUEST, initializeRouting bool) (S *CLIENT_
 
 	CreateLog("START", "")
 
-	S, CODE, err := ConnectToAccessPoint(NS, initializeRouting)
+	S, CODE, err := REF_ConnectToAccessPoint(NS, initializeRouting)
 	if err != nil {
 		return nil, CODE, err
 	}

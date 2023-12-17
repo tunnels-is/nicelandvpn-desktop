@@ -75,7 +75,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case key.Matches(msg, m.keys.Disconnect):
-			core.Disconnect()
+			TUI_Disconnect()
 			return m, tea.Println("Disconnected!")
 		case key.Matches(msg, m.keys.Quit):
 			logout()
@@ -334,7 +334,7 @@ func StartTui() {
 
 func ConnectToAP(Tag string) {
 	var NS core.CONTROLLER_SESSION_REQUEST
-	var AP *core.AccessPoint
+	var AP *core.VPNNode
 
 	for _, v := range core.GLOBAL_STATE.AccessPoints {
 		if Tag == v.Tag {

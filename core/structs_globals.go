@@ -137,11 +137,11 @@ type State struct {
 	Connecting bool `json:"Connecting"`
 	Exiting    bool `json:"Exiting"`
 
-	C                             *Config              `json:"C"`
-	DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
-	LastRouterPing                time.Time            `json:"LastRouterPing"`
-	PingReceivedFromRouter        time.Time            `json:"PingReceivedFromRouter"`
-	SecondsSincePingFromRouter    string               `json:"SecondsSincePingFromRouter"`
+	C *Config `json:"C"`
+	// DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
+	LastRouterPing                time.Time `json:"LastRouterPing"`
+	PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
+	SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
 	LastAccessPointUpdate         time.Time
 	SecondsUntilAccessPointUpdate int
 	AvailableCountries            []string        `json:"AvailableCountries"`
@@ -194,13 +194,24 @@ type CONFIG_FORM struct {
 	LogBlockedDomains         bool                        `json:"LogBlockedDomains"`
 }
 
-var CONNECTIONS = make(map[string]*VPNConnection, 100)
+var (
+	CT_LOCK = sync.Mutex{}
+	// TUNNELS     = make(map[string]*TunInterface, 100)
+	CONNECTIONS = make(map[string]*VPNConnection, 100)
+)
 
 type VPNConnection struct {
+	ID   string
 	Name string
 
+	// Stats
+	EgressBytes    int
+	EgressPackets  int
+	IngressBytes   int
+	IngressPackets int
+
 	// TUN/TAP
-	Tun          *Adapter
+	Tun          *TunInterface
 	Address      string
 	AddressNetIP net.IP
 	Routes       []string
@@ -221,12 +232,6 @@ type VPNConnection struct {
 	PingBuffer [8]byte
 	StartPort  uint16
 	EndPort    uint16
-
-	// Stats
-	EgressBytes    int
-	EgressPackets  int
-	IngressBytes   int
-	IngressPackets int
 
 	// DNS
 	PrevDNS  net.IP
@@ -292,14 +297,6 @@ type VPNConnection struct {
 	// This IP gets over-written on connect
 	// IP_VPNSrcIP [4]byte
 	IP_InterfaceIP [4]byte
-}
-
-func (V *VPNConnection) Disconnect() {
-	// TODO
-	// 1. clean port mappings
-	// 2. clean nat nat cache
-	// 3. disconnect tunnel
-	// 4. delete tuntap ???????
 }
 
 type Config struct {

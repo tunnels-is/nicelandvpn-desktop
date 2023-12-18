@@ -7,17 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 
 	water "github.com/songgao/water"
 )
+
+type Adapter struct {
+	Interface *water.Interface
+}
 
 func (A *Adapter) Close() (err error) {
 	if A.Interface != nil {
@@ -106,7 +107,6 @@ func RestoreSettingsFromFile(PotentialDefault *CONNECTION_SETTINGS) {
 }
 
 func LaunchPreperation() (err error) {
-	err = InitializeTunnelInterface()
 	return
 }
 
@@ -132,157 +132,67 @@ func ChangeDNSOnTunnelInterface() error {
 	return nil
 }
 
-func EnablePacketRouting() (err error) {
-	defer RecoverAndLogToFile()
+// func EnablePacketRouting() (err error) {
+// 	defer RecoverAndLogToFile()
 
-	// _ = DisableIPv6()
+// _ = DisableIPv6()
 
-	// err = SetInterfaceStateToUp()
-	// if err != nil {
-	// 	CreateErrorLog("", "Unable to bring default interface up")
-	// 	return err
-	// }
+// err = SetInterfaceStateToUp()
+// if err != nil {
+// 	CreateErrorLog("", "Unable to bring default interface up")
+// 	return err
+// }
 
-	// out, errx := exec.Command("ip", "route", "add", "default", "via", TUNNEL_ADAPTER_ADDRESS, "dev", TUNNEL_ADAPTER_NAME, "metric", "0").CombinedOutput()
-	// if errx != nil {
-	// 	if !strings.Contains(string(out), "File exists") {
-	// 		CreateErrorLog("", "IP || Unable to add default route || msg: ", errx, " || output: ", string(out))
-	// 		return errx
-	// 	}
-	// }
+// out, errx := exec.Command("ip", "route", "add", "default", "via", TUNNEL_ADAPTER_ADDRESS, "dev", TUNNEL_ADAPTER_NAME, "metric", "0").CombinedOutput()
+// if errx != nil {
+// 	if !strings.Contains(string(out), "File exists") {
+// 		CreateErrorLog("", "IP || Unable to add default route || msg: ", errx, " || output: ", string(out))
+// 		return errx
+// 	}
+// }
 
-	return
-}
+// 	return
+// }
 
-type Interface struct {
-	io.ReadWriteCloser
-}
+// func InitializeTunnelInterface() (err error) {
+// err = AdjustRoutersForTunneling()
+// if err != nil {
+// 	CreateErrorLog("", "Unable to fix route metrics: ", err)
+// 	return err
+// }
 
-type ifReq struct {
-	Name  [0x10]byte
-	Flags uint16
-	pad   [0x28 - 0x10 - 2]byte
-}
-
-func newTunInterface() (IF *Interface, err error) {
-	// Tunnel int.
-	// Name TUNNEL_ADAPTER_NAME
-	// Persist ? bool = false
-	// multiqueue - false
-	// permissions ?
-	// -- owner == 1 (any user)
-	// -- group == -1 (any group)
-	fd, err := syscall.Open("/dev/net/tun", os.O_RDWR|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		fmt.Println("UNABLE TO OPEN INTERFACE:", err)
-		return nil, err
-	}
-
-	fdUintPtr := uintptr(fd)
-
-	var flags uint16 = 0x1000
-	flags |= 0x0001
-
-	var req ifReq
-	req.Flags = flags
-	copy(req.Name[:], []byte(TUNNEL_ADAPTER_NAME))
-
-	err = ioctl(fdUintPtr, syscall.TUNSETIFF, uintptr(unsafe.Pointer(&req)))
-	if err != nil {
-		fmt.Println("IOCTL ERR: ", err)
-		return
-	}
-	createdIFName := strings.Trim(string(req.Name[:]), "\x00")
-
-	fmt.Println("CREATED IF: ", createdIFName)
-	err = ioctl(fdUintPtr, syscall.TUNSETPERSIST, uintptr(0))
-	if err != nil {
-		fmt.Println("IOCTL ERR 2: ", err)
-		return
-	}
-
-	return &Interface{
-		ReadWriteCloser: os.NewFile(uintptr(fd), "tun"),
-		// name:            TUNNEL_ADAPTER_NAME,
-	}, nil
-}
-
-func ioctl(fd uintptr, request uintptr, argp uintptr) error {
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, uintptr(request), argp)
-	if errno != 0 {
-		return os.NewSyscallError("ioctl", errno)
-	}
-	return nil
-}
-
-func InitializeTunnelInterface() (err error) {
-	// err = AdjustRoutersForTunneling()
-	// if err != nil {
-	// 	CreateErrorLog("", "Unable to fix route metrics: ", err)
-	// 	return err
-	// }
-
-	IF, err := net.Interfaces()
-	if err != nil {
-		CreateErrorLog("", "Could not find network interfaces || msg: ", err)
-	}
-	interfaceAlreadyExists := false
-	for _, v := range IF {
-		if v.Name == TUNNEL_ADAPTER_NAME {
-			interfaceAlreadyExists = true
-		}
-	}
-
-	if !interfaceAlreadyExists {
-		config := water.Config{
-			DeviceType: water.TUN,
-		}
-		config.Name = TUNNEL_ADAPTER_NAME
-
-		A.Interface, err = water.New(config)
-		if err != nil {
-			CreateErrorLog("", "Unable to create tunnel inteface || msg: ", err)
-			return err
-		}
-		// A.Interface, err = newTunInterface()
-		// if err != nil {
-		// 	CreateErrorLog("", "Unable to create tunnel inteface || msg: ", err)
-		// 	return err
-		// }
-	}
-
-	CreateLog("", "Tunnel interface enabled")
-	var ipOut []byte
-
-	CreateLog("", "adding IP/CIDR "+TUNNEL_ADAPTER_ADDRESS+"/24 to tunnel interface")
-
-	ipOut, err = exec.Command("ip", "addr", "add", TUNNEL_ADAPTER_ADDRESS+"/32", "dev", TUNNEL_ADAPTER_NAME).Output()
-	if err != nil {
-		if !strings.Contains(string(ipOut), "File exists") {
-			CreateErrorLog("", "IP || Unable to add IP/CIDR range to tunnel interface || msg: ", err, " || output: ", string(ipOut))
-			return err
-		}
-	}
-
-	ipOut, err = exec.Command("ip", "link", "set", TUNNEL_ADAPTER_NAME, "mtu", "65535").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || unable to set txqueuelen on tunnel interface || msg: ", err, " || output: ", string(ipOut))
-		return err
-	}
-
-	ipOut, err = exec.Command("ip", "link", "set", TUNNEL_ADAPTER_NAME, "txqueuelen", "3000").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || unable to set txqueuelen on tunnel interface || msg: ", err, " || output: ", string(ipOut))
-		return err
-	}
-
-	err = SetInterfaceStateToUp()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+// CreateLog("", "Tunnel interface enabled")
+// var ipOut []byte
+//
+// CreateLog("", "adding IP/CIDR "+TUNNEL_ADAPTER_ADDRESS+"/24 to tunnel interface")
+//
+// ipOut, err = exec.Command("ip", "addr", "add", TUNNEL_ADAPTER_ADDRESS+"/32", "dev", TUNNEL_ADAPTER_NAME).Output()
+// if err != nil {
+// 	if !strings.Contains(string(ipOut), "File exists") {
+// 		CreateErrorLog("", "IP || Unable to add IP/CIDR range to tunnel interface || msg: ", err, " || output: ", string(ipOut))
+// 		return err
+// 	}
+// }
+//
+// ipOut, err = exec.Command("ip", "link", "set", TUNNEL_ADAPTER_NAME, "mtu", "65535").Output()
+// if err != nil {
+// 	CreateErrorLog("", "IP || unable to set txqueuelen on tunnel interface || msg: ", err, " || output: ", string(ipOut))
+// 	return err
+// }
+//
+// ipOut, err = exec.Command("ip", "link", "set", TUNNEL_ADAPTER_NAME, "txqueuelen", "3000").Output()
+// if err != nil {
+// 	CreateErrorLog("", "IP || unable to set txqueuelen on tunnel interface || msg: ", err, " || output: ", string(ipOut))
+// 	return err
+// }
+//
+// err = SetInterfaceStateToUp()
+// if err != nil {
+// 	return err
+// }
+//
+// 	return nil
+// }
 
 func SetInterfaceStateToUp() (err error) {
 	CreateLog("connect", "Initializing link/up on device: "+TUNNEL_ADAPTER_NAME)

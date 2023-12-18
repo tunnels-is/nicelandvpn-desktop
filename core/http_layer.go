@@ -14,7 +14,7 @@ func START_API(MONITOR chan int) {
 		if r != nil {
 			log.Println(r, string(debug.Stack()))
 		}
-		MONITOR <- 7
+		MONITOR <- 2
 	}()
 
 	E := echo.New()

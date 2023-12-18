@@ -15,6 +15,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/go-ping/ping"
+	"github.com/zveinn/tunnels"
 )
 
 func StartService(MONITOR chan int) {
@@ -27,146 +28,28 @@ func StartService(MONITOR chan int) {
 	GLOBAL_STATE.NeedsRouterProbe = true
 
 	AdminCheck()
+
+	// THINK ABOUT THIS ....
 	InitPaths()
 	CreateBaseFolder()
 	InitLogfile()
 	LoadConfig()
-	// LoadDNSWhitelist()
+	///////////////////
+
 	LoadBlockLists()
 
-	log.Println("start?")
-	go StartLogQueueProcessor(MONITOR)
-
-	// REFACTOR:
-	// go StateMaintenance(MONITOR)
-	// go CalculateBandwidth(MONITOR)
-
-	CreateLog("loader", "Niceland is ready")
-	CreateLog("START", "")
-}
-
-func CalculateBandwidth(MONITOR chan int) {
-	defer func() {
-		MONITOR <- 6
-	}()
-
-	defer RecoverAndLogToFile()
-
-	for {
-		time.Sleep(980 * time.Millisecond)
-
-		GLOBAL_STATE.UMbps = CURRENT_UBBS * 8
-		GLOBAL_STATE.DMbps = CURRENT_DBBS * 8
-		CURRENT_DBBS = 0
-		CURRENT_UBBS = 0
-	}
-}
-
-func StateMaintenance(MONITOR chan int) {
-	defer RecoverAndLogToFile()
-	defer func() {
-		time.Sleep(10 * time.Second)
-		if !GLOBAL_STATE.Exiting {
-			MONITOR <- 1
-		}
-	}()
-	defer RecoverAndLogToFile()
-
-	InterfaceMaintenenceAndBackup()
-
-	if GLOBAL_STATE.NeedsRouterProbe {
-		CreateLog("loader", "Starting router probe")
+	_, err := tunnels.FindGateway()
+	if err == nil {
 		err := RefreshRouterList()
 		if err != nil {
 			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
 		} else {
-			GLOBAL_STATE.NeedsRouterProbe = false
+			LAST_ROUTER_PROBE = time.Now()
 		}
 	}
 
-	if ENABLE_INSTERFACE {
-		if !GLOBAL_STATE.TunnelInitialized {
-			CreateLog("loader", "Preparing the VPN interface")
-			err := LaunchPreperation()
-			if err != nil {
-				CreateErrorLog("", "Could not initialize tunnel tap interface: ", err)
-			} else {
-				GLOBAL_STATE.TunnelInitialized = true
-			}
-		}
-
-		if GLOBAL_STATE.TunnelInitialized {
-			if !GLOBAL_STATE.NeedsRouterProbe {
-				if GLOBAL_STATE.DefaultInterface != nil {
-					GLOBAL_STATE.ClientReady = true
-				}
-			}
-		}
-
-	} else {
-		GLOBAL_STATE.ClientReady = true
-	}
-
-	if AS.TCPTunnelSocket != nil {
-
-		_, err := AS.TCPTunnelSocket.Write([]byte{0, 1})
-		if err != nil {
-			CreateErrorLog("", "Ping to VPN failed, Disconnecting.")
-
-			if AS.TCPTunnelSocket != nil {
-				_ = AS.TCPTunnelSocket.Close()
-				AS.TCPTunnelSocket = nil
-			}
-
-			GLOBAL_STATE.Connected = false
-			var connected bool = false
-			if C.AutoReconnect {
-				connected = AutoReconnect()
-			}
-
-			if !connected {
-				if !C.KillSwitch {
-					SetGlobalStateAsDisconnected()
-					CleanupWithStateLock()
-				}
-			}
-
-			return
-		}
-
-		if time.Since(GLOBAL_STATE.PingReceivedFromRouter).Seconds() > 29 {
-			CreateErrorLog("", "VPN has not responded in the last 30 seconds, disconnecting.")
-
-			if AS.TCPTunnelSocket != nil {
-				_ = AS.TCPTunnelSocket.Close()
-				AS.TCPTunnelSocket = nil
-			}
-
-			GLOBAL_STATE.Connected = false
-			var connected bool = false
-			if C.AutoReconnect {
-				connected = AutoReconnect()
-			}
-
-			if !connected {
-				if !C.KillSwitch {
-					SetGlobalStateAsDisconnected()
-					CleanupWithStateLock()
-				}
-			}
-		}
-
-	} else {
-		if C.AutoReconnect {
-			_ = AutoReconnect()
-		}
-	}
-
-	if BUFFER_ERROR {
-		BUFFER_ERROR = false
-		SetGlobalStateAsDisconnected()
-		_ = AutoReconnect()
-	}
+	CreateLog("loader", "Niceland is ready")
+	CreateLog("START", "")
 }
 
 func AutoReconnect() (connected bool) {
@@ -203,8 +86,8 @@ func AutoReconnect() (connected bool) {
 	LastConnectionAttemp = time.Now()
 	CreateLog("", "Automatic reconnect..")
 
-	s, _, err := REF_ConnectToAccessPoint(C.PrevSession, true)
-	if s == nil || err != nil {
+	_, err := REF_ConnectToAccessPoint(C.PrevSession, true)
+	if err != nil {
 		CreateErrorLog("", "Auto reconnect failed")
 		return false
 	}
@@ -620,7 +503,7 @@ func GetLowestLatencyRouter() (int, error) {
 	return 0, errors.New("no routers")
 }
 
-func REF_ConnectToActiveRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNEL net.Conn, err error) {
+func REF_ConnectToRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNEL net.Conn, err error) {
 	defer RecoverAndLogToFile()
 
 	if port == "" {
@@ -643,6 +526,16 @@ func REF_ConnectToActiveRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNE
 
 	if routerIP == "" {
 		return nil, errors.New("unable to find router")
+	}
+
+	gw, err := tunnels.FindGateway()
+	if err != nil {
+		return nil, errors.New("unable to find default gateway")
+	}
+
+	err = tunnels.IP_AddRoute(routerIP, gw.To4().String(), "0")
+	if err != nil {
+		return nil, errors.New("unable to route to router via default gateway")
 	}
 
 	dialer := net.Dialer{Timeout: time.Duration(10 * time.Second)}
@@ -739,7 +632,6 @@ func InterfaceMaintenenceAndBackup() {
 	}
 
 	BackupSettingsToFile(PotentialDefault)
-	GLOBAL_STATE.DefaultInterface = PotentialDefault
 }
 
 func FindAllInterfaces() (IFList map[string]*INTERFACE_SETTINGS) {

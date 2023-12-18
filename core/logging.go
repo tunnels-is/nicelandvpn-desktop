@@ -132,7 +132,7 @@ func CreateLog(Type string, Line ...interface{}) {
 
 func StartLogQueueProcessor(MONITOR chan int) {
 	defer func() {
-		MONITOR <- 8
+		MONITOR <- 1
 	}()
 	defer RecoverAndLogToFile()
 
@@ -173,9 +173,6 @@ func StartLogQueueProcessor(MONITOR chan int) {
 			_, err := LogFile.WriteString(logItem.Line + "\n")
 			if err != nil {
 				ErrorLog(err)
-				// if C.DebugLogging {
-				// 	RecoverLogFile()
-				// }
 			}
 		} else {
 			ErrorLog("Log file not initialized")

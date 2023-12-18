@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/xlzd/gotp"
 	tp "github.com/zveinn/tcpcrypt"
@@ -944,19 +945,20 @@ func HTTPS_GetLogs(e echo.Context) (err error) {
 	return e.JSON(200, R)
 }
 
-func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, startRouting bool) (NewSession *CLIENT_SESSION, code int, errm error) {
+func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, startRouting bool) (code int, errm error) {
 	defer RecoverAndLogToFile()
+	start := time.Now()
 
 	defer func() {
 		runtime.GC()
 	}()
 
 	if !GLOBAL_STATE.ConfigInitialized {
-		return nil, 400, errors.New("the application is still initializing default configurations, please wait a few seconds")
+		return 400, errors.New("the application is still initializing default configurations, please wait a few seconds")
 	}
 
 	if !GLOBAL_STATE.ClientReady {
-		return nil, 400, errors.New("the VPN is not ready to connect, please wait a moment and try again")
+		return 400, errors.New("the VPN is not ready to connect, please wait a moment and try again")
 	}
 
 	// start := time.Now()
@@ -975,9 +977,8 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 	CreateLog("connect", "Creating a route to VPN")
 	_ = AddRoute(GLOBAL_STATE.ActiveRouter.IP)
 
-	// E := elliptic.P521()
-	// S = new(CLIENT_SESSION)
-	NAS := new(VPNConnection)
+	VPNC := new(VPNConnection)
+	VPNC.ID = uuid.NewString()
 	var err error
 
 	CreateLog("connect", "Connecting to router")
@@ -989,31 +990,31 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 	)
 	if err != nil {
 		CreateErrorLog("", "Unable to open tunnel to active router: ", err)
-		return nil, 500, errors.New("error in router tunnel")
+		return 500, errors.New("error in router tunnel")
 	}
 
 	EARS, err := tp.NewSocketWrapper(ARS, tp.AES256)
 	if err != nil {
 		CreateErrorLog("connect", "unable to create encryption seal", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 	err = EARS.InitHandshake()
 	if err != nil {
 		CreateErrorLog("connect", "unable to handshake with router:", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 
 	SessionFromUserBytes, err := json.Marshal(SessionFromUser)
 	if err != nil {
 		CreateErrorLog("connect", "Unable to marshal hello response: ", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 
 	outBuff := make([]byte, math.MaxUint16)
 	_, err = EARS.Write(outBuff, SessionFromUserBytes, len(SessionFromUserBytes))
 	if err != nil {
 		CreateErrorLog("connect", "unable to send session to router:", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 
 	encryptedBytes := make([]byte, math.MaxUint16)
@@ -1021,51 +1022,51 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 	_, responseBytes, err := EARS.Read(encryptedBytes, decryptedBytes)
 	if err != nil {
 		CreateErrorLog("connect", "unable to receive session from router:", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 
-	err = json.Unmarshal(responseBytes, NAS.Session)
+	err = json.Unmarshal(responseBytes, VPNC.Session)
 	if err != nil {
 		CreateErrorLog("connect", "Unable to parse response from router: ", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
-	NAS.Session.Created = time.Now()
+	VPNC.Session.Created = time.Now()
 
-	NAS.EVPNS, err = tp.NewSocketWrapper(ARS, tp.AES256)
+	VPNC.EVPNS, err = tp.NewSocketWrapper(ARS, tp.AES256)
 	if err != nil {
 		CreateErrorLog("connect", "unable to create encryption seal for vpn endpoint", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
-	err = NAS.EVPNS.InitHandshake()
+	err = VPNC.EVPNS.InitHandshake()
 	if err != nil {
 		CreateErrorLog("connect", "unable to handshake with VPN endpoint", err)
-		return nil, 500, errors.New("")
+		return 500, errors.New("")
 	}
 
 	// NAS := new(VPNConnection)
-	NAS.Name = SessionFromUser.Name
+	VPNC.Name = SessionFromUser.Name
 
 	// TODO
-	NAS.Address = "10.4.3.2"
-	NAS.AddressNetIP = net.ParseIP(NAS.Address)
+	VPNC.Address = "10.4.3.2"
+	VPNC.AddressNetIP = net.ParseIP(VPNC.Address)
 
-	NAS.EP_VPNSrcIP[0] = NAS.Session.VPNIP[0]
-	NAS.EP_VPNSrcIP[1] = NAS.Session.VPNIP[1]
-	NAS.EP_VPNSrcIP[2] = NAS.Session.VPNIP[2]
-	NAS.EP_VPNSrcIP[3] = NAS.Session.VPNIP[3]
-	NAS.NodeSrcIP[0] = NAS.Session.VPNIP[0]
-	NAS.NodeSrcIP[1] = NAS.Session.VPNIP[1]
-	NAS.NodeSrcIP[2] = NAS.Session.VPNIP[2]
-	NAS.NodeSrcIP[3] = NAS.Session.VPNIP[3]
+	VPNC.EP_VPNSrcIP[0] = VPNC.Session.VPNIP[0]
+	VPNC.EP_VPNSrcIP[1] = VPNC.Session.VPNIP[1]
+	VPNC.EP_VPNSrcIP[2] = VPNC.Session.VPNIP[2]
+	VPNC.EP_VPNSrcIP[3] = VPNC.Session.VPNIP[3]
+	VPNC.NodeSrcIP[0] = VPNC.Session.VPNIP[0]
+	VPNC.NodeSrcIP[1] = VPNC.Session.VPNIP[1]
+	VPNC.NodeSrcIP[2] = VPNC.Session.VPNIP[2]
+	VPNC.NodeSrcIP[3] = VPNC.Session.VPNIP[3]
 
 	// TODO ??????????
-	NAS.IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
-	NAS.IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
-	NAS.IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
-	NAS.IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
+	VPNC.IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
+	VPNC.IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
+	VPNC.IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
+	VPNC.IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
 
 	// TOOD CHANGE !!!!
-	NAS.PingBuffer = CreateMETABuffer(
+	VPNC.PingBuffer = CreateMETABuffer(
 		CODE_CLIENT_ping,
 		SessionFromUser.GROUP,
 		SessionFromUser.ROUTERID,
@@ -1075,78 +1076,54 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 		0,
 	)
 
-	NAS.PingReceived = time.Now()
-	CONNECTIONS[NAS.Name] = NAS
-	// TODO
-	// TODO
-	// TODO
-	// TODO
-	// CREATE TUN TAP
-	// CONFIGURE TUN TAP
-	// START ROUTING
-	NAS.BuildNATMap(NAS.Node)
+	VPNC.PingReceived = time.Now()
 
-	// LAUNCH READ/WRITER
-	go NAS.ReadFromLocalSocket()
-	go NAS.ReadFromRouterSocket()
-
-	// CreateLog("connect", "Session is ready - it took ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds to connect")
-
-	// if startRouting {
-	// 	err = EnablePacketRouting()
-	// 	if err != nil {
-	// 		if !GLOBAL_STATE.Connected {
-	// 			ResetAfterFailedConnectionAttempt()
-	// 			DisconnectFromRouter(NAS)
-	// 		}
-	// 		return nil, 500, errors.New("unable to start routing")
-	// 	}
-	// }
-
-	// IGNORE_NEXT_BUFFER_ERROR = true
-
-	// GLOBAL_STATE.ActiveRouter.TCPTunnelConnection = ARS
-
-	// GLOBAL_STATE.ActiveSession = NAS.Session
-	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
-	// NAS.AP = GLOBAL_STATE.ActiveAccessPoint
-	//
-	// // AS.LastActivity = time.Now()
-	// GLOBAL_STATE.Connected = true
-	// BUFFER_ERROR = false
-	// C.PrevSession = SessionFromUser
-
-	CreateLog("connect", "VPN connection ready")
-
-	return NAS.Session, 200, nil
-}
-
-func Connect(NS *CONTROLLER_SESSION_REQUEST, initializeRouting bool) (S *CLIENT_SESSION, code int, err error) {
-	defer func() {
-		GLOBAL_STATE.Connecting = false
-		// STATE_LOCK.Unlock()
-	}()
-	defer RecoverAndLogToFile()
-	// STATE_LOCK.Lock()
-
-	if GLOBAL_STATE.Connecting {
-		return nil, 400, errors.New("the app is already trying to connect, please wait a moment")
-	}
-
-	GLOBAL_STATE.Connecting = true
-
-	if GLOBAL_STATE.ClientStartupError {
-		return nil, 400, errors.New("the app did not start normally, please review the logs to identify the issue. If the issue persists then please contact customer support")
-	}
-
-	CreateLog("START", "")
-
-	S, CODE, err := REF_ConnectToAccessPoint(NS, initializeRouting)
+	VPNC.Tun, err = CB_CreateNewTunnelInterface(
+		VPNC.Name,
+		VPNC.Address,
+		"255.255.255.0",
+		3000,
+		65535,
+		false,
+	)
 	if err != nil {
-		return nil, CODE, err
+		CreateErrorLog("connect", "unable to create tunnel interface", err)
+		return 500, errors.New("")
 	}
 
-	return S, CODE, nil
+	VPNC.BuildNATMap(VPNC.Node)
+
+	err = VPNC.Tun.PreConnect()
+	if err != nil {
+		CreateErrorLog("connect", "unable to configure tunnel interface", err)
+		return 500, errors.New("")
+	}
+
+	err = VPNC.Tun.Connect()
+	if err != nil {
+		CreateErrorLog("connect", "unable to configure tunnel interface", err)
+		return 500, errors.New("")
+	}
+
+	CT_LOCK.Lock()
+	for i, v := range CONNECTIONS {
+		if v.Name != VPNC.Name {
+			continue
+		}
+		_ = v.EVPNS.SOCKET.Close()
+		_ = v.Tun.Close()
+		delete(CONNECTIONS, i)
+	}
+
+	CONNECTIONS[VPNC.ID] = VPNC
+	CT_LOCK.Unlock()
+
+	go VPNC.ReadFromLocalSocket()
+	go VPNC.ReadFromRouterSocket()
+
+	CreateLog("connect", "Session is ready - it took ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds to connect")
+
+	return 200, nil
 }
 
 func GetQRCode(LF *TWO_FACTOR_CONFIRM) (QR *QR_CODE, err error) {

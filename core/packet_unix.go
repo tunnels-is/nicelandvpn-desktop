@@ -5,24 +5,13 @@ package core
 import (
 	"math"
 	"time"
-
-	water "github.com/songgao/water"
 )
-
-type Adapter struct {
-	Interface *water.Interface
-	// Interface *Interface
-}
-
-// var PREVDNS net.IP
 
 func (V *VPNConnection) ReadFromLocalSocket() {
 	defer func() {
 		RecoverAndLogToFile()
 		CreateErrorLog("", "tun tap listener exiting:", V.Name)
 	}()
-
-	// IS_UNIX = true
 
 	var (
 		err            error
@@ -41,7 +30,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 	)
 
 	for {
-		packetLength, err = V.Tun.Interface.Read(tempBytes)
+		packetLength, err = V.Tun.Read(tempBytes)
 		if err != nil {
 			CreateLog("general", err, "error in interface reader loop")
 			return
@@ -71,7 +60,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 			continue
 		} else if sendLocal {
 
-			writtenBytes, writeError = V.Tun.Interface.Write(packet)
+			writtenBytes, writeError = V.Tun.Write(packet)
 			if writeError != nil {
 				CreateErrorLog("", "Send: ", writeError)
 			}

@@ -21,12 +21,12 @@ func CB_CreateNewTunnelInterface(
 
 	OUTIF = new(TunInterface)
 	OUTIF.LINUX_IF = &tunnels.Interface{
-		Name:       name,
-		Address:    address,
-		NetMask:    netmask,
-		TxQueuelen: txQueueLen,
-		MTU:        mtu,
-		Persistent: persistent,
+		Name:        name,
+		IPv4Address: address,
+		NetMask:     netmask,
+		TxQueuelen:  txQueueLen,
+		MTU:         mtu,
+		Persistent:  persistent,
 	}
 
 	err = OUTIF.LINUX_IF.Create()
@@ -66,7 +66,7 @@ func CB_CreateNewTunnelInterface(
 		// CHANGE DNS ?? (only on windows)
 
 		var out []byte
-		out, err = exec.Command("ip", "route", "add", "default", "via", OUTIF.LINUX_IF.Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
+		out, err = exec.Command("ip", "route", "add", "default", "via", OUTIF.LINUX_IF.IPv4Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
 		if err != nil {
 			return errors.New("err: " + err.Error() + " || out: " + string(out))
 		}
@@ -81,7 +81,7 @@ func CB_CreateNewTunnelInterface(
 			OUTIF.Down()
 
 			var out []byte
-			out, err = exec.Command("ip", "route", "del", "default", "via", OUTIF.LINUX_IF.Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
+			out, err = exec.Command("ip", "route", "del", "default", "via", OUTIF.LINUX_IF.IPv4Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
 			if err != nil {
 				return errors.New("err: " + err.Error() + " || out: " + string(out))
 			}

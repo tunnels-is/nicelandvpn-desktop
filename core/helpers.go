@@ -93,12 +93,6 @@ func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int
 // 	return
 // }
 
-func SetGlobalStateAsDisconnected() {
-	CreateLog("", "App state set to -Disconnected-")
-	GLOBAL_STATE.Connected = false
-	GLOBAL_STATE.Connecting = false
-}
-
 func GetDomainAndSubDomain(domain string) (d, s string) {
 	parts := strings.Split(domain, ".")
 	// parts = parts[:len(parts)-1]

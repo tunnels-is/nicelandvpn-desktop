@@ -115,43 +115,35 @@ type LoginForm struct {
 }
 
 type State struct {
+	// KEEPING
 	UMbps          int    `json:"UMbps"`
 	DMbps          int    `json:"DMbps"`
 	UMbpsString    string `json:"UMbpsString"`
 	DMbpsString    string `json:"DMbpsString"`
 	IngressPackets uint64 `json:"IngressPackets"`
 	EgressPackets  uint64 `json:"EgressPackets"`
-	ConnectedTimer string `json:"ConnectedTimer"`
+	// ConnectedTimer string `json:"ConnectedTimer"`
 
 	IsAdmin               bool `json:"IsAdmin"`
-	NeedsRouterProbe      bool `json:"NeedsRouterProbe"`
 	BaseFolderInitialized bool `json:"BaseFolderInitialized"`
-	TunnelInitialized     bool `json:"TunnelInitialized"`
 	LogFileInitialized    bool `json:"LogFileInitialized"`
 	ConfigInitialized     bool `json:"ConfigInitialized"`
 	ClientReady           bool `json:"ClientReady"`
-	ClientStartupError    bool `json:"ClientStartupError"`
-	BufferError           bool `json:"BufferError"`
-
-	Connected  bool `json:"Connected"`
-	Connecting bool `json:"Connecting"`
-	Exiting    bool `json:"Exiting"`
 
 	C *Config `json:"C"`
 	// DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
-	LastRouterPing                time.Time `json:"LastRouterPing"`
-	PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
-	SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
-	LastAccessPointUpdate         time.Time
-	SecondsUntilAccessPointUpdate int
-	AvailableCountries            []string        `json:"AvailableCountries"`
-	RoutersList                   [2000]*ROUTER   `json:"-"`
-	Routers                       []*ROUTER       `json:"Routers"`
-	AccessPoints                  []*VPNNode      `json:"AccessPoints"`
-	PrivateAccessPoints           []*VPNNode      `json:"PrivateAccessPoints"`
-	ActiveRouter                  *ROUTER         `json:"ActiveRouter"`
-	ActiveAccessPoint             *VPNNode        `json:"ActiveAccessPoint"`
-	ActiveSession                 *CLIENT_SESSION `json:"ActiveSession"`
+	// LastRouterPing                time.Time `json:"LastRouterPing"`
+	// PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
+	// SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
+	LastNodeUpdate         time.Time
+	SecondsUntilNodeUpdate int
+
+	AvailableCountries []string      `json:"AvailableCountries"`
+	ActiveRouter       *ROUTER       `json:"ActiveRouter"`
+	RoutersList        [2000]*ROUTER `json:"-"`
+	Routers            []*ROUTER     `json:"Routers"`
+	Nodes              []*VPNNode    `json:"AccessPoints"`
+	PrivateNodes       []*VPNNode    `json:"PrivateAccessPoints"`
 
 	// FILE PATHS
 	LogFileName   string `json:"LogFileName"`
@@ -165,8 +157,6 @@ type State struct {
 
 	// BLOCKING AND PARENTAL CONTROLS
 	BLists []*List `json:"BlockLists"`
-	// DNSCaptureEnabled bool    `json:"DNSCaptureEnabled"`
-	// DNSWhitelistEnabled bool    `json:"DNSWhitelistEnabled"`
 }
 
 type List struct {
@@ -439,6 +429,7 @@ type FORWARD_REQUEST struct {
 	Path    string
 	Method  string
 	Timeout int
+	Authed  bool
 	// Data     []byte
 	JSONData interface{}
 }

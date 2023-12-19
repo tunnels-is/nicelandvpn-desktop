@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -25,7 +26,6 @@ func StartService(MONITOR chan int) {
 
 	C = new(Config)
 	C.DebugLogging = true
-	GLOBAL_STATE.NeedsRouterProbe = true
 
 	AdminCheck()
 
@@ -40,7 +40,7 @@ func StartService(MONITOR chan int) {
 
 	_, err := tunnels.FindGateway()
 	if err == nil {
-		err := RefreshRouterList()
+		err := REF_RefreshRouterList()
 		if err != nil {
 			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
 		} else {
@@ -58,7 +58,7 @@ func AutoReconnect() (connected bool) {
 	connectingStateChangedLocally := false
 	defer func() {
 		if connectingStateChangedLocally {
-			GLOBAL_STATE.Connecting = false
+			// GLOBAL_STATE.Connecting = false
 		}
 		// STATE_LOCK.Unlock()
 	}()
@@ -72,27 +72,27 @@ func AutoReconnect() (connected bool) {
 		return false
 	}
 
-	if GLOBAL_STATE.Connected || GLOBAL_STATE.Connecting || GLOBAL_STATE.Exiting {
-		return false
-	}
+	// if GLOBAL_STATE.Connected || GLOBAL_STATE.Connecting || GLOBAL_STATE.Exiting {
+	// 	return false
+	// }
 
 	if time.Since(LastConnectionAttemp).Seconds() < 5 {
 		return false
 	}
 
-	GLOBAL_STATE.Connecting = true
+	// GLOBAL_STATE.Connecting = true
 	connectingStateChangedLocally = true
 
 	LastConnectionAttemp = time.Now()
 	CreateLog("", "Automatic reconnect..")
 
-	_, err := REF_ConnectToAccessPoint(C.PrevSession, true)
-	if err != nil {
-		CreateErrorLog("", "Auto reconnect failed")
-		return false
-	}
+	// _, err := REF_ConnectToAccessPoint(C.PrevSession, true)
+	// if err != nil {
+	// 	CreateErrorLog("", "Auto reconnect failed")
+	// 	return false
+	// }
 
-	GLOBAL_STATE.LastRouterPing = time.Now()
+	// GLOBAL_STATE.LastRouterPing = time.Now()
 	CreateLog("", "Auto reconnect success")
 	return true
 }
@@ -140,10 +140,6 @@ func LoadConfig() {
 		if config != nil {
 			_ = config.Close()
 		}
-
-		if err != nil {
-			GLOBAL_STATE.ClientStartupError = true
-		}
 	}()
 
 	CreateLog("loader", "Loading config")
@@ -173,28 +169,24 @@ func LoadConfig() {
 		var cb []byte
 		cb, err = json.Marshal(NC)
 		if err != nil {
-			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to turn new config into bytes: ", err)
 			return
 		}
 
 		config, err = os.Create(GLOBAL_STATE.ConfigPath)
 		if err != nil {
-			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to create new config file: ", err)
 			return
 		}
 
 		err = os.Chmod(GLOBAL_STATE.ConfigPath, 0o777)
 		if err != nil {
-			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to change ownership of log file: ", err)
 			return
 		}
 
 		_, err = config.Write(cb)
 		if err != nil {
-			GLOBAL_STATE.ClientStartupError = true
 			CreateErrorLog("", "Unable to write config bytes to new config file: ", err)
 			return
 		}
@@ -264,30 +256,26 @@ func LoadDNSWhitelist() (err error) {
 func CleanupOnClose() {
 	defer RecoverAndLogToFile()
 
-	GLOBAL_STATE.Exiting = true
-	SetGlobalStateAsDisconnected()
-	CleanupWithStateLock()
+	// CleanupWithStateLock()
 
 	_ = LogFile.Close()
 }
 
-func PingRouter(IP string) (*ping.Statistics, error) {
+func REF_PingRouter(routerIP, gateway string) (*ping.Statistics, error) {
 	defer RecoverAndLogToFile()
 
 	// CreateLog("", "PING >> ", IP)
-	pinger, err := ping.NewPinger(IP)
+	pinger, err := ping.NewPinger(routerIP)
 	if err != nil {
 		return nil, err
 	}
 
 	routeAdded := false
-	if GLOBAL_STATE.Connected || GLOBAL_STATE.Connecting {
-		err = AddRoute(IP)
-		if err != nil {
-			CreateErrorLog("", err)
-		} else {
-			routeAdded = true
-		}
+	err = tunnels.IP_AddRoute(routerIP, gateway, "2")
+	if err != nil {
+		CreateErrorLog("", err)
+	} else {
+		routeAdded = true
 	}
 
 	pinger.SetPrivileged(true)
@@ -299,7 +287,8 @@ func PingRouter(IP string) (*ping.Statistics, error) {
 	}
 
 	if routeAdded {
-		err = DeleteRoute(IP, false)
+		// err = DeleteRoute(IP, false)
+		err = tunnels.IP_DelRoute(routerIP, gateway, "2")
 		if err != nil {
 			CreateErrorLog("", err)
 		}
@@ -401,17 +390,15 @@ func DownloadRoutersFromOnlineSource() ([][]byte, error) {
 	return lineSplit, nil
 }
 
-func PingAllRouters() {
+func REF_PingAllRouters() {
 	defer RecoverAndLogToFile()
-
-	GLOBAL_STATE.LastRouterPing = time.Now()
 
 	for i := range GLOBAL_STATE.RoutersList {
 		if GLOBAL_STATE.RoutersList[i] == nil {
 			continue
 		}
 
-		stats, err := PingRouter(GLOBAL_STATE.RoutersList[i].IP)
+		stats, err := REF_PingRouter(GLOBAL_STATE.RoutersList[i].IP, DEFAULT_GATEWAY.String())
 		if err != nil {
 			CreateErrorLog("loader", "Could not ping router: ", GLOBAL_STATE.RoutersList[i].IP, " // msg: ", err)
 			continue
@@ -420,7 +407,7 @@ func PingAllRouters() {
 		if stats.AvgRtt.Microseconds() == 0 {
 			CreateErrorLog("loader", "0 Microseconds ping, assuming router is offline: ", GLOBAL_STATE.RoutersList[i].IP)
 			GLOBAL_STATE.RoutersList[i].PingStats = *stats
-			GLOBAL_STATE.RoutersList[i].MS = 31337
+			GLOBAL_STATE.RoutersList[i].MS = 99999
 		} else {
 			GLOBAL_STATE.RoutersList[i].PingStats = *stats
 			GLOBAL_STATE.RoutersList[i].MS = uint64(stats.AvgRtt.Milliseconds())
@@ -430,12 +417,20 @@ func PingAllRouters() {
 	}
 }
 
-func RefreshRouterList() (err error) {
+func REF_RefreshRouterList() (err error) {
 	defer RecoverAndLogToFile()
+
+	if DEFAULT_GATEWAY == nil {
+		fmt.Println("NO GW")
+		return
+	}
+	if time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS) {
+		fmt.Println("TIMEOUT", time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS))
+		return
+	}
 
 	var fileLines [][]byte
 	fileLines, err = GetRoutersFromLocalFile()
-
 	if err != nil {
 		fileLines, err = DownloadRoutersFromOnlineSource()
 		if err != nil {
@@ -451,24 +446,23 @@ func RefreshRouterList() (err error) {
 
 	CreateLog("loader", "Starting ping check")
 
-	PingAllRouters()
+	REF_PingAllRouters()
 
-	if !GLOBAL_STATE.Connected && !GLOBAL_STATE.Connecting {
-		index, err := GetLowestLatencyRouter()
-		if err != nil {
-			CreateErrorLog("loader", "Could not find lowest latency router")
-			return err
-		}
-		SetActiveRouter(index)
+	index, err := GetLowestLatencyRouter()
+	if err != nil {
+		CreateErrorLog("loader", "Could not find lowest latency router")
+		return err
 	}
 
+	REF_SetActiveRouter(index)
+	LAST_ROUTER_PROBE = time.Now()
 	CreateLog("loader", "Done probing for routers")
 	return nil
 }
 
-func SetActiveRouter(index int) {
+func REF_SetActiveRouter(index int) {
+	_ = tunnels.IP_AddRoute(GLOBAL_STATE.RoutersList[index].IP, DEFAULT_GATEWAY.String(), "0")
 	GLOBAL_STATE.ActiveRouter = GLOBAL_STATE.RoutersList[index]
-	_ = AddRoute(GLOBAL_STATE.ActiveRouter.IP)
 	CreateLog("loader", "Active router changed >> ", GLOBAL_STATE.ActiveRouter.IP, " >> Latency is ", GLOBAL_STATE.ActiveRouter.MS, " MS")
 }
 
@@ -606,65 +600,37 @@ func BackupSettingsToFile(NewDefault *CONNECTION_SETTINGS) {
 	}
 }
 
-func InterfaceMaintenenceAndBackup() {
-	defer RecoverAndLogToFile()
-
-	if GLOBAL_STATE.Connected || GLOBAL_STATE.Connecting || GLOBAL_STATE.Exiting {
-		return
-	}
-
-	PotentialDefault, err := FindDefaultInterfaceAndGateway()
-	if err != nil {
-		return
-	}
-
-	if PotentialDefault == nil {
-		return
-	}
-
-	if PotentialDefault.DefaultRouter == "" {
-		return
-	}
-
-	err = VerifyAndBackupSettings(PotentialDefault)
-	if err != nil {
-		return
-	}
-
-	BackupSettingsToFile(PotentialDefault)
-}
-
-func FindAllInterfaces() (IFList map[string]*INTERFACE_SETTINGS) {
-	defer RecoverAndLogToFile()
-
-	IF, err := net.Interfaces()
-	if err != nil {
-		CreateErrorLog("", "Could not find network interfaces || msg: ", err)
-	}
-
-	IFList = make(map[string]*INTERFACE_SETTINGS)
-
-	for _, v := range IF {
-		if v.Name == TUNNEL_ADAPTER_NAME || v.Name == "lo" {
-			continue
-		}
-
-		netif, ok := IFList[v.Name]
-		if !ok {
-			IFList[v.Name] = new(INTERFACE_SETTINGS)
-			netif = IFList[v.Name]
-		}
-
-		netif.Index = v.Index
-		netif.Flags = v.Flags
-		netif.MTU = v.MTU
-		netif.HardwareAddress = v.HardwareAddr
-		netif.OIF = v
-	}
-
-	return
-}
-
+// func FindAllInterfaces() (IFList map[string]*INTERFACE_SETTINGS) {
+// 	defer RecoverAndLogToFile()
+//
+// 	IF, err := net.Interfaces()
+// 	if err != nil {
+// 		CreateErrorLog("", "Could not find network interfaces || msg: ", err)
+// 	}
+//
+// 	IFList = make(map[string]*INTERFACE_SETTINGS)
+//
+// 	for _, v := range IF {
+// 		if v.Name == TUNNEL_ADAPTER_NAME || v.Name == "lo" {
+// 			continue
+// 		}
+//
+// 		netif, ok := IFList[v.Name]
+// 		if !ok {
+// 			IFList[v.Name] = new(INTERFACE_SETTINGS)
+// 			netif = IFList[v.Name]
+// 		}
+//
+// 		netif.Index = v.Index
+// 		netif.Flags = v.Flags
+// 		netif.MTU = v.MTU
+// 		netif.HardwareAddress = v.HardwareAddr
+// 		netif.OIF = v
+// 	}
+//
+// 	return
+// }
+//
 // KEEPING THIS CODE HERE, MIGHT WANT TO USE IT LATER.
 // func GET_SERVER_LIST_FROM_DNS(batch int) (error, []*ROUTER) {
 

@@ -23,6 +23,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/xlzd/gotp"
 	tp "github.com/zveinn/tcpcrypt"
+	"github.com/zveinn/tunnels"
 )
 
 func ControllerCustomDialer(ctx context.Context, network string, addr string) (net.Conn, error) {
@@ -48,7 +49,6 @@ func ResetEverything() {
 
 	CreateLog("START", "")
 	// CleanupWithStateLock("*")
-	CONNECTIONS["?????????"].Disconnect()
 }
 
 // func CleanupWithStateLock(ConnectionName string) {
@@ -67,44 +67,16 @@ func ResetEverything() {
 // SetGlobalStateAsDisconnected()
 // }
 
-func SwitchRouter(Tag string) (code int, err error) {
-	// defer STATE_LOCK.Unlock()
+func REF_SwitchRouter(Tag string) (code int, err error) {
 	defer RecoverAndLogToFile()
-	// STATE_LOCK.Lock()
-
-	if GLOBAL_STATE.ClientStartupError {
-		return 400, errors.New("there is a problem with the background service, please check your logs")
-	}
-
-	CreateLog("START", "")
-
-	if GLOBAL_STATE.Connecting {
-		CreateLog("loader", "unable to change routing while nicelandVPN is connecting")
-		return 400, errors.New("unable to change routing while connecting")
-	} else if GLOBAL_STATE.Connected {
-		CreateLog("loader", "unable to change routing while nicelandVPN is connected")
-		return 400, errors.New("unable to change routing while connected")
-	} else if GLOBAL_STATE.Exiting {
-		CreateLog("loader", "unabel to change routing while nicelandVPN is exiting")
-		return 400, errors.New("unable to change routing while exiting")
-	}
 
 	if Tag == "" {
 		C.ManualRouter = false
-		if GLOBAL_STATE.LastRouterPing.IsZero() {
-			PingAllRouters()
-		}
 
-		if time.Since(GLOBAL_STATE.LastRouterPing).Seconds() > 120 {
-			PingAllRouters()
-		}
-
-		index, err := GetLowestLatencyRouter()
+		err := REF_RefreshRouterList()
 		if err != nil {
-			CreateErrorLog("loader", "Could not find lowest latency router")
-			return 400, errors.New("unable to find lowest latency router")
+			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
 		}
-		SetActiveRouter(index)
 
 	} else {
 		C.ManualRouter = true
@@ -112,7 +84,7 @@ func SwitchRouter(Tag string) (code int, err error) {
 		for i := range GLOBAL_STATE.RoutersList {
 			if GLOBAL_STATE.RoutersList[i] != nil {
 				if GLOBAL_STATE.RoutersList[i].Tag == Tag {
-					SetActiveRouter(i)
+					REF_SetActiveRouter(i)
 				}
 			}
 		}
@@ -292,13 +264,13 @@ func SendRequestToControllerProxy(method string, route string, data interface{},
 
 var LAST_PRIVATE_ACCESS_POINT_UPDATE = time.Now()
 
-func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
-	if GLOBAL_STATE.ActiveRouter == nil {
-		return nil, 500, errors.New("active router not found, please wait a moment")
-	}
-
-	return nil, 0, nil
-}
+// func GetPrivateAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
+// 	if GLOBAL_STATE.ActiveRouter == nil {
+// 		return nil, 500, errors.New("active router not found, please wait a moment")
+// 	}
+//
+// 	return nil, 0, nil
+// }
 
 func LoadRoutersUnAuthenticated() (interface{}, int, error) {
 	log.Println("GET ROUTERS UN_AHUTH")
@@ -340,25 +312,25 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return nil, 500, errors.New("active router not found, please wait a moment")
 	}
 
-	if !GLOBAL_STATE.LastAccessPointUpdate.IsZero() {
-		since := time.Since(GLOBAL_STATE.LastAccessPointUpdate).Seconds()
-		GLOBAL_STATE.SecondsUntilAccessPointUpdate = 55 - int(since)
+	if !GLOBAL_STATE.LastNodeUpdate.IsZero() {
+		since := time.Since(GLOBAL_STATE.LastNodeUpdate).Seconds()
+		GLOBAL_STATE.SecondsUntilNodeUpdate = 55 - int(since)
 		if since < 55 {
 			return nil, 200, nil
 		}
 	}
 
-	GLOBAL_STATE.LastAccessPointUpdate = time.Now()
-	GLOBAL_STATE.SecondsUntilAccessPointUpdate = 55
+	GLOBAL_STATE.LastNodeUpdate = time.Now()
+	GLOBAL_STATE.SecondsUntilNodeUpdate = 55
 
 	responseBytes, code, err := SendRequestToLocalhostProxy("GET", "v1/a", nil, 10000)
 	if err != nil {
 		CreateLog("", "(ROUTER/API) // code: ", code, " // err:", err)
 		if code != 0 {
-			GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
+			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
 			return nil, code, errors.New(string(responseBytes))
 		} else {
-			GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
+			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
 			return nil, code, errors.New("unable to contact controller")
 		}
 	}
@@ -367,11 +339,11 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return nil, code, errors.New("Unable to fetch access points")
 	}
 
-	RoutersAndAccessPoints := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
+	RoutersAndNodes := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
 
-	err = json.Unmarshal(responseBytes, RoutersAndAccessPoints)
+	err = json.Unmarshal(responseBytes, RoutersAndNodes)
 	if err != nil {
-		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
+		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
 		CreateErrorLog("", "Could not process forward request: ", err)
 		return nil, 400, errors.New("unknown error, please try again in a moment")
 	}
@@ -386,18 +358,18 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		}
 	}
 
-	PrivateAccessPoints := make([]*VPNNode, 0)
+	PrivateNodes := make([]*VPNNode, 0)
 	if code == 200 {
 		// CreateLog("", "RESPONSE:", string(responseBytes))
-		err = json.Unmarshal(responseBytes, &PrivateAccessPoints)
+		err = json.Unmarshal(responseBytes, &PrivateNodes)
 		if err != nil {
 			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
 			return nil, 0, err
 		}
 	}
 
-	for ii := range RoutersAndAccessPoints.Routers {
-		RR := RoutersAndAccessPoints.Routers[ii]
+	for ii := range RoutersAndNodes.Routers {
+		RR := RoutersAndNodes.Routers[ii]
 
 		exists := false
 		for i := range GLOBAL_STATE.RoutersList {
@@ -413,7 +385,7 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		if !exists {
 			for i := range GLOBAL_STATE.RoutersList {
 				if GLOBAL_STATE.RoutersList[i] == nil {
-					GLOBAL_STATE.RoutersList[i] = RoutersAndAccessPoints.Routers[ii]
+					GLOBAL_STATE.RoutersList[i] = RoutersAndNodes.Routers[ii]
 					break
 				}
 			}
@@ -421,8 +393,8 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 
 	}
 
-	for ii := range RoutersAndAccessPoints.Routers {
-		RR := RoutersAndAccessPoints.Routers[ii]
+	for ii := range RoutersAndNodes.Routers {
+		RR := RoutersAndNodes.Routers[ii]
 
 		for i := range GLOBAL_STATE.RoutersList {
 			R := GLOBAL_STATE.RoutersList[i]
@@ -522,9 +494,9 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
 	})
 
-	GLOBAL_STATE.AccessPoints = RoutersAndAccessPoints.AccessPoints
-	for i := range GLOBAL_STATE.AccessPoints {
-		A := GLOBAL_STATE.AccessPoints[i]
+	GLOBAL_STATE.Nodes = RoutersAndNodes.AccessPoints
+	for i := range GLOBAL_STATE.Nodes {
+		A := GLOBAL_STATE.Nodes[i]
 
 		for ii := range GLOBAL_STATE.RoutersList {
 			R := GLOBAL_STATE.RoutersList[ii]
@@ -533,14 +505,14 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			}
 
 			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
-				GLOBAL_STATE.AccessPoints[i].Router = GLOBAL_STATE.RoutersList[ii]
+				GLOBAL_STATE.Nodes[i].Router = GLOBAL_STATE.RoutersList[ii]
 			}
 		}
 	}
 
-	GLOBAL_STATE.PrivateAccessPoints = PrivateAccessPoints
-	for i := range GLOBAL_STATE.PrivateAccessPoints {
-		A := GLOBAL_STATE.PrivateAccessPoints[i]
+	GLOBAL_STATE.PrivateNodes = PrivateNodes
+	for i := range GLOBAL_STATE.PrivateNodes {
+		A := GLOBAL_STATE.PrivateNodes[i]
 
 		for ii := range GLOBAL_STATE.RoutersList {
 			R := GLOBAL_STATE.RoutersList[ii]
@@ -549,46 +521,46 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 			}
 
 			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
-				GLOBAL_STATE.PrivateAccessPoints[i].Router = GLOBAL_STATE.RoutersList[ii]
+				GLOBAL_STATE.PrivateNodes[i].Router = GLOBAL_STATE.RoutersList[ii]
 			}
 		}
 	}
 
-	GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
 	// AS.AP = GLOBAL_STATE.ActiveAccessPoint
 
-	if len(GLOBAL_STATE.AccessPoints) == 0 {
-		GLOBAL_STATE.LastAccessPointUpdate = time.Now().Add(-45 * time.Second)
+	if len(GLOBAL_STATE.Nodes) == 0 {
+		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
 	}
 
-	sort.Slice(GLOBAL_STATE.AccessPoints, func(a, b int) bool {
-		if GLOBAL_STATE.AccessPoints[a].Router == nil {
+	sort.Slice(GLOBAL_STATE.Nodes, func(a, b int) bool {
+		if GLOBAL_STATE.Nodes[a].Router == nil {
 			return false
 		}
-		if GLOBAL_STATE.AccessPoints[b].Router == nil {
+		if GLOBAL_STATE.Nodes[b].Router == nil {
 			return false
 		}
-		if GLOBAL_STATE.AccessPoints[a].Router.Score == GLOBAL_STATE.AccessPoints[b].Router.Score {
-			if GLOBAL_STATE.AccessPoints[a].Router.MS < GLOBAL_STATE.AccessPoints[b].Router.MS {
+		if GLOBAL_STATE.Nodes[a].Router.Score == GLOBAL_STATE.Nodes[b].Router.Score {
+			if GLOBAL_STATE.Nodes[a].Router.MS < GLOBAL_STATE.Nodes[b].Router.MS {
 				return true
 			}
 		}
-		return GLOBAL_STATE.AccessPoints[a].Router.Score > GLOBAL_STATE.AccessPoints[b].Router.Score
+		return GLOBAL_STATE.Nodes[a].Router.Score > GLOBAL_STATE.Nodes[b].Router.Score
 	})
 
-	sort.Slice(GLOBAL_STATE.PrivateAccessPoints, func(a, b int) bool {
-		if GLOBAL_STATE.PrivateAccessPoints[a].Router == nil {
+	sort.Slice(GLOBAL_STATE.PrivateNodes, func(a, b int) bool {
+		if GLOBAL_STATE.PrivateNodes[a].Router == nil {
 			return false
 		}
-		if GLOBAL_STATE.PrivateAccessPoints[b].Router == nil {
+		if GLOBAL_STATE.PrivateNodes[b].Router == nil {
 			return false
 		}
-		if GLOBAL_STATE.PrivateAccessPoints[a].Router.Score == GLOBAL_STATE.PrivateAccessPoints[b].Router.Score {
-			if GLOBAL_STATE.PrivateAccessPoints[a].Router.MS < GLOBAL_STATE.PrivateAccessPoints[b].Router.MS {
+		if GLOBAL_STATE.PrivateNodes[a].Router.Score == GLOBAL_STATE.PrivateNodes[b].Router.Score {
+			if GLOBAL_STATE.PrivateNodes[a].Router.MS < GLOBAL_STATE.PrivateNodes[b].Router.MS {
 				return true
 			}
 		}
-		return GLOBAL_STATE.PrivateAccessPoints[a].Router.Score > GLOBAL_STATE.PrivateAccessPoints[b].Router.Score
+		return GLOBAL_STATE.PrivateNodes[a].Router.Score > GLOBAL_STATE.PrivateNodes[b].Router.Score
 	})
 
 	fmt.Println("FULL GET ROUTERS CALL")
@@ -597,10 +569,6 @@ func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
 
 func ForwardToRouter(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	defer RecoverAndLogToFile()
-
-	if GLOBAL_STATE.ClientStartupError {
-		return nil, 500, errors.New("there is a problem with the background service, please check your logs")
-	}
 
 	if GLOBAL_STATE.ActiveRouter == nil {
 		return nil, 500, errors.New("tctive router not found, please wait a moment")
@@ -628,10 +596,6 @@ func ForwardToRouter(FR *FORWARD_REQUEST) (interface{}, int, error) {
 
 func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	defer RecoverAndLogToFile()
-
-	if GLOBAL_STATE.ClientStartupError {
-		return nil, 500, errors.New("there is a problem with the background service, please check your logs")
-	}
 
 	if GLOBAL_STATE.ActiveRouter == nil {
 		return nil, 500, errors.New("active router not found, please wait a moment")
@@ -669,21 +633,6 @@ func SetRouterFile(path string) error {
 
 	CreateLog("START", "")
 
-	if GLOBAL_STATE.ClientStartupError {
-		return errors.New("there is a problem with the background service, please check your logs")
-	}
-
-	if GLOBAL_STATE.Connecting {
-		CreateLog("loader", "Unable to change routers while nicelandVPN is connecting")
-		return errors.New("unable to change routers while nicelandVPN is connecting")
-	} else if GLOBAL_STATE.Connected {
-		CreateLog("loader", "Unable to change routers while nicelandVPN is connected")
-		return errors.New("unable to change routers while nicelandVPN is connected")
-	} else if GLOBAL_STATE.Exiting {
-		CreateLog("loader", "Unable to change routers while nicelandVPN is exiting")
-		return errors.New("unable to change routers while nicelandVPN is exiting")
-	}
-
 	C.RouterFilePath = path
 	C.ManualRouter = false
 
@@ -693,9 +642,7 @@ func SetRouterFile(path string) error {
 		return errors.New("unable to save config")
 	}
 
-	GLOBAL_STATE.LastRouterPing = time.Now().AddDate(0, 0, 1)
-
-	err = RefreshRouterList()
+	err = REF_RefreshRouterList()
 	if err != nil {
 		return errors.New(err.Error())
 	}
@@ -711,15 +658,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 
 	CreateLog("START", "")
 
-	if GLOBAL_STATE.Connecting {
-		CreateLog("loader", "unable to change config while nicelandVPN is connecting")
-		return errors.New("unable to change config while nicelandVPN is connecting")
-	} else if GLOBAL_STATE.Exiting {
-		CreateLog("loader", "unable to change config while nicelandVPN is exiting")
-		return errors.New("unable to change config while nicelandVPN is exiting")
-	}
-
-	if (C.CustomDNS != SF.CustomDNS) && GLOBAL_STATE.Connected {
+	if C.CustomDNS != SF.CustomDNS {
 		CreateLog("loader", "unable to change custom DNS state while connected")
 		return errors.New("unable to change custom DNS state while connected")
 	}
@@ -755,7 +694,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 		}
 	}
 
-	var dnsWasChanged bool = false
+	// var dnsWasChanged bool = false
 	if SF.DNS1 != "" {
 		if C.DNS1 != SF.DNS1 {
 			C.DNS1 = SF.DNS1
@@ -764,7 +703,7 @@ func SetConfig(SF *CONFIG_FORM) error {
 				return errors.New("DNS1 is invalid or empty")
 			}
 			C.DNS1Bytes = [4]byte{C.DNSIP[0], C.DNSIP[1], C.DNSIP[2], C.DNSIP[3]}
-			dnsWasChanged = true
+			// dnsWasChanged = true
 		}
 	} else {
 
@@ -774,15 +713,15 @@ func SetConfig(SF *CONFIG_FORM) error {
 
 	if C.DNS2 != SF.DNS2 {
 		C.DNS2 = SF.DNS2
-		dnsWasChanged = true
+		// dnsWasChanged = true
 	}
 
-	if dnsWasChanged && GLOBAL_STATE.Connected {
-		err := ChangeDNSWhileConnected()
-		if err != nil {
-			return errors.New("unable to update DNS on tunnel interface")
-		}
-	}
+	// if dnsWasChanged {
+	// 	err := ChangeDNSWhileConnected()
+	// 	if err != nil {
+	// 		return errors.New("unable to update DNS on tunnel interface")
+	// 	}
+	// }
 
 	err := SaveConfig()
 	if err != nil {
@@ -794,49 +733,67 @@ func SetConfig(SF *CONFIG_FORM) error {
 	return nil
 }
 
-func PrepareState() {
+func PrepareState(e echo.Context) (err error) {
 	defer RecoverAndLogToFile()
-
-	GLOBAL_STATE.EgressPackets = EGRESS_PACKETS
-	GLOBAL_STATE.IngressPackets = INGRESS_PACKETS
-	ubps := GLOBAL_STATE.UMbps
-	utext := "bps"
-	dbps := GLOBAL_STATE.DMbps
-	dtext := "bps"
-	if ubps > 1100000 {
-		utext = "Mbps"
-		ubps = ubps / 1000000
-	} else if ubps > 1100 {
-		utext = "Kbps"
-		ubps = ubps / 1000
-	}
-	GLOBAL_STATE.UMbpsString = fmt.Sprintf("%d %s", ubps, utext)
-
-	if dbps > 1100000 {
-		dtext = "Mbps"
-		dbps = dbps / 1000000
-	} else if dbps > 1100 {
-		dtext = "Kbps"
-		dbps = dbps / 1000
+	form := new(FORWARD_REQUEST)
+	err = e.Bind(form)
+	if err != nil {
+		return e.JSON(400, err)
 	}
 
-	GLOBAL_STATE.DMbpsString = fmt.Sprintf("%d %s", dbps, dtext)
-	GLOBAL_STATE.SecondsSincePingFromRouter = fmt.Sprintf("%.0f seconds", time.Since(GLOBAL_STATE.PingReceivedFromRouter).Seconds())
-
-	if GLOBAL_STATE.ActiveSession != nil {
-		seconds := time.Since(GLOBAL_STATE.ActiveSession.Created).Seconds()
-		label := "seconds"
-
-		if seconds > 60 && seconds < 120 {
-			label = "minute"
-			seconds = seconds / 60
-		} else if seconds >= 120 {
-			label = "minutes"
-			seconds = seconds / 60
+	if form.Authed {
+		_, code, err := GetRoutersAndAccessPoints(form)
+		if err != nil {
+			fmt.Println("GET INFO ERROR:", err)
+		}
+		if code != 200 {
+			fmt.Println("GET INFO CODE:", code)
 		}
 
-		GLOBAL_STATE.ConnectedTimer = fmt.Sprintf("%.0f %s", seconds, label)
+	} else {
+		_, _, _ = LoadRoutersUnAuthenticated()
 	}
+
+	// GLOBAL_STATE.EgressPackets = EGRESS_PACKETS
+	// GLOBAL_STATE.IngressPackets = INGRESS_PACKETS
+	// ubps := GLOBAL_STATE.UMbps
+	// utext := "bps"
+	// dbps := GLOBAL_STATE.DMbps
+	// dtext := "bps"
+	// if ubps > 1100000 {
+	// 	utext = "Mbps"
+	// 	ubps = ubps / 1000000
+	// } else if ubps > 1100 {
+	// 	utext = "Kbps"
+	// 	ubps = ubps / 1000
+	// }
+	// GLOBAL_STATE.UMbpsString = fmt.Sprintf("%d %s", ubps, utext)
+	//
+	// if dbps > 1100000 {
+	// 	dtext = "Mbps"
+	// 	dbps = dbps / 1000000
+	// } else if dbps > 1100 {
+	// 	dtext = "Kbps"
+	// 	dbps = dbps / 1000
+	// }
+
+	// GLOBAL_STATE.DMbpsString = fmt.Sprintf("%d %s", dbps, dtext)
+	// GLOBAL_STATE.SecondsSincePingFromRouter = fmt.Sprintf("%.0f seconds", time.Since(GLOBAL_STATE.PingReceivedFromRouter).Seconds())
+
+	// if GLOBAL_STATE.ActiveSession != nil {
+	// 	seconds := time.Since(GLOBAL_STATE.ActiveSession.Created).Seconds()
+	// 	label := "seconds"
+	//
+	// 	if seconds > 60 && seconds < 120 {
+	// 		label = "minute"
+	// 		seconds = seconds / 60
+	// 	} else if seconds >= 120 {
+	// 		label = "minutes"
+	// 		seconds = seconds / 60
+	// 	}
+	//
+	// 	GLOBAL_STATE.ConnectedTimer = fmt.Sprintf("%.0f %s", seconds, label)
+	// }
 
 	// if GLOBAL_STATE.ActiveSession != nil {
 	// 	S := GLOBAL_STATE.ActiveSession
@@ -848,30 +805,26 @@ func PrepareState() {
 	// 	}
 	// }
 	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+	return
 }
 
-func GetActiveAccessPointFromActiveSession() *VPNNode {
-	if GLOBAL_STATE.ActiveSession != nil {
-		S := GLOBAL_STATE.ActiveSession
-
-		for i := range GLOBAL_STATE.AccessPoints {
-			A := GLOBAL_STATE.AccessPoints[i]
-			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
-			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
-				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
-				return GLOBAL_STATE.AccessPoints[i]
-			}
+func REF_GetNodeFromSession(S *CLIENT_SESSION) *VPNNode {
+	for i := range GLOBAL_STATE.Nodes {
+		A := GLOBAL_STATE.Nodes[i]
+		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+			return GLOBAL_STATE.Nodes[i]
 		}
+	}
 
-		for i := range GLOBAL_STATE.PrivateAccessPoints {
-			A := GLOBAL_STATE.PrivateAccessPoints[i]
-			// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
-			if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
-				// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
-				return GLOBAL_STATE.PrivateAccessPoints[i]
-			}
+	for i := range GLOBAL_STATE.PrivateNodes {
+		A := GLOBAL_STATE.PrivateNodes[i]
+		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+			return GLOBAL_STATE.PrivateNodes[i]
 		}
-
 	}
 
 	return nil
@@ -945,7 +898,7 @@ func HTTPS_GetLogs(e echo.Context) (err error) {
 	return e.JSON(200, R)
 }
 
-func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, startRouting bool) (code int, errm error) {
+func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST) (code int, errm error) {
 	defer RecoverAndLogToFile()
 	start := time.Now()
 
@@ -975,14 +928,14 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 	}
 
 	CreateLog("connect", "Creating a route to VPN")
-	_ = AddRoute(GLOBAL_STATE.ActiveRouter.IP)
+	_ = tunnels.IP_AddRoute(GLOBAL_STATE.ActiveRouter.IP, DEFAULT_GATEWAY.String(), "0")
 
 	VPNC := new(VPNConnection)
 	VPNC.ID = uuid.NewString()
 	var err error
 
 	CreateLog("connect", "Connecting to router")
-	ARS, err := REF_ConnectToActiveRouter(
+	ARS, err := REF_ConnectToRouter(
 		SessionFromUser.GROUP,
 		SessionFromUser.ROUTERID,
 		SessionFromUser.Proto,
@@ -1091,7 +1044,11 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST, start
 		return 500, errors.New("")
 	}
 
-	VPNC.BuildNATMap(VPNC.Node)
+	err = VPNC.BuildNATMap(VPNC.Node)
+	if err != nil {
+		CreateErrorLog("connect", "unable to build NAT map", err)
+		return 500, errors.New("")
+	}
 
 	err = VPNC.Tun.PreConnect()
 	if err != nil {

@@ -66,14 +66,12 @@ func InitLogfile() {
 	var err error
 	LogFile, err = os.Create(GLOBAL_STATE.LogFileName)
 	if err != nil {
-		GLOBAL_STATE.ClientStartupError = true
 		CreateErrorLog("", "Unable to create log file: ", err)
 		return
 	}
 
 	err = os.Chmod(GLOBAL_STATE.LogFileName, 0o777)
 	if err != nil {
-		GLOBAL_STATE.ClientStartupError = true
 		CreateErrorLog("", "Unable to change ownership of log file: ", err)
 		return
 	}
@@ -169,10 +167,12 @@ func StartLogQueueProcessor(MONITOR chan int) {
 			L.LOGS[0] = logItem.Line
 		}
 
-		if LogFile != nil && toFile {
-			_, err := LogFile.WriteString(logItem.Line + "\n")
-			if err != nil {
-				ErrorLog(err)
+		if LogFile != nil {
+			if toFile {
+				_, err := LogFile.WriteString(logItem.Line + "\n")
+				if err != nil {
+					ErrorLog(err)
+				}
 			}
 		} else {
 			ErrorLog("Log file not initialized")

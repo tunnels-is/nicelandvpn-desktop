@@ -49,26 +49,28 @@ func PingAllVPNConnections(MONITOR chan int) {
 
 func GetDefaultGateway(MONITOR chan int) {
 	defer func() {
-		// MONITOR <- 4
+		MONITOR <- 4
 	}()
 	defer RecoverAndLogToFile()
 	var err error
 
-	var OLD_GATEWAY net.IP
+	OLD_GATEWAY := make([]byte, 4)
+
 	copy(OLD_GATEWAY, DEFAULT_GATEWAY)
 
 	DEFAULT_GATEWAY, err = tunnels.FindGateway()
 	if err != nil {
-		CreateErrorLog("connect", "default gateway not found", err)
+		CreateErrorLog("", "default gateway not found", err)
 	}
-	if bytes.Compare(OLD_GATEWAY, DEFAULT_GATEWAY) != 0 {
-		if time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS) {
-			err := RefreshRouterList()
-			if err != nil {
-				CreateErrorLog("", "Unable to find the best router for your connection: ", err)
-			} else {
-				LAST_ROUTER_PROBE = time.Now()
-			}
+
+	CreateErrorLog("", "NEW GATEWAY:", DEFAULT_GATEWAY)
+	CreateErrorLog("", "OLD GATEWAY:", OLD_GATEWAY)
+
+	// fmt.Println(bytes.Compare(OLD_GATEWAY, DEFAULT_GATEWAY))
+	if !bytes.Equal(OLD_GATEWAY, DEFAULT_GATEWAY) {
+		err = REF_RefreshRouterList()
+		if err != nil {
+			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
 		}
 	}
 

@@ -3,11 +3,7 @@
 package core
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -20,117 +16,117 @@ type Adapter struct {
 	Interface *water.Interface
 }
 
-func (A *Adapter) Close() (err error) {
-	if A.Interface != nil {
-		err = A.Interface.Close()
-	}
-	return
-}
+// func (A *Adapter) Close() (err error) {
+// 	if A.Interface != nil {
+// 		err = A.Interface.Close()
+// 	}
+// 	return
+// }
+//
+// func (A *Adapter) Uninstall() (err error) {
+// 	return
+// }
 
-func (A *Adapter) Uninstall() (err error) {
-	return
-}
+// func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
+// 	out, err := exec.Command("bash", "-c", "cat /proc/sys/net/ipv6/conf/"+PotentialDefault.IFName+"/disable_ipv6").CombinedOutput()
+// 	if err != nil {
+// 		CreateErrorLog("", err, "Error getting ipv6 settings for interface: ", PotentialDefault.IFName, " || msg: ", err, " || output: ", string(out))
+// 		return
+// 	}
+//
+// 	outString := string(out)
+// 	outString = strings.TrimSpace(outString)
+//
+// 	if outString == "0" {
+// 		PotentialDefault.IPV6Enabled = false
+// 	} else {
+// 		PotentialDefault.IPV6Enabled = true
+// 	}
+// }
 
-func GetIPv6Settings(PotentialDefault *CONNECTION_SETTINGS) {
-	out, err := exec.Command("bash", "-c", "cat /proc/sys/net/ipv6/conf/"+PotentialDefault.IFName+"/disable_ipv6").CombinedOutput()
-	if err != nil {
-		CreateErrorLog("", err, "Error getting ipv6 settings for interface: ", PotentialDefault.IFName, " || msg: ", err, " || output: ", string(out))
-		return
-	}
+// func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) {
+// 	GetIPv6Settings(PotentialDefault)
+// 	return
+// }
 
-	outString := string(out)
-	outString = strings.TrimSpace(outString)
+// func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
+// 	PotentialDefault, err := FindDefaultInterfaceAndGateway()
+// 	if err != nil {
+// 		CreateErrorLog("", "Could not find default interface and gateway >> ", err)
+// 		return errors.New("")
+// 	}
+//
+// 	if PotentialDefault == nil {
+// 		CreateErrorLog("", "Could not find default interface and gateway >> Potential Default is nil")
+// 		return errors.New("")
+// 	}
+//
+// 	if PotentialDefault.DefaultRouter == "" {
+// 		CreateErrorLog("", "Default interface had invalid Default router", PotentialDefault, " >> ", err)
+// 		return errors.New("")
+// 	}
+//
+// 	VerifyAndBackupSettings(PotentialDefault)
+//
+// 	GLOBAL_STATE.DefaultInterface = PotentialDefault
+//
+// 	CreateLog("", "NEW DEFAULT INTERFACE >> ", MAC_CONNECTION_SETTINGS)
+//
+// 	BackupSettingsToFile(PotentialDefault)
+// 	return
+// }
 
-	if outString == "0" {
-		PotentialDefault.IPV6Enabled = false
-	} else {
-		PotentialDefault.IPV6Enabled = true
-	}
-}
+// func RestoreSettingsFromFile(PotentialDefault *CONNECTION_SETTINGS) {
+// 	CreateLog("", "RESTORING SETTINGS FROM FILE")
+//
+// 	backupFile, err := os.Open(GenerateBaseFolderPath() + PotentialDefault.IFName + "_backup")
+// 	if err != nil {
+// 		CreateErrorLog("", "Unable to open backup file, please restart the application. If this problem persists contact customer support")
+// 		return
+// 	}
+//
+// 	backupBytes, err := io.ReadAll(backupFile)
+// 	if err != nil {
+// 		CreateErrorLog("", "Unable to parse read file, please restart the application. If this problem persists contact customer support")
+// 		return
+// 	}
+//
+// 	CS := new(CONNECTION_SETTINGS)
+// 	err = json.Unmarshal(backupBytes, CS)
+// 	if err != nil {
+// 		CreateErrorLog("", "Unable to parse read file, please restart the application. If this problem persists contact customer support")
+// 		return
+// 	}
+//
+// 	GLOBAL_STATE.DefaultInterface = CS
+// 	RestoreIPv6()
+// }
 
-func VerifyAndBackupSettings(PotentialDefault *CONNECTION_SETTINGS) (err error) {
-	GetIPv6Settings(PotentialDefault)
-	return
-}
+// func LaunchPreperation() (err error) {
+// 	return
+// }
 
-func FindDefaultInterfaceAndGatewayDuringStartup() (err error) {
-	PotentialDefault, err := FindDefaultInterfaceAndGateway()
-	if err != nil {
-		CreateErrorLog("", "Could not find default interface and gateway >> ", err)
-		return errors.New("")
-	}
+// func ResetAfterFailedConnectionAttempt() {
+// 	defer RecoverAndLogToFile()
+// 	CreateLog("connect", "RESETTING EVERYTHING AFTER A FAILED CONNECT")
+// 	RestoreIPv6()
+// 	// RestoreDNS()
+// }
 
-	if PotentialDefault == nil {
-		CreateErrorLog("", "Could not find default interface and gateway >> Potential Default is nil")
-		return errors.New("")
-	}
-
-	if PotentialDefault.DefaultRouter == "" {
-		CreateErrorLog("", "Default interface had invalid Default router", PotentialDefault, " >> ", err)
-		return errors.New("")
-	}
-
-	VerifyAndBackupSettings(PotentialDefault)
-
-	GLOBAL_STATE.DefaultInterface = PotentialDefault
-
-	CreateLog("", "NEW DEFAULT INTERFACE >> ", MAC_CONNECTION_SETTINGS)
-
-	BackupSettingsToFile(PotentialDefault)
-	return
-}
-
-func RestoreSettingsFromFile(PotentialDefault *CONNECTION_SETTINGS) {
-	CreateLog("", "RESTORING SETTINGS FROM FILE")
-
-	backupFile, err := os.Open(GenerateBaseFolderPath() + PotentialDefault.IFName + "_backup")
-	if err != nil {
-		CreateErrorLog("", "Unable to open backup file, please restart the application. If this problem persists contact customer support")
-		return
-	}
-
-	backupBytes, err := io.ReadAll(backupFile)
-	if err != nil {
-		CreateErrorLog("", "Unable to parse read file, please restart the application. If this problem persists contact customer support")
-		return
-	}
-
-	CS := new(CONNECTION_SETTINGS)
-	err = json.Unmarshal(backupBytes, CS)
-	if err != nil {
-		CreateErrorLog("", "Unable to parse read file, please restart the application. If this problem persists contact customer support")
-		return
-	}
-
-	GLOBAL_STATE.DefaultInterface = CS
-	RestoreIPv6()
-}
-
-func LaunchPreperation() (err error) {
-	return
-}
-
-func ResetAfterFailedConnectionAttempt() {
-	defer RecoverAndLogToFile()
-	CreateLog("connect", "RESETTING EVERYTHING AFTER A FAILED CONNECT")
-	RestoreIPv6()
-	// RestoreDNS()
-}
-
-func ChangeDNS() error {
-	return nil
-}
-
-func RestoreDNS(force bool) {
-}
-
-func ChangeDNSWhileConnected() error {
-	return nil
-}
-
-func ChangeDNSOnTunnelInterface() error {
-	return nil
-}
+// func ChangeDNS() error {
+// 	return nil
+// }
+//
+// func RestoreDNS(force bool) {
+// }
+//
+// func ChangeDNSWhileConnected() error {
+// 	return nil
+// }
+//
+// func ChangeDNSOnTunnelInterface() error {
+// 	return nil
+// }
 
 // func EnablePacketRouting() (err error) {
 // 	defer RecoverAndLogToFile()
@@ -194,27 +190,27 @@ func ChangeDNSOnTunnelInterface() error {
 // 	return nil
 // }
 
-func SetInterfaceStateToUp() (err error) {
-	CreateLog("connect", "Initializing link/up on device: "+TUNNEL_ADAPTER_NAME)
-
-	ipOut, err := exec.Command("ip", "link", "set", "dev", TUNNEL_ADAPTER_NAME, "up").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || unable to bring the tunnel interface up (link up) || msg: ", err, " || output: ", string(ipOut))
-		return err
-	}
-
-	return
-}
-
-func SetInterfaceStateToDown() (err error) {
-	ipOut, err := exec.Command("ip", "link", "set", "dev", TUNNEL_ADAPTER_NAME, "down").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || unable to bring the tunnel interface down (link down) || msg: ", err, " || output: ", string(ipOut))
-		return err
-	}
-
-	return
-}
+// func SetInterfaceStateToUp() (err error) {
+// 	CreateLog("connect", "Initializing link/up on device: "+TUNNEL_ADAPTER_NAME)
+//
+// 	ipOut, err := exec.Command("ip", "link", "set", "dev", TUNNEL_ADAPTER_NAME, "up").Output()
+// 	if err != nil {
+// 		CreateErrorLog("", "IP || unable to bring the tunnel interface up (link up) || msg: ", err, " || output: ", string(ipOut))
+// 		return err
+// 	}
+//
+// 	return
+// }
+//
+// func SetInterfaceStateToDown() (err error) {
+// 	ipOut, err := exec.Command("ip", "link", "set", "dev", TUNNEL_ADAPTER_NAME, "down").Output()
+// 	if err != nil {
+// 		CreateErrorLog("", "IP || unable to bring the tunnel interface down (link down) || msg: ", err, " || output: ", string(ipOut))
+// 		return err
+// 	}
+//
+// 	return
+// }
 
 func AdjustRoutersForTunneling() (err error) {
 	CreateLog("connect", "Adjusting route metrics")
@@ -284,195 +280,79 @@ func AdjustRoutersForTunneling() (err error) {
 	return
 }
 
-func InitializeTunnelAdapter() (err error) {
-	defer RecoverAndLogToFile()
-
-	err = DisableIPv6()
-	if err != nil {
-		return err
-	}
-
-	GLOBAL_STATE.TunnelInitialized = true
-	CreateLog("connect", "Niceland VPN tunnel initialized")
-	return
-}
-
-func DeleteTunnelInterfaceRoutes(IP string) (err error) {
-	out, err := exec.Command("ip", "route", "del", IP, "via", TUNNEL_ADAPTER_ADDRESS, "metric", "0").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
-		return err
-	}
-
-	return
-}
-
-func AddRouteToTunnelInterface(IP string) (err error) {
-	out, err := exec.Command("ip", "route", "add", IP, "via", TUNNEL_ADAPTER_ADDRESS, "metric", "0").Output()
-	if err != nil {
-
-		CreateErrorLog("", "IP || Unable to add routea to: ", IP, " || Gateway: ", TUNNEL_ADAPTER_ADDRESS, " || msg: ", err, " || output: ", string(out))
-		return err
-	}
-
-	return
-}
-
-func AddRoute(IP string) (err error) {
-	if GLOBAL_STATE.DefaultInterface == nil {
-		CreateLog("", "Not adding route, no default interface")
-		return errors.New("no default interface")
-	}
-
-	_ = DeleteRoute(IP, false)
-
-	out, err := exec.Command("ip", "route", "add", IP, "via", GLOBAL_STATE.DefaultInterface.DefaultRouter, "metric", "0").Output()
-	if err != nil {
-		CreateErrorLog("", "IP || Unable to add route to: ", IP, " || Gateway: ", GLOBAL_STATE.DefaultInterface.DefaultRouter, " || msg: ", err, " || output: ", string(out))
-		return err
-	}
-
-	return
-}
-
-func DeleteRoute(IP string, ignoreActiveRouter bool) (err error) {
-	if GLOBAL_STATE.DefaultInterface == nil {
-		CreateLog("", "Not deleting route, no default interface")
-		return errors.New("no default interface")
-	}
-
-	if !ignoreActiveRouter {
-		if GLOBAL_STATE.ActiveRouter != nil && GLOBAL_STATE.ActiveRouter.IP == IP {
-			return
-		}
-	}
-
-	out, err := exec.Command("ip", "route", "del", IP).Output()
-	if err != nil {
-		CreateErrorLog("", "IP || Unable to delete route: ", IP, " || msg: ", err, " || output: ", string(out))
-		return
-	}
-
-	return
-}
-
-func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, err error) {
-	INTERFACE_SETTINGS := FindAllInterfaces()
-
-	var out []byte
-	out, err = exec.Command("ip", "route").Output()
-	if err != nil {
-		CreateLog("general", err, "could not get route list")
-		return nil, err
-	}
-
-	split := strings.Split(string(out), "\n")
-	defaultName := ""
-	lowestMetric := 999999
-	for _, v := range split {
-		fields := strings.Fields(v)
-		if len(fields) < 1 {
-			continue
-		}
-		if fields[0] == "default" {
-			var metricInt int = 0
-			if fields[len(fields)-2] == "metric" {
-				metricInt, err = strconv.Atoi(fields[len(fields)-1])
-				if err != nil {
-					CreateErrorLog("", "Unable to parse interface metric", fields)
-					return nil, err
-				}
-			} else {
-				metricInt = 0
-			}
-
-			for i := range INTERFACE_SETTINGS {
-				if INTERFACE_SETTINGS[i] == nil {
-					continue
-				}
-
-				if fields[4] == TUNNEL_ADAPTER_NAME {
-					continue
-				}
-
-				if i == fields[4] {
-					INTERFACE_SETTINGS[i].Metric = metricInt
-					INTERFACE_SETTINGS[i].Hop = fields[2]
-					if metricInt < lowestMetric {
-						defaultName = fields[4]
-						lowestMetric = metricInt
-					}
-				}
-			}
-
-		}
-	}
-
-	for i := range INTERFACE_SETTINGS {
-		if INTERFACE_SETTINGS[i] == nil {
-			continue
-		}
-
-		if i == defaultName {
-
-			POTENTIAL_DEFAULT = new(CONNECTION_SETTINGS)
-			POTENTIAL_DEFAULT.IFName = i
-			POTENTIAL_DEFAULT.DefaultRouter = INTERFACE_SETTINGS[i].Hop
-			return
-
-		}
-	}
-
-	if lowestMetric == 999999 || defaultName == "" {
-		return nil, errors.New("")
-	}
-
-	return
-}
-
-func RestoreIPv6() {
-	defer RecoverAndLogToFile()
-
-	if !C.DisableIPv6OnConnect {
-		CreateLog("connect", "IPv6 settings unchanged")
-		return
-	}
-
-	if GLOBAL_STATE.DefaultInterface == nil {
-		CreateErrorLog("", "Failed to restore IPv6 settings, interface settings not found")
-		return
-	}
-
-	if GLOBAL_STATE.DefaultInterface.IPV6Enabled {
-
-		out, err := exec.Command("bash", "-c", "echo 0 > /proc/sys/net/ipv6/conf/"+GLOBAL_STATE.DefaultInterface.IFName+"/disable_ipv6").CombinedOutput()
-		if err != nil {
-			CreateErrorLog("", err, " || Error resting IPv6 settings || msg: ", err, " || output: ", string(out))
-		}
-
-	}
-
-	return
-}
-
-func DisableIPv6() error {
-	defer RecoverAndLogToFile()
-
-	if !C.DisableIPv6OnConnect {
-		CreateLog("connect", "IPv6 settings unchanged")
-		return nil
-	}
-
-	CreateLog("connect", "Disabling IPv6 on interface: ", GLOBAL_STATE.DefaultInterface.IFName)
-
-	out, err := exec.Command("bash", "-c", "echo 1 > /proc/sys/net/ipv6/conf/"+GLOBAL_STATE.DefaultInterface.IFName+"/disable_ipv6").CombinedOutput()
-	if err != nil {
-		CreateErrorLog("", err, " || Unable to turn off IPv6 support || msg: ", err, " || output: ", string(out))
-		return err
-	}
-
-	return nil
-}
+// func FindDefaultInterfaceAndGateway() (POTENTIAL_DEFAULT *CONNECTION_SETTINGS, err error) {
+// 	INTERFACE_SETTINGS := FindAllInterfaces()
+//
+// 	var out []byte
+// 	out, err = exec.Command("ip", "route").Output()
+// 	if err != nil {
+// 		CreateLog("general", err, "could not get route list")
+// 		return nil, err
+// 	}
+//
+// 	split := strings.Split(string(out), "\n")
+// 	defaultName := ""
+// 	lowestMetric := 999999
+// 	for _, v := range split {
+// 		fields := strings.Fields(v)
+// 		if len(fields) < 1 {
+// 			continue
+// 		}
+// 		if fields[0] == "default" {
+// 			var metricInt int = 0
+// 			if fields[len(fields)-2] == "metric" {
+// 				metricInt, err = strconv.Atoi(fields[len(fields)-1])
+// 				if err != nil {
+// 					CreateErrorLog("", "Unable to parse interface metric", fields)
+// 					return nil, err
+// 				}
+// 			} else {
+// 				metricInt = 0
+// 			}
+//
+// 			for i := range INTERFACE_SETTINGS {
+// 				if INTERFACE_SETTINGS[i] == nil {
+// 					continue
+// 				}
+//
+// 				if fields[4] == TUNNEL_ADAPTER_NAME {
+// 					continue
+// 				}
+//
+// 				if i == fields[4] {
+// 					INTERFACE_SETTINGS[i].Metric = metricInt
+// 					INTERFACE_SETTINGS[i].Hop = fields[2]
+// 					if metricInt < lowestMetric {
+// 						defaultName = fields[4]
+// 						lowestMetric = metricInt
+// 					}
+// 				}
+// 			}
+//
+// 		}
+// 	}
+//
+// 	for i := range INTERFACE_SETTINGS {
+// 		if INTERFACE_SETTINGS[i] == nil {
+// 			continue
+// 		}
+//
+// 		if i == defaultName {
+//
+// 			POTENTIAL_DEFAULT = new(CONNECTION_SETTINGS)
+// 			POTENTIAL_DEFAULT.IFName = i
+// 			POTENTIAL_DEFAULT.DefaultRouter = INTERFACE_SETTINGS[i].Hop
+// 			return
+//
+// 		}
+// 	}
+//
+// 	if lowestMetric == 999999 || defaultName == "" {
+// 		return nil, errors.New("")
+// 	}
+//
+// 	return
+// }
 
 func PrintInterfaces() (error, []byte) {
 	out, err := exec.Command("bash", "-c", "ip a").Output()
@@ -482,7 +362,7 @@ func PrintInterfaces() (error, []byte) {
 	return nil, out
 }
 
-func PrintRouters() (error, []byte) {
+func PrintRoutes() (error, []byte) {
 	out, err := exec.Command("bash", "-c", "ip route").Output()
 	if err != nil {
 		return err, nil

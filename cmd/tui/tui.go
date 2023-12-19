@@ -121,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Println("Connecting to: ", m.serverTable.SelectedRow()[0])
 			case 1:
 				// change to router
-				code, err := core.SwitchRouter(m.routerTable.SelectedRow()[0])
+				code, err := core.REF_SwitchRouter(m.routerTable.SelectedRow()[0])
 				s := "Switching to " + m.routerTable.SelectedRow()[0]
 				if err != nil {
 					s = fmt.Sprintf("There was an error switching routers: %s\nCode: %d", err, code)
@@ -145,7 +145,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logsViewport.GotoBottom()
 		}
 
-		aps := core.GLOBAL_STATE.AccessPoints
+		aps := core.GLOBAL_STATE.Nodes
 		s_row := []table.Row{}
 		for _, v := range aps {
 			s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
@@ -215,11 +215,12 @@ func (m model) View() string {
 
 	// Status line at the bottom
 	var status string
-	if core.GLOBAL_STATE.Connected {
-		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
-	} else {
-		status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
-	}
+	// if core.GLOBAL_STATE.Connected {
+	// 	status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: " + core.GLOBAL_STATE.ActiveAccessPoint.Tag
+	// } else {
+	// 	status = "Router: " + core.GLOBAL_STATE.ActiveRouter.Tag + "\tVPN: Not Connected"
+	// }
+	status = "Unknown??"
 
 	stats := "Up: " + core.GLOBAL_STATE.UMbpsString + " " + "Down: " + core.GLOBAL_STATE.DMbpsString
 	sep := "\t"
@@ -280,7 +281,7 @@ func StartTui() {
 	var s_row []table.Row
 	var r_row []table.Row
 
-	aps := core.GLOBAL_STATE.AccessPoints
+	aps := core.GLOBAL_STATE.Nodes
 	routs := core.GLOBAL_STATE.Routers
 
 	// rows for server table
@@ -336,7 +337,7 @@ func ConnectToAP(Tag string) {
 	var NS core.CONTROLLER_SESSION_REQUEST
 	var AP *core.VPNNode
 
-	for _, v := range core.GLOBAL_STATE.AccessPoints {
+	for _, v := range core.GLOBAL_STATE.Nodes {
 		if Tag == v.Tag {
 			AP = v
 		}
@@ -350,18 +351,10 @@ func ConnectToAP(Tag string) {
 	NS.XROUTERID = AP.ROUTERID
 	NS.DEVICEID = AP.DEVICEID
 
-	if core.GLOBAL_STATE.Connected {
-		_, code, err := core.Connect(&NS, false)
-		if err != nil {
-			fmt.Println("There was an error: ", err)
-			fmt.Println("Code: ", code)
-		}
-	} else {
-		_, code, err := core.Connect(&NS, true)
-		if err != nil {
-			fmt.Println("There was an error: ", err)
-			fmt.Println("Code: ", code)
-		}
+	code, err := core.REF_ConnectToAccessPoint(&NS)
+	if err != nil {
+		fmt.Println("There was an error: ", err)
+		fmt.Println("Code: ", code)
 	}
 }
 
@@ -370,11 +363,11 @@ func ConnectToAP(Tag string) {
 func detailedStatsUpdate(m model) {
 	// The strings for the name of each stat are declared in the globals.go
 	app_state_values := [10]string{
-		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilAccessPointUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
-		core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
+		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilNodeUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
+		// core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
 		strconv.FormatBool(core.GLOBAL_STATE.IsAdmin), strconv.FormatBool(core.GLOBAL_STATE.ConfigInitialized),
-		strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
-		strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		// strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		// strconv.FormatBool(core.GLOBAL_STATE.BufferError),
 	}
 
 	var as_row []table.Row
@@ -383,9 +376,9 @@ func detailedStatsUpdate(m model) {
 	}
 
 	interface_values := [3]string{
-		core.GLOBAL_STATE.DefaultInterface.IFName,
-		strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
-		core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
+		// core.GLOBAL_STATE.DefaultInterface.IFName,
+		// strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
+		// core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
 	}
 
 	var i_row []table.Row
@@ -405,7 +398,7 @@ func detailedStatsUpdate(m model) {
 	}
 
 	network_stats_values := [5]string{
-		strconv.FormatBool(core.GLOBAL_STATE.Connected),
+		// strconv.FormatBool(core.GLOBAL_STATE.Connected),
 		core.GLOBAL_STATE.DMbpsString,
 		strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
 		core.GLOBAL_STATE.UMbpsString,
@@ -434,11 +427,11 @@ func detailedStatsInit() []table.Model {
 	}
 
 	app_state_values := [10]string{
-		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilAccessPointUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
-		core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
+		strconv.Itoa(core.GLOBAL_STATE.SecondsUntilNodeUpdate), strconv.FormatBool(core.GLOBAL_STATE.ClientReady),
+		// core.GLOBAL_STATE.Version, strconv.FormatBool(core.GLOBAL_STATE.TunnelInitialized),
 		strconv.FormatBool(core.GLOBAL_STATE.IsAdmin), strconv.FormatBool(core.GLOBAL_STATE.ConfigInitialized),
-		strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
-		strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		// strconv.FormatBool(core.GLOBAL_STATE.LogFileInitialized), strconv.FormatBool(core.GLOBAL_STATE.BufferError),
+		// strconv.FormatBool(core.GLOBAL_STATE.BufferError),
 	}
 
 	var as_row []table.Row
@@ -462,9 +455,9 @@ func detailedStatsInit() []table.Model {
 	}
 
 	interface_values := [3]string{
-		core.GLOBAL_STATE.DefaultInterface.IFName,
-		strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
-		core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
+		// core.GLOBAL_STATE.DefaultInterface.IFName,
+		// strconv.FormatBool(core.GLOBAL_STATE.DefaultInterface.IPV6Enabled),
+		// core.GLOBAL_STATE.DefaultInterface.DefaultRouter,
 	}
 
 	var i_row []table.Row
@@ -514,7 +507,7 @@ func detailedStatsInit() []table.Model {
 	}
 
 	network_stats_values := [5]string{
-		strconv.FormatBool(core.GLOBAL_STATE.Connected),
+		// strconv.FormatBool(core.GLOBAL_STATE.Connected),
 		core.GLOBAL_STATE.DMbpsString,
 		strconv.FormatUint(core.GLOBAL_STATE.IngressPackets, 10),
 		core.GLOBAL_STATE.UMbpsString,

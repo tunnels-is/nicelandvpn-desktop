@@ -47,13 +47,14 @@ func START_API(MONITOR chan int) {
 		AllowMethods: []string{"POST", "OPTIONS"},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderCookie, echo.HeaderSetCookie, echo.HeaderXRequestedWith},
 	}
+
 	E.Use(m.CORSWithConfig(corsConfig))
+
+	v1 := E.Group("/v1")
+	v1.POST("/method/:method", serveMethod)
 
 	E.File("/", "./public/index.html")
 	E.Static("/assets", "./public/assets/")
-	v1 := E.Group("/v1")
-	// v1.Static("/", "dist")
-	v1.POST("/method/:method", serveMethod)
 
 	err := E.Start("0.0.0.0:9999")
 	if err != nil {
@@ -77,10 +78,10 @@ func serveMethod(e echo.Context) error {
 		return HTTP_SetConfig(e)
 	case "getQRCode":
 		return HTTP_GetQRCode(e)
-	case "getRoutersUnAuthenticated":
-		return HTTP_GetRoutersUnAuthenticated(e)
-	case "getRoutersAndAccessPoints":
-		return HTTP_GetRoutersAndAccessPoints(e)
+	// case "getRoutersUnAuthenticated":
+	// 	return HTTP_GetRoutersUnAuthenticated(e)
+	// case "getRoutersAndAccessPoints":
+	// 	return HTTP_GetRoutersAndAccessPoints(e)
 	case "forwardToRouter":
 		return HTTP_ForwardToRouter(e)
 	case "forwardToController":
@@ -98,9 +99,30 @@ func serveMethod(e echo.Context) error {
 }
 
 func HTTP_GetState(e echo.Context) (err error) {
-	// PrepareState()
+	PrepareState(e)
 	return e.JSON(200, GLOBAL_STATE)
 }
+
+// func HTTP_GetRoutersUnAuthenticated(e echo.Context) (err error) {
+// 	data, code, err := LoadRoutersUnAuthenticated()
+// 	if err != nil {
+// 		return e.JSON(code, err)
+// 	}
+// 	return e.JSON(code, data)
+// }
+//
+// func HTTP_GetRoutersAndAccessPoints(e echo.Context) (err error) {
+// 	form := new(FORWARD_REQUEST)
+// 	err = e.Bind(form)
+// 	if err != nil {
+// 		return e.JSON(400, err)
+// 	}
+// 	data, code, err := GetRoutersAndAccessPoints(form)
+// 	if err != nil {
+// 		return e.JSON(code, err)
+// 	}
+// 	return e.JSON(code, data)
+// }
 
 func HTTP_Connect(e echo.Context) (err error) {
 	ns := new(CONTROLLER_SESSION_REQUEST)
@@ -109,11 +131,11 @@ func HTTP_Connect(e echo.Context) (err error) {
 		return e.JSON(400, err)
 	}
 
-	data, code, err := Connect(ns, true)
+	code, err := REF_ConnectToAccessPoint(ns)
 	if err != nil {
 		return e.JSON(400, err)
 	}
-	return e.JSON(code, data)
+	return e.JSON(code, nil)
 }
 
 func HTTP_Switch(e echo.Context) (err error) {
@@ -123,11 +145,11 @@ func HTTP_Switch(e echo.Context) (err error) {
 		return e.JSON(400, err)
 	}
 
-	data, code, err := Connect(ns, false)
+	code, err := REF_ConnectToAccessPoint(ns)
 	if err != nil {
 		return e.JSON(400, err)
 	}
-	return e.JSON(code, data)
+	return e.JSON(code, nil)
 }
 
 func HTTP_Disconnect(e echo.Context) (err error) {
@@ -136,7 +158,7 @@ func HTTP_Disconnect(e echo.Context) (err error) {
 }
 
 func HTTP_ResetEverything(e echo.Context) (err error) {
-	ResetEverything()
+	// ResetEverything()
 	return e.JSON(200, nil)
 }
 
@@ -165,27 +187,6 @@ func HTTP_GetQRCode(e echo.Context) (err error) {
 		return e.JSON(400, err)
 	}
 	return e.JSON(200, QR)
-}
-
-func HTTP_GetRoutersUnAuthenticated(e echo.Context) (err error) {
-	data, code, err := LoadRoutersUnAuthenticated()
-	if err != nil {
-		return e.JSON(code, err)
-	}
-	return e.JSON(code, data)
-}
-
-func HTTP_GetRoutersAndAccessPoints(e echo.Context) (err error) {
-	form := new(FORWARD_REQUEST)
-	err = e.Bind(form)
-	if err != nil {
-		return e.JSON(400, err)
-	}
-	data, code, err := GetRoutersAndAccessPoints(form)
-	if err != nil {
-		return e.JSON(code, err)
-	}
-	return e.JSON(code, data)
 }
 
 func HTTP_ForwardToController(e echo.Context) (err error) {

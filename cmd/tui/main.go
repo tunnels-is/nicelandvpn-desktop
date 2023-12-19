@@ -46,7 +46,7 @@ func RoutineMonitor() {
 			time.Sleep(500 * time.Millisecond)
 		case ID := <-MONITOR:
 			if ID == 1 {
-				go core.StateMaintenance(MONITOR)
+				// go core.StateMaintenance(MONITOR)
 			} else if ID == 2 {
 				// go core.ReadFromRouterSocket(MONITOR)
 			} else if ID == 3 {
@@ -55,7 +55,7 @@ func RoutineMonitor() {
 			} else if ID == 4 {
 				// go core.ReadFromLocalSocket(MONITOR)
 			} else if ID == 6 {
-				go core.CalculateBandwidth(MONITOR)
+				// go core.CalculateBandwidth(MONITOR)
 			} else if ID == 8 {
 				go core.StartLogQueueProcessor(MONITOR)
 			}

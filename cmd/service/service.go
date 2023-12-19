@@ -29,6 +29,7 @@ func main() {
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
+
 	core.StartService(MONITOR)
 
 	MONITOR <- 1
@@ -52,6 +53,7 @@ func main() {
 			} else if ID == 3 {
 				go core.PingAllVPNConnections(MONITOR)
 			} else if ID == 4 {
+				go core.GetDefaultGateway(MONITOR)
 			} else if ID == 5 {
 			} else if ID == 6 {
 			} else if ID == 7 {

@@ -89,31 +89,23 @@ const LaunchApp = () => {
 	const GetStateAndUpdateVPNList = async () => {
 		let newState = { ...state }
 
-		try {
-			// console.dir(state.ActiveRouter)
-			// console.log("getting access points")
-			if (STORE.ActiveRouterSet(state)) {
-				let user = STORE.GetUser()
-				if (user) {
-					let FR = {
-						Method: "POST",
-						Path: "devices/private",
-						JSONData: {
-							UID: user._id,
-							DeviceToken: user.DeviceToken.DT
-						},
-					}
-					await API.method("getRoutersAndAccessPoints", FR)
-				} else {
-					await API.method("getRoutersUnAuthenticated", {})
-				}
-			}
-		} catch (error) {
-			console.dir(error)
-		}
 
 		try {
-			let x = await API.method("getState", {})			// GetState().then((x) => {
+			let user = STORE.GetUser()
+			let FR = {}
+			if (user) {
+				FR = {
+					Method: "POST",
+					Path: "devices/private",
+					Authed: true,
+					JSONData: {
+						UID: user._id,
+						DeviceToken: user.DeviceToken.DT
+					},
+				}
+			}
+
+			let x = await API.method("getState", FR)			// GetState().then((x) => {
 			console.dir(x)
 			if (x === undefined) {
 				ToggleError("Unknown error, please try again in a moment")
@@ -165,7 +157,7 @@ const LaunchApp = () => {
 		const to = setTimeout(async () => {
 			UpdateAdvancedMode()
 			GetStateAndUpdateVPNList()
-		}, 1000)
+		}, 5000)
 
 		return () => { clearTimeout(to); }
 

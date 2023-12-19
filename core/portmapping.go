@@ -139,9 +139,7 @@ func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port [2]byte) (mappin
 func CleanPorts(MONITOR chan int) {
 	defer func() {
 		time.Sleep(10 * time.Second)
-		if !GLOBAL_STATE.Exiting {
-			MONITOR <- 9
-		}
+		// MONITOR <- 9
 	}()
 
 	// GLOBAL_EventQueue <- func() {

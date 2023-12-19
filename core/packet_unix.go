@@ -112,7 +112,7 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 			continue
 		}
 
-		writtenBytes, writeErr = V.Tun.Interface.Write(packet)
+		writtenBytes, writeErr = V.Tun.Write(packet)
 		if writeErr != nil {
 			CreateErrorLog("", "Send: ", writeErr)
 			return

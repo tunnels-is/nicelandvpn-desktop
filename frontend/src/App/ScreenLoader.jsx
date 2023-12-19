@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "react-spinners/ScaleLoader";
 
 // import { GetLoadingLogs } from "../../wailsjs/go/main/Service";
 
@@ -85,6 +86,15 @@ const ScreenLoader = (props) => {
 				<div className="scroll-frame">
 					{lines}
 				</div>
+			}
+			{!props.loading?.includeLogs &&
+				<Loader
+					className="spinner"
+					loading={true}
+					color={"#20C997"}
+					height={100}
+					width={50}
+				/>
 			}
 		</div>
 

@@ -22,6 +22,7 @@ import Logs from "./App/Logs";
 import STORE from "./store";
 import StatsSideBar from "./App/StatsSideBar";
 import API from "./api";
+import Connections from "./App/Connections";
 
 const root = createRoot(document.getElementById('app'));
 
@@ -39,15 +40,12 @@ const ShowSuccessToast = (e) => {
 	toast.success(e);
 }
 
-let ShowStartupLoadingScreen = true
-let StatupLoadingScreenStartTime = dayjs()
 
 const LaunchApp = () => {
 	const [advancedMode, setAdvancedMode] = useState();
 	const [loading, setLoading] = useState(undefined)
 	const [state, setState] = useState({})
 	const [stats, setStats] = useState(false)
-
 
 	const ToggleAdvancedMode = () => {
 		if (STORE.Config.AdvancedMode === true) {
@@ -105,7 +103,7 @@ const LaunchApp = () => {
 				}
 			}
 
-			let x = await API.method("getState", FR)			// GetState().then((x) => {
+			let x = await API.method("getState", FR)
 			console.dir(x)
 			if (x === undefined) {
 				ToggleError("Unknown error, please try again in a moment")
@@ -137,27 +135,10 @@ const LaunchApp = () => {
 
 	useEffect(() => {
 
-		if (ShowStartupLoadingScreen) {
-			setLoading({ logTag: "loader", tag: "READY", show: true, msg: "Starting Niceland", includeLogs: true })
-
-			let now = dayjs()
-			if (now.diff(StatupLoadingScreenStartTime, "s") > 10) {
-				ShowStartupLoadingScreen = false
-				setLoading(undefined)
-			}
-
-			if (state && state.ClientReady) {
-				if (loading && loading.tag === "READY") {
-					ShowStartupLoadingScreen = false
-					setLoading(undefined)
-				}
-			}
-		}
-
 		const to = setTimeout(async () => {
 			UpdateAdvancedMode()
 			GetStateAndUpdateVPNList()
-		}, 5000)
+		}, 2000)
 
 		return () => { clearTimeout(to); }
 
@@ -204,17 +185,72 @@ const LaunchApp = () => {
 
 					<Routes>
 
-						<Route path="/" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
-						<Route path="twofactor" element={<Enable2FA toggleError={ToggleError} toggleLoading={ToggleLoading} />} />
-						<Route path="support" element={<Support toggleError={ToggleError} />} />
-						<Route path="settings" element={<Settings advancedMode={advancedMode} showSuccessToast={ShowSuccessToast} toggleAdvancedMode={ToggleAdvancedMode} toggleError={ToggleError} disconnectFromVPN={DisconnectFromVPN} toggleLoading={ToggleLoading} state={state} />} />
-						<Route path="tokens" element={<DeviceLogins toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-						<Route path="logs" element={<Logs toggleError={ToggleError} />} />
-						<Route path="debug" element={<Debug toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-						<Route path="login" element={<Login state={state} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} toggleLoading={ToggleLoading} />} />
-						<Route path="register" element={<Register toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-						<Route path="routers" element={<Routers state={state} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} />} />
-						<Route path="*" element={<Dashboard state={state} advancedMode={advancedMode} toggleLoading={ToggleLoading} toggleError={ToggleError} showSuccessToast={ShowSuccessToast} disconnectFromVPN={DisconnectFromVPN} />} />
+						<Route path="/" element={<Dashboard
+							state={state}
+							advancedMode={advancedMode}
+							toggleLoading={ToggleLoading}
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast}
+							disconnectFromVPN={DisconnectFromVPN} />} />
+
+						<Route path="twofactor" element={<Enable2FA
+							toggleError={ToggleError}
+							toggleLoading={ToggleLoading} />} />
+
+						<Route path="support" element={<Support
+							toggleError={ToggleError} />} />
+
+						<Route path="settings" element={<Settings
+							advancedMode={advancedMode}
+							showSuccessToast={ShowSuccessToast}
+							toggleAdvancedMode={ToggleAdvancedMode}
+							toggleError={ToggleError}
+							disconnectFromVPN={DisconnectFromVPN}
+							toggleLoading={ToggleLoading}
+							state={state} />} />
+
+						<Route path="tokens" element={<DeviceLogins
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast}
+							toggleLoading={ToggleLoading} />} />
+
+						<Route path="logs" element={<Logs
+							toggleError={ToggleError} />} />
+
+						<Route path="debug" element={<Debug
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast}
+							toggleLoading={ToggleLoading} />} />
+
+						<Route path="login" element={<Login
+							state={state}
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast}
+							toggleLoading={ToggleLoading} />} />
+
+						<Route path="register" element={<Register
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast} />} />
+
+						<Route path="routers" element={<Routers
+							state={state}
+							toggleLoading={ToggleLoading}
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast} />} />
+
+						<Route path="connections" element={<Connections
+							state={state}
+							toggleLoading={ToggleLoading}
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast} />} />
+
+						<Route path="*" element={<Dashboard
+							state={state}
+							advancedMode={advancedMode}
+							toggleLoading={ToggleLoading}
+							toggleError={ToggleError}
+							showSuccessToast={ShowSuccessToast}
+							disconnectFromVPN={DisconnectFromVPN} />} />
 
 					</Routes>
 				</div>

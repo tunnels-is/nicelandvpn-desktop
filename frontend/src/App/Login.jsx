@@ -13,6 +13,7 @@ import {
 
 import STORE from "../store";
 import API from "../api";
+import ScreenLoader from "./ScreenLoader";
 
 const useForm = (props) => {
 	const [inputs, setInputs] = useState({})
@@ -166,7 +167,7 @@ const useForm = (props) => {
 			return
 		}
 
-		props.toggleLoading({ tag: "LOGIN", show: true, msg: "Logging you in..." })
+		props.toggleLoading({ tag: "login", show: true, msg: "logging you in..." })
 
 		let token = STORE.Cache.Get(inputs["email"] + "_" + "TOKEN")
 
@@ -413,6 +414,14 @@ const Login = (props) => {
 
 	useEffect(() => {
 		GetDefaults()
+
+		// console.log("RERENDER LOGIN")
+		// console.dir(props.state)
+		// if (props.state.ActiveRouter) {
+		// 	props.toggleLoading(undefined)
+		// } else {
+		// 	props.toggleLoading({ tag: "login", show: true, msg: "Looking for a router.." })
+		// }
 	}, [])
 
 	const EmailInput = () => {
@@ -695,6 +704,13 @@ const Login = (props) => {
 
 			</div>
 		)
+	}
+
+	if (!props.state?.ActiveRouter) {
+		return (
+			<ScreenLoader loading={{ logTag: "", tag: "LOGIN", show: true, msg: "Looking for a router..", includeLogs: false }} toggleError={props.ToggleError}></ScreenLoader>
+		)
+
 	}
 
 	return (

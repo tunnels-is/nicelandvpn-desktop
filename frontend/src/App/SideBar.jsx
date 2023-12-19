@@ -11,6 +11,7 @@ import {
 	GearIcon,
 	GlobeIcon,
 	MobileIcon,
+	Share1Icon,
 } from '@radix-ui/react-icons'
 import toast from 'react-hot-toast';
 
@@ -139,54 +140,65 @@ const SideBar = (props) => {
 				{!user &&
 					<div className={`menu-link  ${sp[1] == "login" ? "menu-active" : ""}`}
 						onClick={() => clickHandler("/login")} >
-						<EnterIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></EnterIcon>
+						<EnterIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></EnterIcon>
 						<div className="menu-text login">
 							Login
 						</div>
 					</div>
 
 				}
-				{user &&
-					<div className={`menu-link  ${sp[1] == "" ? "menu-active" : ""}`}
-						onClick={() => clickHandler("/")} >
-						<GlobeIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></GlobeIcon>
-						<div className="menu-text vpns" >
-							VPNs
-						</div>
-					</div>
+
+				{!props.advancedMode &&
+					<>
+						{user &&
+							<div className={`menu-link  ${sp[1] == "" ? "menu-active" : ""}`}
+								onClick={() => clickHandler("/")} >
+								<GlobeIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></GlobeIcon>
+								<div className="menu-text vpns" >
+									VPNs
+								</div>
+							</div>
+						}
+					</>
 				}
 
 				{props.advancedMode &&
 
 					<>
+
+						<div className={`menu-link  ${sp[1] == "connections" ? "menu-active" : ""}`}
+							onClick={() => clickHandler("/connections")} >
+							<Share1Icon width={25} height={25} color={"#20C997"} className="menu-list-icon"></Share1Icon>
+							<div className="menu-text routers">
+								Connections
+							</div>
+						</div>
+
+						{user &&
+							<div className={`menu-link  ${sp[1] == "" ? "menu-active" : ""}`}
+								onClick={() => clickHandler("/")} >
+								<GlobeIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></GlobeIcon>
+								<div className="menu-text vpns" >
+									Nodes
+								</div>
+							</div>
+						}
+
 						<div className={`menu-link  ${sp[1] == "routers" ? "menu-active" : ""}`}
 							onClick={() => clickHandler("/routers")} >
-							<MobileIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></MobileIcon>
+							<MobileIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></MobileIcon>
 							<div className="menu-text routers">
 								Routers
 							</div>
 						</div>
 
-						{!props.stats &&
-							<div className={`menu-link ${sp[1] == "stats" ? "menu-active" : ""}`}
-								onClick={() => props.setStats(true)} >
-								<BarChartIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></BarChartIcon>
-								<div className="menu-text stats">
-									Stats
-								</div>
+						<div className={`menu-link ${sp[1] == "stats" ? "menu-active" : ""}`}
+							onClick={() => props.setStats(!props.stats)} >
+							<BarChartIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></BarChartIcon>
+							<div className="menu-text stats">
+								Stats
 							</div>
-						}
-
-						{props.stats &&
-							<div className={`menu-link ${sp[1] == "stats" ? "menu-active" : ""}`}
-								onClick={() => props.setStats(false)} >
-								<BarChartIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></BarChartIcon>
-								<div className="menu-text stats">
-									Stats
-								</div>
-							</div>
-						}
-
+						</div>
 
 					</>
 				}
@@ -195,7 +207,7 @@ const SideBar = (props) => {
 
 				<div className={`menu-link ${sp[1] == "settings" ? "menu-active" : ""}`}
 					onClick={() => clickHandler("/settings")} >
-					<GearIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></GearIcon>
+					<GearIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></GearIcon>
 					<div className="menu-text settings">
 						Settings
 					</div>
@@ -203,7 +215,7 @@ const SideBar = (props) => {
 
 				<div className={`menu-link ${sp[1] == "logs" ? "menu-active" : ""}`}
 					onClick={() => clickHandler("/logs")} >
-					<FileTextIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></FileTextIcon>
+					<FileTextIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></FileTextIcon>
 					<div className="menu-text logs">
 						Logs
 					</div>
@@ -211,7 +223,7 @@ const SideBar = (props) => {
 
 				<div className={`menu-link ${sp[1] == "support" ? "menu-active" : ""}`}
 					onClick={() => clickHandler("/support")} >
-					<ChatBubbleIcon width={30} height={30} color={"#20C997"} className="menu-list-icon"></ChatBubbleIcon>
+					<ChatBubbleIcon width={25} height={25} color={"#20C997"} className="menu-list-icon"></ChatBubbleIcon>
 					<div className="menu-text help">
 						Help
 					</div>
@@ -220,7 +232,7 @@ const SideBar = (props) => {
 				{props.state?.ActiveAccessPoint &&
 					<div className={`menu-link`}
 						onClick={() => ConfirmDisconnect()} >
-						<ExternalLinkIcon width={30} height={30} color={"#d00707"} className="menu-list-icon"></ExternalLinkIcon>
+						<ExternalLinkIcon width={25} height={25} color={"#d00707"} className="menu-list-icon"></ExternalLinkIcon>
 						<div className="menu-text disconnect" >
 							Disconnect
 						</div>
@@ -231,7 +243,7 @@ const SideBar = (props) => {
 				{user &&
 					<div className={`menu-link`}
 						onClick={() => ConfirmLogout()} >
-						<ExitIcon width={30} height={30} color={"#d00707"} className="menu-list-icon"></ExitIcon>
+						<ExitIcon width={25} height={25} color={"#d00707"} className="menu-list-icon"></ExitIcon>
 						<div className="menu-text logout">
 							Logout
 						</div>

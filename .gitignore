@@ -1,6 +1,7 @@
 cmd/tui/*.exe
 cmd/tui/files
 cmd/tui/tui
+cmd/service/service
 
 build/bin/*
 

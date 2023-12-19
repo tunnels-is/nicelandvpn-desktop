@@ -417,42 +417,6 @@ body::-webkit-scrollbar {
     background-repeat: no-repeat;
   }
 
-  .disconnect {
-    margin-top: 3px;
-  }
-
-  .login {
-    margin-top: 3px;
-  }
-
-  .vpns {
-    margin-top: 3px;
-  }
-
-  .routers {
-    margin-top: 3px;
-  }
-
-  .stats {
-    margin-top: 3px;
-  }
-
-  .logs {
-    margin-top: 3px;
-  }
-
-  .settings {
-    margin-top: 4px;
-  }
-
-  .help {
-    margin-top: 6px;
-  }
-
-  .logout {
-    margin-top: 3px;
-  }
-
   .menu-items {
     position: relative;
     top: 15px;
@@ -462,12 +426,12 @@ body::-webkit-scrollbar {
     .menu-link {
       margin-bottom: 0px;
       width: 100%;
-      height: 45px;
+      height: 35px;
       text-align: left;
 
-      font-size: 1.4em;
+      font-size: 1.2em;
 
-      padding-top: 9px;
+      padding-top: 0px;
       // padding-left: 28px;
       box-sizing: border-box;
 

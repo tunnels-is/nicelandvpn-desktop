@@ -21,6 +21,7 @@ func Start() {
 	defer func() {
 		if r := recover(); r != nil {
 			core.CreateErrorLog("", r, string(debug.Stack()))
+
 		}
 	}()
 
@@ -29,7 +30,6 @@ func Start() {
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
-
 	core.StartService(routineMonitor)
 
 	routineMonitor <- 1

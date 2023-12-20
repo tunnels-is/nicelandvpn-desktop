@@ -2937,3 +2937,142 @@ button {
     color: white;
   }
 }
+
+
+
+.connection-wrapper {
+	.search-wrapper {
+		margin-bottom:20px;
+	}
+
+	div[contenteditable="true"] {
+		border-bottom:1px solid grey;
+	}
+
+	.connections-flex {
+		padding-left:20px;
+		width:100%;
+		display: flex;
+		flex-wrap: wrap;
+		gap:20px;
+
+		.connection {
+			font-size:12px;
+			padding:10px;
+			width:220px;
+			min-width:200px;
+			height:auto;
+			border:1px solid grey;
+
+			.title {
+				font-size: 14px;
+				font-weight:600;
+				margin-top:10px;
+				margin-bottom:7px;
+				border-bottom:2px solid white;
+			}
+
+
+			.cell {
+				width:100%;
+				font-weight: bold;
+				display: flex;
+				justify-content: space-between;
+				margin-bottom:0px;
+				height: 16px;
+
+				input{
+					padding:0px !important;
+					margin:0px !important;
+				}
+				
+
+				select{
+					option {
+						margin:5px;
+						margin-top:10px;
+						margin-bottom:10px;
+					}
+
+					// width:100%;
+					border:none;
+					margin-bottom:0px;
+					width:fit-content;
+					text-align: right;
+					border-bottom:1px solid gray;
+					background:$body-dark-bg;
+					margin-left:-3px;
+					font-weight: bold !important;
+					color:white;
+
+					.hidden {
+						display:none;
+					}
+				}
+
+				.route-name{
+					text-align: left !important;
+					font-weight: bold;
+				}
+				.dns0 {
+					text-align: left !important;
+				}
+
+				.value {
+					margin:0px !important;
+					margin-left:10px;
+					text-align: right;
+				}
+
+				.toggle {
+					cursor: pointer;
+				}
+
+				.special-fix {
+					margin-top:2px !important;
+
+				}
+
+				.on {
+					color:green;
+				}
+				.off{
+					color:orange;
+				}
+
+			}
+
+
+				.value {
+					text-align: left;
+					background-color: $body-dark-bg;
+					color:white;
+					outline:none;
+					border:none;
+					width:100% !important;
+					font-weight: 500;
+					margin-bottom:5px;
+					line-height: 1;
+				}
+
+			.name {
+				font-size:18px;
+				font-weight:bold;
+				// border-bottom:1px solid grey;
+				margin-bottom:10px;
+				text-align: center;
+			}
+
+			.connect {
+				height:25px;
+				text-align: center;
+				padding:5px;
+				color:white;
+				background:green;
+			}
+
+		}
+
+	}
+}
+

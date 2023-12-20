@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"log"
@@ -15,9 +15,9 @@ const (
 	ENABLE_INTERFACE = true
 )
 
-var MONITOR = make(chan int, 200)
+var routineMonitor = make(chan int, 200)
 
-func main() {
+func Start() {
 	defer func() {
 		if r := recover(); r != nil {
 			core.CreateErrorLog("", r, string(debug.Stack()))
@@ -30,38 +30,38 @@ func main() {
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
 
-	core.StartService(MONITOR)
+	core.StartService(routineMonitor)
 
-	MONITOR <- 1
-	MONITOR <- 2
-	MONITOR <- 3
-	MONITOR <- 4
-	MONITOR <- 5
-	MONITOR <- 6
-	MONITOR <- 7
-	MONITOR <- 8
-	MONITOR <- 9
+	routineMonitor <- 1
+	routineMonitor <- 2
+	routineMonitor <- 3
+	routineMonitor <- 4
+	routineMonitor <- 5
+	routineMonitor <- 6
+	routineMonitor <- 7
+	routineMonitor <- 8
+	routineMonitor <- 9
 
 	for {
 		select {
-		case ID := <-MONITOR:
+		case ID := <-routineMonitor:
 			log.Println("ID", ID)
 			if ID == 1 {
-				go core.StartLogQueueProcessor(MONITOR)
+				go core.StartLogQueueProcessor(routineMonitor)
 			} else if ID == 2 {
-				go core.START_API(MONITOR)
+				go core.START_API(routineMonitor)
 			} else if ID == 3 {
-				go core.PingAllVPNConnections(MONITOR)
+				go core.PingAllVPNConnections(routineMonitor)
 			} else if ID == 4 {
-				go core.GetDefaultGateway(MONITOR)
+				go core.GetDefaultGateway(routineMonitor)
 			} else if ID == 5 {
 			} else if ID == 6 {
 			} else if ID == 7 {
 			} else if ID == 8 {
-				// go core.StateMaintenance(MONITOR)
-				// go core.GetDefaultGateway(MONITOR)
-				// go core.ProbeRouters(MONITOR)
-				// go core.CleanPorts(MONITOR)
+				// go core.StateMaintenance(routineMonitor)
+				// go core.GetDefaultGateway(routineMonitor)
+				// go core.ProbeRouters(routineMonitor)
+				// go core.CleanPorts(routineMonitor)
 			}
 		default:
 			// log.Println("default")

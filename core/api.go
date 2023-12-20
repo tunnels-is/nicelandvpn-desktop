@@ -26,16 +26,16 @@ import (
 	"github.com/zveinn/tunnels"
 )
 
-func ControllerCustomDialer(ctx context.Context, network string, addr string) (net.Conn, error) {
-	return OpenProxyTunnelToRouter(ctx)
+func ControllerCustomDialer(ctx context.Context, _ string, addr string) (net.Conn, error) {
+	return OpenProxyTunnelToRouter()
 }
 
 func LocalhostCustomDialer(ctx context.Context, network, addr string) (net.Conn, error) {
-	return OpenProxyTunnelToRouter(ctx)
+	return OpenProxyTunnelToRouter()
 }
 
-func OpenProxyTunnelToRouter(ctx context.Context) (TCP_CONN net.Conn, err error) {
-	TCP_CONN, err = net.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
+func OpenProxyTunnelToRouter() (TcpConn net.Conn, err error) {
+	TcpConn, err = net.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
 	if err != nil {
 		CreateErrorLog("", "Could not dial router: ", GLOBAL_STATE.ActiveRouter.IP, err)
 		return

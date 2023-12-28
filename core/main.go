@@ -11,6 +11,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "net/http/pprof"
@@ -19,7 +21,7 @@ import (
 	"github.com/zveinn/tunnels"
 )
 
-func StartService(MONITOR chan int) {
+func StartService() {
 	defer RecoverAndLogToFile()
 
 	CreateLog("loader", "Starting Niceland VPN")
@@ -38,15 +40,7 @@ func StartService(MONITOR chan int) {
 
 	LoadBlockLists()
 
-	_, err := tunnels.FindGateway()
-	if err == nil {
-		err := REF_RefreshRouterList()
-		if err != nil {
-			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
-		} else {
-			LAST_ROUTER_PROBE = time.Now()
-		}
-	}
+	getDefaultGateway()
 
 	CreateLog("loader", "Niceland is ready")
 	CreateLog("START", "")
@@ -326,40 +320,118 @@ func GetRoutersFromLocalFile() ([][]byte, error) {
 func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 	defer RecoverAndLogToFile()
 
-	for _, v := range lines {
-		lineSplit := bytes.Split(v, []byte{44})
-		if len(lineSplit) < 2 {
+	newCountryList := make(map[string]struct{})
+	fmt.Println("LINES RETURNED:", lines)
+	fmt.Println("LINES RETURNED:", len(lines))
+
+	for index, line := range lines {
+		fmt.Println(line)
+		text := string(line)
+		if text == "" {
 			continue
 		}
 
-		IP := string(lineSplit[1])
-		TAG := string(lineSplit[0])
-
-		exists := false
-		for ri := range GLOBAL_STATE.RoutersList {
-			if GLOBAL_STATE.RoutersList[ri] == nil {
-				continue
-			} else if GLOBAL_STATE.RoutersList[ri].IP == IP {
-				exists = true
-				GLOBAL_STATE.RoutersList[ri].IP = IP
-				GLOBAL_STATE.RoutersList[ri].Tag = TAG
-				count++
-				break
-			}
+		lineSplit := strings.Split(text, ",")
+		if len(lineSplit) < 6 {
+			CreateErrorLog("", "invalid line in router file")
+			continue
 		}
 
-		if !exists {
-			for ri := range GLOBAL_STATE.RoutersList {
-				if GLOBAL_STATE.RoutersList[ri] == nil {
-					count++
-					GLOBAL_STATE.RoutersList[ri] = new(ROUTER)
-					GLOBAL_STATE.RoutersList[ri].IP = IP
-					GLOBAL_STATE.RoutersList[ri].Tag = TAG
-					CreateLog("", "New Router Discovered: ", GLOBAL_STATE.RoutersList[ri].IP)
-					break
-				}
-			}
+		Type, err := strconv.Atoi(lineSplit[0])
+		if err == nil {
+		} else {
+			CreateErrorLog("", "invalid status in router file", lineSplit[0])
+			continue
 		}
+
+		Status, err := strconv.Atoi(lineSplit[1])
+		if err == nil {
+		} else {
+			CreateErrorLog("", "invalid status in router file", lineSplit[0])
+			continue
+		}
+
+		UserMbps, err := strconv.Atoi(lineSplit[2])
+		if err == nil {
+		} else {
+			CreateErrorLog("", "invalid availableMbps in router file", lineSplit[2])
+			continue
+		}
+
+		Mbps, err := strconv.Atoi(lineSplit[3])
+		if err == nil {
+		} else {
+			CreateErrorLog("", "invalid availableMbps in router file", lineSplit[3])
+			continue
+		}
+
+		Country := lineSplit[4]
+		PublicIP := lineSplit[5]
+		Tag := lineSplit[6]
+
+		Slots := Mbps / UserMbps
+
+		if Type == 2 || Type == 3 {
+			newCountryList[Country] = struct{}{}
+
+			NR := new(VPNNode)
+			NR.Tag = Tag
+			NR.IP = PublicIP
+			NR.Country = Country
+			NR.AvailableMbps = Mbps
+			NR.Slots = Slots
+			NR.UserMbps = UserMbps
+			NR.ListIndex = index
+
+			vpnNode := GLOBAL_STATE.Nodes[index]
+			if vpnNode == nil {
+				GLOBAL_STATE.Nodes[index] = NR
+				NR.MS = 9999
+			} else {
+				GLOBAL_STATE.Nodes[index].Tag = NR.Tag
+				GLOBAL_STATE.Nodes[index].IP = NR.IP
+				GLOBAL_STATE.Nodes[index].Country = NR.Country
+				GLOBAL_STATE.Nodes[index].AvailableMbps = NR.AvailableMbps
+				GLOBAL_STATE.Nodes[index].Status = NR.Status
+				GLOBAL_STATE.Nodes[index].Slots = NR.Slots
+				GLOBAL_STATE.Nodes[index].UserMbps = NR.UserMbps
+			}
+
+		}
+		if Type == 1 || Type == 3 {
+			count++
+
+			NR := new(ROUTER)
+			NR.ListIndex = index
+			NR.Tag = Tag
+			NR.PublicIP = PublicIP
+			NR.Country = Country
+			NR.AvailableMbps = Mbps
+			NR.Slots = Slots
+			NR.Status = Status
+			NR.AvailableUserMbps = UserMbps
+
+			router := GLOBAL_STATE.RouterList[index]
+			if router == nil {
+				GLOBAL_STATE.RouterList[index] = NR
+				NR.MS = 9999
+			} else {
+				GLOBAL_STATE.RouterList[index].Tag = NR.Tag
+				GLOBAL_STATE.RouterList[index].PublicIP = NR.PublicIP
+				GLOBAL_STATE.RouterList[index].Country = NR.Country
+				GLOBAL_STATE.RouterList[index].AvailableMbps = NR.AvailableMbps
+				GLOBAL_STATE.RouterList[index].Status = NR.Status
+				GLOBAL_STATE.RouterList[index].AvailableUserMbps = NR.AvailableUserMbps
+				GLOBAL_STATE.RouterList[index].Slots = NR.Slots
+			}
+
+		}
+
+	}
+
+	GLOBAL_STATE.AvailableCountries = make([]string, 0)
+	for i := range newCountryList {
+		GLOBAL_STATE.AvailableCountries = append(GLOBAL_STATE.AvailableCountries, i)
 	}
 
 	return
@@ -369,7 +441,7 @@ func DownloadRoutersFromOnlineSource() ([][]byte, error) {
 	defer RecoverAndLogToFile()
 
 	client := new(http.Client)
-	resp, err := client.Get("https://raw.githubusercontent.com/tunnels-is/info/master/all")
+	resp, err := client.Get("https://raw.githubusercontent.com/tunnels-is/info/master/internal")
 	if err != nil {
 		CreateErrorLog("loader", "Unable to get routers from online file: ", err)
 		return nil, err
@@ -386,32 +458,32 @@ func DownloadRoutersFromOnlineSource() ([][]byte, error) {
 		return nil, err
 	}
 
-	lineSplit := bytes.Split(bodyBytes, []byte{13, 10})
+	lineSplit := bytes.Split(bodyBytes, []byte{10})
 	return lineSplit, nil
 }
 
 func REF_PingAllRouters() {
 	defer RecoverAndLogToFile()
 
-	for i := range GLOBAL_STATE.RoutersList {
-		if GLOBAL_STATE.RoutersList[i] == nil {
+	for i := range GLOBAL_STATE.RouterList {
+		if GLOBAL_STATE.RouterList[i] == nil {
 			continue
 		}
 
-		stats, err := REF_PingRouter(GLOBAL_STATE.RoutersList[i].IP, DEFAULT_GATEWAY.String())
+		stats, err := REF_PingRouter(GLOBAL_STATE.RouterList[i].PublicIP, DEFAULT_GATEWAY.String())
 		if err != nil {
-			CreateErrorLog("loader", "Could not ping router: ", GLOBAL_STATE.RoutersList[i].IP, " // msg: ", err)
+			CreateErrorLog("loader", "Could not ping router: ", GLOBAL_STATE.RouterList[i].PublicIP, " // msg: ", err)
 			continue
 		}
 
 		if stats.AvgRtt.Microseconds() == 0 {
-			CreateErrorLog("loader", "0 Microseconds ping, assuming router is offline: ", GLOBAL_STATE.RoutersList[i].IP)
-			GLOBAL_STATE.RoutersList[i].PingStats = *stats
-			GLOBAL_STATE.RoutersList[i].MS = 99999
+			CreateErrorLog("loader", "0 Microseconds ping, assuming router is offline: ", GLOBAL_STATE.RouterList[i].PublicIP)
+			GLOBAL_STATE.RouterList[i].PingStats = *stats
+			GLOBAL_STATE.RouterList[i].MS = 9999
 		} else {
-			GLOBAL_STATE.RoutersList[i].PingStats = *stats
-			GLOBAL_STATE.RoutersList[i].MS = uint64(stats.AvgRtt.Milliseconds())
-			CreateLog("loader", GLOBAL_STATE.RoutersList[i].IP, " // Avarage latency: ", GLOBAL_STATE.RoutersList[i].PingStats.AvgRtt)
+			GLOBAL_STATE.RouterList[i].PingStats = *stats
+			GLOBAL_STATE.RouterList[i].MS = uint64(stats.AvgRtt.Milliseconds())
+			CreateLog("loader", GLOBAL_STATE.RouterList[i].PublicIP, " // Avarage latency: ", GLOBAL_STATE.RouterList[i].PingStats.AvgRtt)
 		}
 
 	}
@@ -421,24 +493,29 @@ func REF_RefreshRouterList() (err error) {
 	defer RecoverAndLogToFile()
 
 	if DEFAULT_GATEWAY == nil {
-		fmt.Println("NO GW")
+		CreateLog("", "no default gateway found")
 		return
 	}
-	if time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS) {
-		fmt.Println("TIMEOUT", time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS))
+
+	if time.Since(LAST_ROUTER_PROBE).Milliseconds() < int64(ROUTER_PROBE_TIMEOUT_MS) {
+		// fmt.Println("TIMEOUT", time.Since(LAST_ROUTER_PROBE).Milliseconds() > int64(ROUTER_PROBE_TIMEOUT_MS))
+		// fmt.Println("TIMEOUT", time.Since(LAST_ROUTER_PROBE).Milliseconds())
 		return
 	}
 
 	var fileLines [][]byte
 	fileLines, err = GetRoutersFromLocalFile()
 	if err != nil {
+		fmt.Println("ONLINE DOWNLOAD!")
 		fileLines, err = DownloadRoutersFromOnlineSource()
 		if err != nil {
+			fmt.Println("BIG ERR:", err)
 			return err
 		}
 	}
 
 	routerCount := ParseRoutersFromRawDataToMemory(fileLines)
+	fmt.Println("COUNT:", routerCount)
 	if routerCount == 0 {
 		CreateErrorLog("loader", "No routers found during probe")
 		return errors.New("no routers found")
@@ -461,9 +538,9 @@ func REF_RefreshRouterList() (err error) {
 }
 
 func REF_SetActiveRouter(index int) {
-	_ = tunnels.IP_AddRoute(GLOBAL_STATE.RoutersList[index].IP, DEFAULT_GATEWAY.String(), "0")
-	GLOBAL_STATE.ActiveRouter = GLOBAL_STATE.RoutersList[index]
-	CreateLog("loader", "Active router changed >> ", GLOBAL_STATE.ActiveRouter.IP, " >> Latency is ", GLOBAL_STATE.ActiveRouter.MS, " MS")
+	_ = tunnels.IP_AddRoute(GLOBAL_STATE.RouterList[index].PublicIP, DEFAULT_GATEWAY.String(), "0")
+	GLOBAL_STATE.ActiveRouter = GLOBAL_STATE.RouterList[index]
+	CreateLog("loader", "Active router changed >> ", GLOBAL_STATE.ActiveRouter.PublicIP, " >> Latency is ", GLOBAL_STATE.ActiveRouter.MS, " MS")
 }
 
 func GetLowestLatencyRouter() (int, error) {
@@ -473,18 +550,18 @@ func GetLowestLatencyRouter() (int, error) {
 	lowestMS := 999999999
 	foundLowest := false
 
-	for i := range GLOBAL_STATE.RoutersList {
-		if GLOBAL_STATE.RoutersList[i] == nil {
+	for i := range GLOBAL_STATE.RouterList {
+		if GLOBAL_STATE.RouterList[i] == nil {
 			continue
 		}
 
-		if GLOBAL_STATE.RoutersList[i].MS == 31337 {
+		if GLOBAL_STATE.RouterList[i].MS == 9999 {
 			continue
 		}
 
-		if GLOBAL_STATE.RoutersList[i].MS < uint64(lowestMS) {
+		if GLOBAL_STATE.RouterList[i].MS < uint64(lowestMS) {
 			foundLowest = true
-			lowestMS = int(GLOBAL_STATE.RoutersList[i].MS)
+			lowestMS = int(GLOBAL_STATE.RouterList[i].MS)
 			lowestIndex = i
 		}
 
@@ -497,7 +574,7 @@ func GetLowestLatencyRouter() (int, error) {
 	return 0, errors.New("no routers")
 }
 
-func REF_ConnectToRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNEL net.Conn, err error) {
+func REF_ConnectToRouter(EntryIndex int, proto, port string) (TUNNEL net.Conn, err error) {
 	defer RecoverAndLogToFile()
 
 	if port == "" {
@@ -509,13 +586,9 @@ func REF_ConnectToRouter(GROUP, ROUTERID uint8, proto, port string) (TUNNEL net.
 	}
 
 	var routerIP string
-	for _, v := range GLOBAL_STATE.RoutersList {
-		if v == nil {
-			continue
-		}
-		if v.ROUTERID == ROUTERID && v.GROUP == GROUP {
-			routerIP = v.IP
-		}
+	r := GLOBAL_STATE.RouterList[EntryIndex]
+	if r != nil {
+		routerIP = r.PublicIP
 	}
 
 	if routerIP == "" {
@@ -547,7 +620,7 @@ func ConnectToActiveRouter(RoutingBuffer [8]byte) (TUNNEL net.Conn, err error) {
 	if GLOBAL_STATE.ActiveRouter != nil {
 
 		dialer := net.Dialer{Timeout: time.Duration(10 * time.Second)}
-		TUNNEL, err = dialer.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
+		TUNNEL, err = dialer.Dial("tcp", GLOBAL_STATE.ActiveRouter.PublicIP+":443")
 		if err != nil {
 			return nil, err
 		}

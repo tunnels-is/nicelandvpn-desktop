@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"runtime"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -35,9 +34,9 @@ func LocalhostCustomDialer(ctx context.Context, network, addr string) (net.Conn,
 }
 
 func OpenProxyTunnelToRouter() (TcpConn net.Conn, err error) {
-	TcpConn, err = net.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
+	TcpConn, err = net.Dial("tcp", GLOBAL_STATE.ActiveRouter.PublicIP+":443")
 	if err != nil {
-		CreateErrorLog("", "Could not dial router: ", GLOBAL_STATE.ActiveRouter.IP, err)
+		CreateErrorLog("", "Could not dial router: ", GLOBAL_STATE.ActiveRouter.PublicIP, err)
 		return
 	}
 
@@ -81,9 +80,9 @@ func REF_SwitchRouter(Tag string) (code int, err error) {
 	} else {
 		C.ManualRouter = true
 
-		for i := range GLOBAL_STATE.RoutersList {
-			if GLOBAL_STATE.RoutersList[i] != nil {
-				if GLOBAL_STATE.RoutersList[i].Tag == Tag {
+		for i := range GLOBAL_STATE.RouterList {
+			if GLOBAL_STATE.RouterList[i] != nil {
+				if GLOBAL_STATE.RouterList[i].Tag == Tag {
 					REF_SetActiveRouter(i)
 				}
 			}
@@ -272,300 +271,299 @@ var LAST_PRIVATE_ACCESS_POINT_UPDATE = time.Now()
 // 	return nil, 0, nil
 // }
 
-func LoadRoutersUnAuthenticated() (interface{}, int, error) {
-	log.Println("GET ROUTERS UN_AHUTH")
-	GLOBAL_STATE.Routers = nil
-	GLOBAL_STATE.Routers = make([]*ROUTER, 0)
-	for i := range GLOBAL_STATE.RoutersList {
-		if GLOBAL_STATE.RoutersList[i] == nil {
-			continue
-		}
-
-		GLOBAL_STATE.Routers = append(GLOBAL_STATE.Routers, GLOBAL_STATE.RoutersList[i])
-	}
-
-	sort.Slice(GLOBAL_STATE.Routers, func(a, b int) bool {
-		if GLOBAL_STATE.Routers[a] == nil {
-			return false
-		}
-		if GLOBAL_STATE.Routers[b] == nil {
-			return false
-		}
-		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
-			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
-				return true
-			}
-		}
-
-		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
-	})
-
-	return nil, 200, nil
-}
-
+//	func LoadRoutersUnAuthenticated() (interface{}, int, error) {
+//		log.Println("GET ROUTERS UN_AHUTH")
+//		GLOBAL_STATE.Routers = nil
+//		GLOBAL_STATE.Routers = make([]*ROUTER, 0)
+//		for i := range GLOBAL_STATE.RouterList {
+//			if GLOBAL_STATE.RouterList[i] == nil {
+//				continue
+//			}
+//
+//			GLOBAL_STATE.Routers = append(GLOBAL_STATE.Routers, GLOBAL_STATE.RouterList[i])
+//		}
+//
+//		sort.Slice(GLOBAL_STATE.Routers, func(a, b int) bool {
+//			if GLOBAL_STATE.Routers[a] == nil {
+//				return false
+//			}
+//			if GLOBAL_STATE.Routers[b] == nil {
+//				return false
+//			}
+//			if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
+//				if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
+//					return true
+//				}
+//			}
+//
+//			return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
+//		})
+//
+//		return nil, 200, nil
+//	}
 var LAST_ROUTER_AND_ACCESS_POINT_UPDATE = time.Now()
 
-func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
-	defer RecoverAndLogToFile()
-
-	if GLOBAL_STATE.ActiveRouter == nil {
-		return nil, 500, errors.New("active router not found, please wait a moment")
-	}
-
-	if !GLOBAL_STATE.LastNodeUpdate.IsZero() {
-		since := time.Since(GLOBAL_STATE.LastNodeUpdate).Seconds()
-		GLOBAL_STATE.SecondsUntilNodeUpdate = 55 - int(since)
-		if since < 55 {
-			return nil, 200, nil
-		}
-	}
-
-	GLOBAL_STATE.LastNodeUpdate = time.Now()
-	GLOBAL_STATE.SecondsUntilNodeUpdate = 55
-
-	responseBytes, code, err := SendRequestToLocalhostProxy("GET", "v1/a", nil, 10000)
-	if err != nil {
-		CreateLog("", "(ROUTER/API) // code: ", code, " // err:", err)
-		if code != 0 {
-			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
-			return nil, code, errors.New(string(responseBytes))
-		} else {
-			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
-			return nil, code, errors.New("unable to contact controller")
-		}
-	}
-
-	if code != 200 {
-		return nil, code, errors.New("Unable to fetch access points")
-	}
-
-	RoutersAndNodes := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
-
-	err = json.Unmarshal(responseBytes, RoutersAndNodes)
-	if err != nil {
-		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
-		CreateErrorLog("", "Could not process forward request: ", err)
-		return nil, 400, errors.New("unknown error, please try again in a moment")
-	}
-
-	responseBytes, code, err = SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
-	if err != nil {
-		CreateLog("", "(ROUTER/CONTROLLER) // code: ", code, " // err:", err)
-		if code != 0 {
-			return nil, code, errors.New(string(responseBytes))
-		} else {
-			return nil, code, errors.New("unable to contact controller")
-		}
-	}
-
-	PrivateNodes := make([]*VPNNode, 0)
-	if code == 200 {
-		// CreateLog("", "RESPONSE:", string(responseBytes))
-		err = json.Unmarshal(responseBytes, &PrivateNodes)
-		if err != nil {
-			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
-			return nil, 0, err
-		}
-	}
-
-	for ii := range RoutersAndNodes.Routers {
-		RR := RoutersAndNodes.Routers[ii]
-
-		exists := false
-		for i := range GLOBAL_STATE.RoutersList {
-			R := GLOBAL_STATE.RoutersList[i]
-			if R == nil {
-				continue
-			}
-			if RR.IP == R.IP {
-				exists = true
-			}
-		}
-
-		if !exists {
-			for i := range GLOBAL_STATE.RoutersList {
-				if GLOBAL_STATE.RoutersList[i] == nil {
-					GLOBAL_STATE.RoutersList[i] = RoutersAndNodes.Routers[ii]
-					break
-				}
-			}
-		}
-
-	}
-
-	for ii := range RoutersAndNodes.Routers {
-		RR := RoutersAndNodes.Routers[ii]
-
-		for i := range GLOBAL_STATE.RoutersList {
-			R := GLOBAL_STATE.RoutersList[i]
-			if R == nil {
-				continue
-			}
-			if RR.IP == R.IP {
-				GLOBAL_STATE.RoutersList[i].GROUP = RR.GROUP
-				GLOBAL_STATE.RoutersList[i].ROUTERID = RR.ROUTERID
-				GLOBAL_STATE.RoutersList[i].Country = RR.Country
-				GLOBAL_STATE.RoutersList[i].AvailableMbps = RR.AvailableMbps
-				GLOBAL_STATE.RoutersList[i].Slots = RR.Slots
-				GLOBAL_STATE.RoutersList[i].AvailableSlots = RR.AvailableSlots
-				GLOBAL_STATE.RoutersList[i].AEBP = RR.AEBP
-				GLOBAL_STATE.RoutersList[i].AIBP = RR.AIBP
-				GLOBAL_STATE.RoutersList[i].CPUP = RR.CPUP
-				GLOBAL_STATE.RoutersList[i].RAMUsage = RR.RAMUsage
-				GLOBAL_STATE.RoutersList[i].DiskUsage = RR.DiskUsage
-				GLOBAL_STATE.RoutersList[i].Online = RR.Online
-				R = GLOBAL_STATE.RoutersList[i]
-
-				includeMSInScoring := true
-				if R.MS == 31337 {
-					includeMSInScoring = false
-				}
-
-				var baseScore float64 = 10
-				AIBPScore := 100 / R.AIBP
-				AEBPScore := 100 / R.AEBP
-				if AIBPScore < 1 || AIBPScore == 1 {
-					AIBPScore = 0
-				} else if AIBPScore > 4 {
-					AIBPScore = 4
-				}
-				if AEBPScore < 1 || AEBPScore == 1 {
-					AEBPScore = 0
-				} else if AEBPScore > 4 {
-					AEBPScore = 4
-				}
-
-				var MSScore float64 = 0
-				if includeMSInScoring {
-					if R.MS < 20 {
-						MSScore = 1
-					} else if R.MS < 100 {
-						MSScore = 2
-					} else if R.MS < 200 {
-						MSScore = 3
-					} else if R.MS < 300 {
-						MSScore = 4
-					} else if R.MS < 400 {
-						MSScore = 5
-					}
-				}
-				var SLOTScore float64 = float64(R.AvailableSlots / R.Slots)
-				R.Score = int(baseScore - AEBPScore - SLOTScore - AIBPScore - MSScore)
-			}
-		}
-
-	}
-
-	GLOBAL_STATE.Routers = nil
-	GLOBAL_STATE.Routers = make([]*ROUTER, 0)
-	GLOBAL_STATE.AvailableCountries = make([]string, 0)
-	for i := range GLOBAL_STATE.RoutersList {
-		if GLOBAL_STATE.RoutersList[i] == nil {
-			continue
-		}
-
-		countryExists := false
-		for ii := range GLOBAL_STATE.AvailableCountries {
-			if GLOBAL_STATE.AvailableCountries[ii] == GLOBAL_STATE.RoutersList[i].Country {
-				countryExists = true
-			}
-		}
-
-		if !countryExists {
-			GLOBAL_STATE.AvailableCountries = append(GLOBAL_STATE.AvailableCountries, GLOBAL_STATE.RoutersList[i].Country)
-		}
-
-		GLOBAL_STATE.Routers = append(GLOBAL_STATE.Routers, GLOBAL_STATE.RoutersList[i])
-	}
-
-	sort.Slice(GLOBAL_STATE.Routers, func(a, b int) bool {
-		if GLOBAL_STATE.Routers[a] == nil {
-			return false
-		}
-		if GLOBAL_STATE.Routers[b] == nil {
-			return false
-		}
-		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
-			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
-				return true
-			}
-		}
-
-		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
-	})
-
-	GLOBAL_STATE.Nodes = RoutersAndNodes.AccessPoints
-	for i := range GLOBAL_STATE.Nodes {
-		A := GLOBAL_STATE.Nodes[i]
-
-		for ii := range GLOBAL_STATE.RoutersList {
-			R := GLOBAL_STATE.RoutersList[ii]
-			if R == nil {
-				continue
-			}
-
-			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
-				GLOBAL_STATE.Nodes[i].Router = GLOBAL_STATE.RoutersList[ii]
-			}
-		}
-	}
-
-	GLOBAL_STATE.PrivateNodes = PrivateNodes
-	for i := range GLOBAL_STATE.PrivateNodes {
-		A := GLOBAL_STATE.PrivateNodes[i]
-
-		for ii := range GLOBAL_STATE.RoutersList {
-			R := GLOBAL_STATE.RoutersList[ii]
-			if R == nil {
-				continue
-			}
-
-			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
-				GLOBAL_STATE.PrivateNodes[i].Router = GLOBAL_STATE.RoutersList[ii]
-			}
-		}
-	}
-
-	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
-	// AS.AP = GLOBAL_STATE.ActiveAccessPoint
-
-	if len(GLOBAL_STATE.Nodes) == 0 {
-		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
-	}
-
-	sort.Slice(GLOBAL_STATE.Nodes, func(a, b int) bool {
-		if GLOBAL_STATE.Nodes[a].Router == nil {
-			return false
-		}
-		if GLOBAL_STATE.Nodes[b].Router == nil {
-			return false
-		}
-		if GLOBAL_STATE.Nodes[a].Router.Score == GLOBAL_STATE.Nodes[b].Router.Score {
-			if GLOBAL_STATE.Nodes[a].Router.MS < GLOBAL_STATE.Nodes[b].Router.MS {
-				return true
-			}
-		}
-		return GLOBAL_STATE.Nodes[a].Router.Score > GLOBAL_STATE.Nodes[b].Router.Score
-	})
-
-	sort.Slice(GLOBAL_STATE.PrivateNodes, func(a, b int) bool {
-		if GLOBAL_STATE.PrivateNodes[a].Router == nil {
-			return false
-		}
-		if GLOBAL_STATE.PrivateNodes[b].Router == nil {
-			return false
-		}
-		if GLOBAL_STATE.PrivateNodes[a].Router.Score == GLOBAL_STATE.PrivateNodes[b].Router.Score {
-			if GLOBAL_STATE.PrivateNodes[a].Router.MS < GLOBAL_STATE.PrivateNodes[b].Router.MS {
-				return true
-			}
-		}
-		return GLOBAL_STATE.PrivateNodes[a].Router.Score > GLOBAL_STATE.PrivateNodes[b].Router.Score
-	})
-
-	fmt.Println("FULL GET ROUTERS CALL")
-	return nil, code, nil
-}
+// func GetRoutersAndAccessPoints(FR *FORWARD_REQUEST) (interface{}, int, error) {
+// 	defer RecoverAndLogToFile()
+//
+// 	if GLOBAL_STATE.ActiveRouter == nil {
+// 		return nil, 500, errors.New("active router not found, please wait a moment")
+// 	}
+//
+// 	if !GLOBAL_STATE.LastNodeUpdate.IsZero() {
+// 		since := time.Since(GLOBAL_STATE.LastNodeUpdate).Seconds()
+// 		GLOBAL_STATE.SecondsUntilNodeUpdate = 55 - int(since)
+// 		if since < 55 {
+// 			return nil, 200, nil
+// 		}
+// 	}
+//
+// 	GLOBAL_STATE.LastNodeUpdate = time.Now()
+// 	GLOBAL_STATE.SecondsUntilNodeUpdate = 55
+//
+// 	responseBytes, code, err := SendRequestToLocalhostProxy("GET", "v1/a", nil, 10000)
+// 	if err != nil {
+// 		CreateLog("", "(ROUTER/API) // code: ", code, " // err:", err)
+// 		if code != 0 {
+// 			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
+// 			return nil, code, errors.New(string(responseBytes))
+// 		} else {
+// 			GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
+// 			return nil, code, errors.New("unable to contact controller")
+// 		}
+// 	}
+//
+// 	if code != 200 {
+// 		return nil, code, errors.New("Unable to fetch access points")
+// 	}
+//
+// 	RoutersAndNodes := new(CONTROLL_PUBLIC_DEVCE_RESPONSE)
+//
+// 	err = json.Unmarshal(responseBytes, RoutersAndNodes)
+// 	if err != nil {
+// 		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
+// 		CreateErrorLog("", "Could not process forward request: ", err)
+// 		return nil, 400, errors.New("unknown error, please try again in a moment")
+// 	}
+//
+// 	responseBytes, code, err = SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
+// 	if err != nil {
+// 		CreateLog("", "(ROUTER/CONTROLLER) // code: ", code, " // err:", err)
+// 		if code != 0 {
+// 			return nil, code, errors.New(string(responseBytes))
+// 		} else {
+// 			return nil, code, errors.New("unable to contact controller")
+// 		}
+// 	}
+//
+// 	PrivateNodes := make([]*VPNNode, 0)
+// 	if code == 200 {
+// 		// CreateLog("", "RESPONSE:", string(responseBytes))
+// 		err = json.Unmarshal(responseBytes, &PrivateNodes)
+// 		if err != nil {
+// 			CreateErrorLog("", "Unable to unmarshal private device list: ", err)
+// 			return nil, 0, err
+// 		}
+// 	}
+//
+// 	for ii := range RoutersAndNodes.Routers {
+// 		RR := RoutersAndNodes.Routers[ii]
+//
+// 		exists := false
+// 		for i := range GLOBAL_STATE.RouterList {
+// 			R := GLOBAL_STATE.RouterList[i]
+// 			if R == nil {
+// 				continue
+// 			}
+// 			if RR.PublicIP == R.PublicIP {
+// 				exists = true
+// 			}
+// 		}
+//
+// 		if !exists {
+// 			for i := range GLOBAL_STATE.RouterList {
+// 				if GLOBAL_STATE.RouterList[i] == nil {
+// 					GLOBAL_STATE.RouterList[i] = RoutersAndNodes.Routers[ii]
+// 					break
+// 				}
+// 			}
+// 		}
+//
+// 	}
+//
+// 	for ii := range RoutersAndNodes.Routers {
+// 		RR := RoutersAndNodes.Routers[ii]
+//
+// 		for i := range GLOBAL_STATE.RouterList {
+// 			R := GLOBAL_STATE.RouterList[i]
+// 			if R == nil {
+// 				continue
+// 			}
+// 			if RR.PublicIP == R.PublicIP {
+// 				// GLOBAL_STATE.RouterList[i].GROUP = RR.GROUP
+// 				// GLOBAL_STATE.RouterList[i].ROUTERID = RR.ROUTERID
+// 				GLOBAL_STATE.RouterList[i].Country = RR.Country
+// 				GLOBAL_STATE.RouterList[i].AvailableMbps = RR.AvailableMbps
+// 				GLOBAL_STATE.RouterList[i].Slots = RR.Slots
+// 				GLOBAL_STATE.RouterList[i].AvailableSlots = RR.AvailableSlots
+// 				GLOBAL_STATE.RouterList[i].AEBP = RR.AEBP
+// 				GLOBAL_STATE.RouterList[i].AIBP = RR.AIBP
+// 				GLOBAL_STATE.RouterList[i].CPUP = RR.CPUP
+// 				GLOBAL_STATE.RouterList[i].RAMUsage = RR.RAMUsage
+// 				GLOBAL_STATE.RouterList[i].DiskUsage = RR.DiskUsage
+// 				GLOBAL_STATE.RouterList[i].Online = RR.Online
+// 				R = GLOBAL_STATE.RouterList[i]
+//
+// 				includeMSInScoring := true
+// 				if R.MS == 31337 {
+// 					includeMSInScoring = false
+// 				}
+//
+// 				var baseScore float64 = 10
+// 				AIBPScore := 100 / R.AIBP
+// 				AEBPScore := 100 / R.AEBP
+// 				if AIBPScore < 1 || AIBPScore == 1 {
+// 					AIBPScore = 0
+// 				} else if AIBPScore > 4 {
+// 					AIBPScore = 4
+// 				}
+// 				if AEBPScore < 1 || AEBPScore == 1 {
+// 					AEBPScore = 0
+// 				} else if AEBPScore > 4 {
+// 					AEBPScore = 4
+// 				}
+//
+// 				var MSScore float64 = 0
+// 				if includeMSInScoring {
+// 					if R.MS < 20 {
+// 						MSScore = 1
+// 					} else if R.MS < 100 {
+// 						MSScore = 2
+// 					} else if R.MS < 200 {
+// 						MSScore = 3
+// 					} else if R.MS < 300 {
+// 						MSScore = 4
+// 					} else if R.MS < 400 {
+// 						MSScore = 5
+// 					}
+// 				}
+// 				SLOTScore := float64(R.AvailableSlots / R.Slots)
+// 				R.Score = int(baseScore - AEBPScore - SLOTScore - AIBPScore - MSScore)
+// 			}
+// 		}
+//
+// 	}
+//
+// 	GLOBAL_STATE.Routers = nil
+// 	GLOBAL_STATE.Routers = make([]*ROUTER, 0)
+// 	GLOBAL_STATE.AvailableCountries = make([]string, 0)
+// 	for i := range GLOBAL_STATE.RouterList {
+// 		if GLOBAL_STATE.RouterList[i] == nil {
+// 			continue
+// 		}
+//
+// 		countryExists := false
+// 		for ii := range GLOBAL_STATE.AvailableCountries {
+// 			if GLOBAL_STATE.AvailableCountries[ii] == GLOBAL_STATE.RouterList[i].Country {
+// 				countryExists = true
+// 			}
+// 		}
+//
+// 		if !countryExists {
+// 			GLOBAL_STATE.AvailableCountries = append(GLOBAL_STATE.AvailableCountries, GLOBAL_STATE.RouterList[i].Country)
+// 		}
+//
+// 		GLOBAL_STATE.Routers = append(GLOBAL_STATE.Routers, GLOBAL_STATE.RouterList[i])
+// 	}
+//
+// 	sort.Slice(GLOBAL_STATE.Routers, func(a, b int) bool {
+// 		if GLOBAL_STATE.Routers[a] == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.Routers[b] == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.Routers[a].Score == GLOBAL_STATE.Routers[b].Score {
+// 			if GLOBAL_STATE.Routers[a].MS < GLOBAL_STATE.Routers[b].MS {
+// 				return true
+// 			}
+// 		}
+//
+// 		return GLOBAL_STATE.Routers[a].Score > GLOBAL_STATE.Routers[b].Score
+// 	})
+//
+// 	GLOBAL_STATE.Nodes = RoutersAndNodes.AccessPoints
+// 	for i := range GLOBAL_STATE.Nodes {
+// 		A := GLOBAL_STATE.Nodes[i]
+//
+// 		for ii := range GLOBAL_STATE.RouterList {
+// 			R := GLOBAL_STATE.RouterList[ii]
+// 			if R == nil {
+// 				continue
+// 			}
+//
+// 			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
+// 				GLOBAL_STATE.Nodes[i].Router = GLOBAL_STATE.RouterList[ii]
+// 			}
+// 		}
+// 	}
+//
+// 	GLOBAL_STATE.PrivateNodes = PrivateNodes
+// 	for i := range GLOBAL_STATE.PrivateNodes {
+// 		A := GLOBAL_STATE.PrivateNodes[i]
+//
+// 		for ii := range GLOBAL_STATE.RouterList {
+// 			R := GLOBAL_STATE.RouterList[ii]
+// 			if R == nil {
+// 				continue
+// 			}
+//
+// 			if R.GROUP == A.GROUP && R.ROUTERID == A.ROUTERID {
+// 				GLOBAL_STATE.PrivateNodes[i].Router = GLOBAL_STATE.RouterList[ii]
+// 			}
+// 		}
+// 	}
+//
+// 	// GLOBAL_STATE.ActiveAccessPoint = GetActiveAccessPointFromActiveSession()
+// 	// AS.AP = GLOBAL_STATE.ActiveAccessPoint
+//
+// 	if len(GLOBAL_STATE.Nodes) == 0 {
+// 		GLOBAL_STATE.LastNodeUpdate = time.Now().Add(-45 * time.Second)
+// 	}
+//
+// 	sort.Slice(GLOBAL_STATE.Nodes, func(a, b int) bool {
+// 		if GLOBAL_STATE.Nodes[a].Router == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.Nodes[b].Router == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.Nodes[a].Router.Score == GLOBAL_STATE.Nodes[b].Router.Score {
+// 			if GLOBAL_STATE.Nodes[a].Router.MS < GLOBAL_STATE.Nodes[b].Router.MS {
+// 				return true
+// 			}
+// 		}
+// 		return GLOBAL_STATE.Nodes[a].Router.Score > GLOBAL_STATE.Nodes[b].Router.Score
+// 	})
+//
+// 	sort.Slice(GLOBAL_STATE.PrivateNodes, func(a, b int) bool {
+// 		if GLOBAL_STATE.PrivateNodes[a].Router == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.PrivateNodes[b].Router == nil {
+// 			return false
+// 		}
+// 		if GLOBAL_STATE.PrivateNodes[a].Router.Score == GLOBAL_STATE.PrivateNodes[b].Router.Score {
+// 			if GLOBAL_STATE.PrivateNodes[a].Router.MS < GLOBAL_STATE.PrivateNodes[b].Router.MS {
+// 				return true
+// 			}
+// 		}
+// 		return GLOBAL_STATE.PrivateNodes[a].Router.Score > GLOBAL_STATE.PrivateNodes[b].Router.Score
+// 	})
+//
+// 	fmt.Println("FULL GET ROUTERS CALL")
+// 	return nil, code, nil
+// }
 
 func ForwardToRouter(FR *FORWARD_REQUEST) (interface{}, int, error) {
 	defer RecoverAndLogToFile()
@@ -741,18 +739,18 @@ func PrepareState(e echo.Context) (err error) {
 		return e.JSON(400, err)
 	}
 
-	if form.Authed {
-		_, code, err := GetRoutersAndAccessPoints(form)
-		if err != nil {
-			fmt.Println("GET INFO ERROR:", err)
-		}
-		if code != 200 {
-			fmt.Println("GET INFO CODE:", code)
-		}
-
-	} else {
-		_, _, _ = LoadRoutersUnAuthenticated()
-	}
+	// if form.Authed {
+	// 	_, code, err := GetRoutersAndAccessPoints(form)
+	// 	if err != nil {
+	// 		fmt.Println("GET INFO ERROR:", err)
+	// 	}
+	// 	if code != 200 {
+	// 		fmt.Println("GET INFO CODE:", code)
+	// 	}
+	//
+	// } else {
+	// 	_, _, _ = LoadRoutersUnAuthenticated()
+	// }
 
 	// GLOBAL_STATE.EgressPackets = EGRESS_PACKETS
 	// GLOBAL_STATE.IngressPackets = INGRESS_PACKETS
@@ -808,27 +806,27 @@ func PrepareState(e echo.Context) (err error) {
 	return
 }
 
-func REF_GetNodeFromSession(S *CLIENT_SESSION) *VPNNode {
-	for i := range GLOBAL_STATE.Nodes {
-		A := GLOBAL_STATE.Nodes[i]
-		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
-		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
-			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
-			return GLOBAL_STATE.Nodes[i]
-		}
-	}
-
-	for i := range GLOBAL_STATE.PrivateNodes {
-		A := GLOBAL_STATE.PrivateNodes[i]
-		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
-		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
-			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
-			return GLOBAL_STATE.PrivateNodes[i]
-		}
-	}
-
-	return nil
-}
+//func REF_GetNodeFromSession(S *CLIENT_SESSION) *VPNNode {
+//	for i := range GLOBAL_STATE.Nodes {
+//		A := GLOBAL_STATE.Nodes[i]
+//		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+//		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+//			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+//			return GLOBAL_STATE.Nodes[i]
+//		}
+//	}
+//
+//	for i := range GLOBAL_STATE.PrivateNodes {
+//		A := GLOBAL_STATE.PrivateNodes[i]
+//		// CreateLog("", "AAP: ", A.GROUP, " - ", S.XGROUP, " - ", A.ROUTERID, " - ", S.XROUTERID, " - ", A.DEVICEID, " - ", S.DEVICEID)
+//		if A.GROUP == S.XGROUP && A.ROUTERID == S.XROUTERID && A.DEVICEID == S.DEVICEID {
+//			// GLOBAL_STATE.ActiveAccessPoint = GLOBAL_STATE.AccessPoints[i]
+//			return GLOBAL_STATE.PrivateNodes[i]
+//		}
+//	}
+//
+//	return nil
+//}
 
 func GetLogsForCLI() (*GeneralLogResponse, error) {
 	defer RecoverAndLogToFile()
@@ -928,16 +926,22 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST) (code
 	}
 
 	CreateLog("connect", "Creating a route to VPN")
-	_ = tunnels.IP_AddRoute(GLOBAL_STATE.ActiveRouter.IP, DEFAULT_GATEWAY.String(), "0")
+	_ = tunnels.IP_AddRoute(GLOBAL_STATE.ActiveRouter.PublicIP, DEFAULT_GATEWAY.String(), "0")
 
 	VPNC := new(VPNConnection)
 	VPNC.ID = uuid.NewString()
 	var err error
 
+	// -------------------------------------------
+	// -------------------------------------------
+	//
+	// ROUTER CONNECTION INITIALIZATION
+	//
+	// -------------------------------------------
+	// -------------------------------------------
 	CreateLog("connect", "Connecting to router")
 	ARS, err := REF_ConnectToRouter(
-		SessionFromUser.GROUP,
-		SessionFromUser.ROUTERID,
+		SessionFromUser.EntryIndex,
 		SessionFromUser.Proto,
 		SessionFromUser.Port,
 	)
@@ -946,11 +950,18 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST) (code
 		return 500, errors.New("error in router tunnel")
 	}
 
+	_, err = ARS.Write([]byte{28, 0, 1, 3})
+	if err != nil {
+		CreateErrorLog("connect", "unable to send initialization code to router", err)
+		return 500, errors.New("")
+	}
+
 	EARS, err := tp.NewSocketWrapper(ARS, tp.AES256)
 	if err != nil {
 		CreateErrorLog("connect", "unable to create encryption seal", err)
 		return 500, errors.New("")
 	}
+
 	err = EARS.InitHandshake()
 	if err != nil {
 		CreateErrorLog("connect", "unable to handshake with router:", err)
@@ -970,20 +981,13 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST) (code
 		return 500, errors.New("")
 	}
 
-	encryptedBytes := make([]byte, math.MaxUint16)
-	decryptedBytes := make([]byte, math.MaxUint16)
-	_, responseBytes, err := EARS.Read(encryptedBytes, decryptedBytes)
-	if err != nil {
-		CreateErrorLog("connect", "unable to receive session from router:", err)
-		return 500, errors.New("")
-	}
-
-	err = json.Unmarshal(responseBytes, VPNC.Session)
-	if err != nil {
-		CreateErrorLog("connect", "Unable to parse response from router: ", err)
-		return 500, errors.New("")
-	}
-	VPNC.Session.Created = time.Now()
+	// -------------------------------------------
+	// -------------------------------------------
+	//
+	// EXIT NODE CONNECTION INITIALIZATION
+	//
+	// -------------------------------------------
+	// -------------------------------------------
 
 	VPNC.EVPNS, err = tp.NewSocketWrapper(ARS, tp.AES256)
 	if err != nil {
@@ -996,38 +1000,43 @@ func REF_ConnectToAccessPoint(SessionFromUser *CONTROLLER_SESSION_REQUEST) (code
 		return 500, errors.New("")
 	}
 
-	// NAS := new(VPNConnection)
+	encryptedBytes := make([]byte, math.MaxUint16)
+	decryptedBytes := make([]byte, math.MaxUint16)
+	_, responseBytes, err := VPNC.EVPNS.Read(encryptedBytes, decryptedBytes)
+	if err != nil {
+		CreateErrorLog("connect", "unable to receive session from router:", err)
+		return 500, errors.New("")
+	}
+
+	err = json.Unmarshal(responseBytes, VPNC.Session)
+	if err != nil {
+		CreateErrorLog("connect", "Unable to parse response from router: ", err)
+		return 500, errors.New("")
+	}
+	VPNC.Session.Created = time.Now()
+
 	VPNC.Name = SessionFromUser.Name
 
 	// TODO
-	VPNC.Address = "10.4.3.2"
+	VPNC.Address = VPNC.Address
 	VPNC.AddressNetIP = net.ParseIP(VPNC.Address)
 
+	// THIS IS THE IP USED WHEN CHANGING PACKETS
 	VPNC.EP_VPNSrcIP[0] = VPNC.Session.VPNIP[0]
 	VPNC.EP_VPNSrcIP[1] = VPNC.Session.VPNIP[1]
 	VPNC.EP_VPNSrcIP[2] = VPNC.Session.VPNIP[2]
 	VPNC.EP_VPNSrcIP[3] = VPNC.Session.VPNIP[3]
-	VPNC.NodeSrcIP[0] = VPNC.Session.VPNIP[0]
-	VPNC.NodeSrcIP[1] = VPNC.Session.VPNIP[1]
-	VPNC.NodeSrcIP[2] = VPNC.Session.VPNIP[2]
-	VPNC.NodeSrcIP[3] = VPNC.Session.VPNIP[3]
-
-	// TODO ??????????
-	VPNC.IP_InterfaceIP[0] = TUNNEL_ADAPTER_ADDRESS_IP[0]
-	VPNC.IP_InterfaceIP[1] = TUNNEL_ADAPTER_ADDRESS_IP[1]
-	VPNC.IP_InterfaceIP[2] = TUNNEL_ADAPTER_ADDRESS_IP[2]
-	VPNC.IP_InterfaceIP[3] = TUNNEL_ADAPTER_ADDRESS_IP[3]
 
 	// TOOD CHANGE !!!!
-	VPNC.PingBuffer = CreateMETABuffer(
-		CODE_CLIENT_ping,
-		SessionFromUser.GROUP,
-		SessionFromUser.ROUTERID,
-		SessionFromUser.SESSIONID,
-		0,
-		0,
-		0,
-	)
+	//VPNC.PingBuffer = CreateMETABuffer(
+	//	CODE_CLIENT_ping,
+	//	SessionFromUser.GROUP,
+	//	SessionFromUser.ROUTERID,
+	//	SessionFromUser.SESSIONID,
+	//	0,
+	//	0,
+	//	0,
+	//)
 
 	VPNC.PingReceived = time.Now()
 

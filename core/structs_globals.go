@@ -1,7 +1,7 @@
 package core
 
 import (
-	cipher "crypto/cipher"
+	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/rand"
 	"math/big"
@@ -49,8 +49,8 @@ var (
 var MAC_CONNECTION_SETTINGS *CONNECTION_SETTINGS
 
 var (
-	CURRENT_UBBS    int    = 0
-	CURRENT_DBBS    int    = 0
+	CURRENT_UBBS           = 0
+	CURRENT_DBBS           = 0
 	EGRESS_PACKETS  uint64 = 0
 	INGRESS_PACKETS uint64 = 0
 )
@@ -115,7 +115,8 @@ type LoginForm struct {
 }
 
 type State struct {
-	// KEEPING
+	C *Config `json:"C"`
+
 	UMbps          int    `json:"UMbps"`
 	DMbps          int    `json:"DMbps"`
 	UMbpsString    string `json:"UMbpsString"`
@@ -130,20 +131,15 @@ type State struct {
 	ConfigInitialized     bool `json:"ConfigInitialized"`
 	ClientReady           bool `json:"ClientReady"`
 
-	C *Config `json:"C"`
-	// DefaultInterface              *CONNECTION_SETTINGS `json:"DefaultInterface"`
-	// LastRouterPing                time.Time `json:"LastRouterPing"`
-	// PingReceivedFromRouter        time.Time `json:"PingReceivedFromRouter"`
-	// SecondsSincePingFromRouter    string    `json:"SecondsSincePingFromRouter"`
 	LastNodeUpdate         time.Time
 	SecondsUntilNodeUpdate int
 
-	AvailableCountries []string      `json:"AvailableCountries"`
-	ActiveRouter       *ROUTER       `json:"ActiveRouter"`
-	RoutersList        [2000]*ROUTER `json:"-"`
-	Routers            []*ROUTER     `json:"Routers"`
-	Nodes              []*VPNNode    `json:"AccessPoints"`
-	PrivateNodes       []*VPNNode    `json:"PrivateAccessPoints"`
+	AvailableCountries []string       `json:"AvailableCountries"`
+	ActiveRouter       *ROUTER        `json:"ActiveRouter"`
+	RouterList         [10000]*ROUTER `json:"Routers"`
+	// Routers            []*ROUTER       `json:"Routers"`
+	Nodes        [10000]*VPNNode `json:"Nodes"`
+	PrivateNodes [10000]*VPNNode `json:"PrivateNodes"`
 
 	// FILE PATHS
 	LogFileName   string `json:"LogFileName"`
@@ -217,11 +213,11 @@ type VPNConnection struct {
 	Exiting      bool
 
 	// VPN NODE
-	Node       *VPNNode
-	NodeSrcIP  net.IP
+	Node *VPNNode
+	// NodeSrcIP  net.IP
 	PingBuffer [8]byte
-	StartPort  uint16
-	EndPort    uint16
+	// StartPort  uint16
+	// EndPort    uint16
 
 	// DNS
 	PrevDNS  net.IP
@@ -286,7 +282,7 @@ type VPNConnection struct {
 
 	// This IP gets over-written on connect
 	// IP_VPNSrcIP [4]byte
-	IP_InterfaceIP [4]byte
+	// IP_InterfaceIP [4]byte
 }
 
 type Config struct {
@@ -456,26 +452,27 @@ type INTERFACE_SETTINGS struct {
 }
 
 type ROUTER struct {
-	IP             string `json:"PublicIP"`
-	GROUP          uint8  `json:"GROUP"`
-	ROUTERID       uint8  `json:"ROUTERID"`
-	Tag            string `json:"Tag"`
-	MS             uint64 `json:"MS"`
-	Online         bool   `json:"Online"`
-	Country        string `json:"Country"`
-	AvailableMbps  int    `json:"AvailableMbps"`
-	Slots          int    `json:"Slots"`
-	AvailableSlots int    `json:"AvailableSlots"`
-
-	LastPing  time.Time       `json:"-"`
-	PingStats ping.Statistics `json:"-"`
+	ListIndex int    `json:"ListIndex"`
+	PublicIP  string `json:"PublicIP"`
+	Tag       string `json:"Tag"`
+	Online    bool   `json:"Online"`
+	Country   string `json:"Country"`
+	Status    int    `json:"Status"`
 
 	TCPControllerConnection net.Conn `json:"-"`
 	TCPTunnelConnection     net.Conn `json:"-"`
 
 	ROUTER_STATS
 
-	Score int `json:"Score"`
+	LastPing  time.Time       `json:"-"`
+	PingStats ping.Statistics `json:"-"`
+
+	MS                uint64 `json:"MS"`
+	Score             int    `json:"Score"`
+	Slots             int    `json:"Slots"`
+	AvailableMbps     int    `json:"AvailableMbps"`
+	AvailableSlots    int    `json:"AvailableSlots"`
+	AvailableUserMbps int    `json:"AvailableUserMbps"`
 }
 
 type ROUTER_STATS struct {
@@ -498,15 +495,11 @@ type CONTROLLER_SESSION_REQUEST struct {
 	Permanent bool `json:",omitempty"`
 	Count     int  `json:",omitempty"`
 
-	Proto     string `json:"Proto"`
-	Port      string `json:"Port"`
-	GROUP     uint8  `json:"GROUP"`
-	ROUTERID  uint8  `json:"ROUTERID"`
-	SESSIONID uint8  `json:"SESSIONID"`
-
-	XGROUP    uint8 `json:"XGROUP"`
-	XROUTERID uint8 `json:"XROUTERID"`
-	DEVICEID  uint8 `json:"DEVICEID"`
+	Proto      string `json:"Proto"`
+	Port       string `json:"Port"`
+	EntryIndex int    `json:"EntryIndex"`
+	ProxyIndex int    `json:"ProxyIndex"`
+	ExitIndex  int    `json:"ExitIndex"`
 
 	// QUICK CONNECT
 	Country string `json:",omitempty"`
@@ -516,77 +509,80 @@ type CONTROLLER_SESSION_REQUEST struct {
 }
 
 type CLIENT_SESSION struct {
+	// CONTROLLER_SESSION
 	Created time.Time
-	CONTROLLER_SESSION
+
+	// This comes from the node once the encryption handshake
+	// has been completed
 	StartPort uint16
 	EndPort   uint16
 	VPNIP     []byte
-}
-
-type CONTROLLER_SESSION struct {
-	UserID primitive.ObjectID `bson:"UID"`
-	ID     primitive.ObjectID `bson:"_id"`
-
-	Permanent bool `bson:"P"`
-	Count     int  `bson:"C"`
-	SLOTID    int  `bson:"SLOTID"`
-
-	GROUP     uint8 `bson:"G"`
-	ROUTERID  uint8 `bson:"RID"`
-	SESSIONID uint8 `bson:"SID"`
-
 	XGROUP    uint8 `bson:"XG"`
 	XROUTERID uint8 `bson:"XRID"`
 	DEVICEID  uint8 `bson:"APID"`
-
-	Assigned     time.Time `bson:"A"`
-	ShouldDelete bool      `bson:"-"`
 }
+
+//type CONTROLLER_SESSION struct {
+//	UserID primitive.ObjectID `bson:"UID"`
+//	ID     primitive.ObjectID `bson:"_id"`
+//
+//	Permanent bool `bson:"P"`
+//	Count     int  `bson:"C"`
+//	SLOTID    int  `bson:"SLOTID"`
+//
+//	GROUP     uint8 `bson:"G"`
+//	ROUTERID  uint8 `bson:"RID"`
+//	SESSIONID uint8 `bson:"SID"`
+//
+//	XGROUP    uint8 `bson:"XG"`
+//	XROUTERID uint8 `bson:"XRID"`
+//	DEVICEID  uint8 `bson:"APID"`
+//
+//	Assigned     time.Time `bson:"A"`
+//	ShouldDelete bool      `bson:"-"`
+//}
 
 type VPNNode struct {
-	ID primitive.ObjectID `json:"_id,omitempty" bson:"_id"`
+	// DELIVERED WITH INITIAL LIST
+	Tag           string `json:"Tag"`
+	ListIndex     int    `json:"ListIndex"`
+	IP            string `json:"IP"`
+	Status        int    `json:"Status"`
+	Country       string `json:"Country"`
+	AvailableMbps int    `json:"AvailableMbps"`
+	Slots         int    `json:"Slots"`
+	UserMbps      int    `json:"UserMbps"`
+	// CountryFull string             `json:"CountryFull" bson:"CountryFull"`
 
-	UID primitive.ObjectID `json:"-" bson:"UID"`
-	Tag string             `json:"Tag" bson:"T"`
+	// PARSED AFTER LIST DELIVERY
+	MS int `json:"MS"`
 
-	GROUP    uint8  `json:"GROUP" bson:"G"`
-	ROUTERID uint8  `json:"ROUTERID" bson:"RID"`
-	DEVICEID uint8  `json:"DEVICEID" bson:"DID"`
-	IP       string `json:"IP" bson:"IP"`
+	// DELIVERED ON CONNECT
+	UID            primitive.ObjectID `json:"-"`
+	ID             primitive.ObjectID `json:"_id,omitempty"`
+	AvailableSlots int                `json:"AvailableSlots"`
 
-	Access             []*DeviceUserRegistration `json:"Access" bson:"A"`
-	Updated            time.Time                 `json:"Updated" bson:"U"`
-	InternetAccess     bool                      `json:"InternetAccess" bson:"I"`
-	LocalNetworkAccess bool                      `json:"LocalNetworkAccess" bson:"LA"`
-	Public             bool                      `json:"Public" bson:"P"`
+	Access             []*DeviceUserRegistration `json:"Access"`
+	Updated            time.Time                 `json:"Updated"`
+	InternetAccess     bool                      `json:"InternetAccess"`
+	LocalNetworkAccess bool                      `json:"LocalNetworkAccess"`
+	Public             bool                      `json:"Public"`
 
-	Online     bool       `json:"Online" bson:"O"`
-	LastOnline time.Time  `json:"LastOnline" bson:"LO"`
-	GEO        *AP_GEO_DB `json:"GEO,omitempty" bson:"GEO"`
+	Online     bool      `json:"Online"`
+	LastOnline time.Time `json:"LastOnline"`
 
-	AvailableSlots int `json:"AvailableSlots" bson:"-"`
-	Slots          int `json:"Slots" bson:"-"`
-	AvailableMbps  int `json:"AvailableMbps" bson:"ABS"`
-	UserMbps       int `json:"UserMbps" bson:"UB"`
+	NAT             []*DeviceNatRegistration          `json:"NAT"`
+	BlockedNetworks []string                          `json:"BlockedNetworks"`
+	DNS             map[string]*DeviceDNSRegistration `json:"DNS"`
+	DNSWhiteList    bool                              `json:"DNSWhiteList"`
 
-	Country     string `json:"Country" bson:"Country"`
-	CountryFull string `json:"CountryFull" bson:"CountryFull"`
-	// MIGHT USE
-	NAT             []*DeviceNatRegistration          `json:"NAT" bson:"NAT"`
-	BlockedNetworks []string                          `json:"BlockedNetworks" bson:"BlockedNetworks"`
-	DNS             map[string]*DeviceDNSRegistration `json:"DNS" bson:"DNS"`
-	DNSWhiteList    bool                              `json:"DNSWhiteList" bson:"DNSWhiteList"`
-
-	Router *ROUTER `json:"Router"`
-
+	// MAYBE??
 	// NAT_CACHE         map[[4]byte][4]byte `json:"-"`
 	// REVERSE_NAT_CACHE map[[4]byte][4]byte `json:"-"`
-}
 
-// type DNSMap struct {
-// 	IP       string
-// 	Wildcard bool
-// }
+	// REMOVED
+	// Router    *ROUTER `json:"Router"`
+}
 
 type DeviceDNSRegistration struct {
 	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`

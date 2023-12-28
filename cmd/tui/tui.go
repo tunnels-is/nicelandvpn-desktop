@@ -145,17 +145,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logsViewport.GotoBottom()
 		}
 
-		aps := core.GLOBAL_STATE.Nodes
+		// aps := core.GLOBAL_STATE.Nodes
 		s_row := []table.Row{}
-		for _, v := range aps {
-			s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
-		}
+		// for _, v := range aps {
+		// s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
+		// }
 
-		routs := core.GLOBAL_STATE.Routers
+		// routs := core.GLOBAL_STATE.Routers
 		r_row := []table.Row{}
-		for _, v := range routs {
-			r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
-		}
+		// for _, v := range routs {
+		// 	r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
+		// }
 
 		m.serverTable.SetRows(s_row)
 		m.routerTable.SetRows(r_row)
@@ -168,6 +168,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(servCmd, routCmd, vpCmd)
+	// return m, tea.Batch()
 }
 
 func (m model) View() string {
@@ -257,7 +258,7 @@ func StartTui() {
 	}
 
 	if PAFR.JSONData != nil {
-		_, _, _ = core.GetRoutersAndAccessPoints(&PAFR)
+		// _, _, _ = core.GetRoutersAndAccessPoints(&PAFR)
 	}
 
 	// Configure tabs and their number
@@ -281,18 +282,18 @@ func StartTui() {
 	var s_row []table.Row
 	var r_row []table.Row
 
-	aps := core.GLOBAL_STATE.Nodes
-	routs := core.GLOBAL_STATE.Routers
+	// aps := core.GLOBAL_STATE.Nodes
+	// routs := core.GLOBAL_STATE.Routers
 
 	// rows for server table
-	for _, v := range aps {
-		s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
-	}
+	// for _, v := range aps {
+	// 	s_row = append(s_row, table.Row{v.Router.Tag, v.GEO.Country, strconv.Itoa(v.Router.Score)})
+	// }
 
 	// rows for router table
-	for _, v := range routs {
-		r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
-	}
+	// for _, v := range routs {
+	// 	r_row = append(r_row, table.Row{v.Tag, v.Country, strconv.Itoa(v.Score)})
+	// }
 
 	// Set tables
 	s_t := table.New(
@@ -335,21 +336,21 @@ func StartTui() {
 
 func ConnectToAP(Tag string) {
 	var NS core.CONTROLLER_SESSION_REQUEST
-	var AP *core.VPNNode
+	// var AP *core.VPNNode
 
-	for _, v := range core.GLOBAL_STATE.Nodes {
-		if Tag == v.Tag {
-			AP = v
-		}
-	}
+	// for _, v := range core.GLOBAL_STATE.Nodes {
+	// 	if Tag == v.Tag {
+	// 		AP = v
+	// 	}
+	// }
 
-	NS.UserID = user.ID
-	NS.DeviceToken = user.DeviceToken.DT
-	NS.GROUP = core.GLOBAL_STATE.ActiveRouter.GROUP
-	NS.ROUTERID = core.GLOBAL_STATE.ActiveRouter.ROUTERID
-	NS.XGROUP = AP.GROUP
-	NS.XROUTERID = AP.ROUTERID
-	NS.DEVICEID = AP.DEVICEID
+	// NS.UserID = user.ID
+	// NS.DeviceToken = user.DeviceToken.DT
+	// NS.GROUP = core.GLOBAL_STATE.ActiveRouter.GROUP
+	// NS.ROUTERID = core.GLOBAL_STATE.ActiveRouter.ROUTERID
+	// NS.XGROUP = AP.GROUP
+	// NS.XROUTERID = AP.ROUTERID
+	// NS.DEVICEID = AP.DEVICEID
 
 	code, err := core.REF_ConnectToAccessPoint(&NS)
 	if err != nil {

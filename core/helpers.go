@@ -1,9 +1,6 @@
 package core
 
 import (
-	"encoding/binary"
-	"errors"
-	"io"
 	"log"
 	"net"
 	"runtime/debug"
@@ -15,6 +12,10 @@ func InitPaths() {
 	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
 	GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
 }
+
+const (
+	CODE_pingPong = 101
+)
 
 func RecoverAndLogToFile() {
 	if r := recover(); r != nil {
@@ -33,31 +34,31 @@ func CopySlice(in []byte) (out []byte) {
 	return
 }
 
-func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int, err error) {
-	n, err = io.ReadAtLeast(CONN, TunnelBuffer[:MIDBufferLength], MIDBufferLength)
-	if err != nil {
-		CreateErrorLog("", "TUNNEL READER ERROR: ", err)
-		return
-	}
-
-	if n < MIDBufferLength {
-		CreateErrorLog("", "TUNNEL SMALL READ ERROR: ", CONN.RemoteAddr())
-		err = errors.New("")
-		return
-	}
-
-	DL = int(binary.BigEndian.Uint16(TunnelBuffer[6:8]))
-
-	if DL > 0 {
-		n, err = io.ReadAtLeast(CONN, TunnelBuffer[MIDBufferLength:MIDBufferLength+DL], DL)
-		if err != nil {
-			CreateErrorLog("", "TUNNEL DATA READ ERROR: ", err)
-			return
-		}
-	}
-
-	return
-}
+//func ReadMIDAndDataFromBuffer(CONN net.Conn, TunnelBuffer []byte) (n int, DL int, err error) {
+//	n, err = io.ReadAtLeast(CONN, TunnelBuffer[:MIDBufferLength], MIDBufferLength)
+//	if err != nil {
+//		CreateErrorLog("", "TUNNEL READER ERROR: ", err)
+//		return
+//	}
+//
+//	if n < MIDBufferLength {
+//		CreateErrorLog("", "TUNNEL SMALL READ ERROR: ", CONN.RemoteAddr())
+//		err = errors.New("")
+//		return
+//	}
+//
+//	DL = int(binary.BigEndian.Uint16(TunnelBuffer[6:8]))
+//
+//	if DL > 0 {
+//		n, err = io.ReadAtLeast(CONN, TunnelBuffer[MIDBufferLength:MIDBufferLength+DL], DL)
+//		if err != nil {
+//			CreateErrorLog("", "TUNNEL DATA READ ERROR: ", err)
+//			return
+//		}
+//	}
+//
+//	return
+//}
 
 // func GenerateEllipticCurveAndPrivateKey() (PK *ecdsa.PrivateKey, R *OTK_REQUEST, err error) {
 // 	defer RecoverAndLogToFile()

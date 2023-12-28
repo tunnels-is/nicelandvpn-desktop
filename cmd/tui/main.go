@@ -27,7 +27,7 @@ func main() {
 	core.GLOBAL_STATE.Version = VERSION
 
 	go RoutineMonitor()
-	go core.StartService(MONITOR)
+	go core.StartService()
 
 	StartTui()
 }

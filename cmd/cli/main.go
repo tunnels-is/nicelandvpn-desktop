@@ -101,7 +101,7 @@ func CreateDummyConfig() {
 }
 
 func Connect() {
-	go core.StartService(MONITOR)
+	go core.StartService()
 	RoutineMonitor()
 }
 

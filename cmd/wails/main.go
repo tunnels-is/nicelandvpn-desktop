@@ -36,7 +36,7 @@ func main() {
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
 
-	go core.StartService(MONITOR)
+	go core.StartService()
 
 	logger := new(core.LoggerInterface)
 

@@ -23,16 +23,16 @@ const Routers = (props) => {
 			props.toggleLoading({ tag: "ROUTERS", show: true, msg: "Switching to " + router.Tag })
 		}
 
-		SwitchRouter(router.Tag).then((x) => {
-			if (x.Err) {
-				props.toggleError(x.Err)
-			} else {
-				props.showSuccessToast("Router switch complete")
-			}
-		}).catch((error) => {
-			console.dir(error)
-			props.toggleError("Unknown error, please try again in a moment");
-		})
+		// SwitchRouter(router.Tag).then((x) => {
+		// 	if (x.Err) {
+		// 		props.toggleError(x.Err)
+		// 	} else {
+		// 		props.showSuccessToast("Router switch complete")
+		// 	}
+		// }).catch((error) => {
+		// 	console.dir(error)
+		// 	props.toggleError("Unknown error, please try again in a moment");
+		// })
 
 		props.toggleLoading(undefined)
 	}

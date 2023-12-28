@@ -88,7 +88,7 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 	var (
 		writeErr          error
 		readErr           error
-		writtenBytes      int
+		receivedBytes     int
 		encryptedReceiver = make([]byte, math.MaxUint16)
 		decryptedReceiver = make([]byte, math.MaxUint16)
 		packet            []byte
@@ -96,30 +96,29 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 
 	for {
 
-		_, packet, readErr = V.EVPNS.Read(encryptedReceiver, decryptedReceiver)
+		receivedBytes, packet, readErr = V.EVPNS.Read(encryptedReceiver,
+			decryptedReceiver)
 		if readErr != nil {
 			CreateErrorLog("", "")
 			return
 		}
-		// start := time.Now()
-		V.IngressPackets++
-		// TODO !!!!!!!!!!!!!!!!!
-		// 	GLOBAL_STATE.PingReceivedFromRouter = time.Now()
-		// 	continue
 
-		if !V.ProcessIngressPacket(packet) {
-			// log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
+		if packet[0] == CODE_pingPong {
+			V.PingReceived = time.Now()
 			continue
 		}
 
-		writtenBytes, writeErr = V.Tun.Write(packet)
+		V.IngressPackets++
+		V.IngressBytes += receivedBytes
+		if !V.ProcessIngressPacket(packet) {
+			//log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
+			continue
+		}
+
+		_, writeErr = V.Tun.Write(packet)
 		if writeErr != nil {
 			CreateErrorLog("", "Send: ", writeErr)
 			return
 		}
-		V.IngressBytes += writtenBytes
-		// end := time.Since(start).Microseconds()
-		// fmt.Println("IN:", end)
-
 	}
 }

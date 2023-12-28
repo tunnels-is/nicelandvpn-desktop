@@ -21,7 +21,6 @@ func Start() {
 	defer func() {
 		if r := recover(); r != nil {
 			core.CreateErrorLog("", r, string(debug.Stack()))
-
 		}
 	}()
 
@@ -30,7 +29,7 @@ func Start() {
 	core.PRODUCTION = PRODUCTION
 	core.ENABLE_INSTERFACE = ENABLE_INTERFACE
 	core.GLOBAL_STATE.Version = VERSION
-	core.StartService(routineMonitor)
+	core.StartService()
 
 	routineMonitor <- 1
 	routineMonitor <- 2
@@ -55,6 +54,7 @@ func Start() {
 			} else if ID == 4 {
 				go core.GetDefaultGateway(routineMonitor)
 			} else if ID == 5 {
+				go core.GeneralRoutine(routineMonitor)
 			} else if ID == 6 {
 			} else if ID == 7 {
 			} else if ID == 8 {

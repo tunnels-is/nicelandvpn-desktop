@@ -73,10 +73,10 @@ func (V *VPNConnection) ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLoc
 				V.EP_IPv4Header[15] = V.EP_IPv4Header[19]
 
 				// Replace Destination IP
-				V.EP_IPv4Header[16] = V.IP_InterfaceIP[0]
-				V.EP_IPv4Header[17] = V.IP_InterfaceIP[1]
-				V.EP_IPv4Header[18] = V.IP_InterfaceIP[2]
-				V.EP_IPv4Header[19] = V.IP_InterfaceIP[3]
+				V.EP_IPv4Header[16] = V.AddressNetIP[0]
+				V.EP_IPv4Header[17] = V.AddressNetIP[1]
+				V.EP_IPv4Header[18] = V.AddressNetIP[2]
+				V.EP_IPv4Header[19] = V.AddressNetIP[3]
 
 				// Replace Source Port
 				V.EP_DNS_Port_Placeholder[0] = V.EP_TPHeader[0]
@@ -209,10 +209,10 @@ func (V *VPNConnection) ProcessIngressPacket(packet []byte) bool {
 	V.IP_TPHeader[2] = V.IP_MappedPort.Local[0]
 	V.IP_TPHeader[3] = V.IP_MappedPort.Local[1]
 
-	V.IP_IPv4Header[16] = V.IP_InterfaceIP[0]
-	V.IP_IPv4Header[17] = V.IP_InterfaceIP[1]
-	V.IP_IPv4Header[18] = V.IP_InterfaceIP[2]
-	V.IP_IPv4Header[19] = V.IP_InterfaceIP[3]
+	V.IP_IPv4Header[16] = V.AddressNetIP[0]
+	V.IP_IPv4Header[17] = V.AddressNetIP[1]
+	V.IP_IPv4Header[18] = V.AddressNetIP[2]
+	V.IP_IPv4Header[19] = V.AddressNetIP[3]
 
 	if V.EP_Protocol == 17 {
 		if V.IP_SrcIP == C.DNS1Bytes && V.IS_UNIX {

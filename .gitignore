@@ -29,6 +29,8 @@ launcher/launcher.exe
 
 tests/domainblocking/combined
 
+nicelandvpn-desktop
+
 .DS_Store
 *.DS_Store
 .idea

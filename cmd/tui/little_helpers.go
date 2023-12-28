@@ -20,7 +20,7 @@ func TimedUIUpdate(MONITOR chan int) {
 		time.Sleep(3 * time.Second)
 
 		if PAFR.JSONData != nil {
-			core.GetRoutersAndAccessPoints(&PAFR)
+			// core.GetRoutersAndAccessPoints(&PAFR)
 		}
 
 		// core.PrepareState()

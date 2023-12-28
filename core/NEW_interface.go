@@ -40,43 +40,65 @@ type TunInterface struct {
 	WINDOWS_IF *Adapter
 }
 
+func GeneralRoutine(MONITOR chan int) {
+	defer func() {
+		time.Sleep(5 * time.Second)
+		MONITOR <- 5
+	}()
+	defer RecoverAndLogToFile()
+
+	if DEFAULT_GATEWAY == nil {
+		return
+	}
+	if GLOBAL_STATE.ActiveRouter != nil {
+		return
+	}
+
+	err := REF_RefreshRouterList()
+	if err != nil {
+		CreateErrorLog("", "unable to update the router list", err)
+	}
+}
+
 func PingAllVPNConnections(MONITOR chan int) {
 	defer func() {
+		time.Sleep(9 * time.Second)
 		MONITOR <- 3
 	}()
 	defer RecoverAndLogToFile()
 }
 
-func GetDefaultGateway(MONITOR chan int) {
-	defer func() {
-		MONITOR <- 4
-	}()
+func getDefaultGateway() {
 	defer RecoverAndLogToFile()
 	var err error
 
 	OLD_GATEWAY := make([]byte, 4)
-
 	copy(OLD_GATEWAY, DEFAULT_GATEWAY)
 
 	DEFAULT_GATEWAY, err = tunnels.FindGateway()
 	if err != nil {
+		DEFAULT_GATEWAY = nil
 		CreateErrorLog("", "default gateway not found", err)
 	}
 
-	CreateErrorLog("", "NEW GATEWAY:", DEFAULT_GATEWAY)
-	CreateErrorLog("", "OLD GATEWAY:", OLD_GATEWAY)
-
-	// fmt.Println(bytes.Compare(OLD_GATEWAY, DEFAULT_GATEWAY))
 	if !bytes.Equal(OLD_GATEWAY, DEFAULT_GATEWAY) {
+		CreateLog("", "new gateway discovered", DEFAULT_GATEWAY)
 		err = REF_RefreshRouterList()
 		if err != nil {
-			CreateErrorLog("", "Unable to find the best router for your connection: ", err)
+			CreateErrorLog("", "unable to update the router list", err)
 		}
 	}
+}
 
-	if DEFAULT_GATEWAY != nil {
-		time.Sleep(5 * time.Second)
-	} else {
-		time.Sleep(2 * time.Second)
-	}
+func GetDefaultGateway(MONITOR chan int) {
+	defer func() {
+		if DEFAULT_GATEWAY != nil {
+			time.Sleep(5 * time.Second)
+		} else {
+			time.Sleep(2 * time.Second)
+		}
+
+		MONITOR <- 4
+	}()
+	getDefaultGateway()
 }

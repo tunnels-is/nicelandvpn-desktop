@@ -9,6 +9,7 @@ import { DesktopIcon, FileTextIcon, LockClosedIcon, Pencil2Icon, PersonIcon } fr
 // import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
+import API from "../api";
 
 
 const useForm = (props) => {
@@ -143,49 +144,54 @@ const useForm = (props) => {
 
 	const UpdateUser = async () => {
 
-		// try {
-		props.toggleLoading({ logTag: "", tag: "USER-UPDATE", show: true, msg: "Updating User Settings", includeLogs: false })
+		try {
 
+			props.toggleLoading({ logTag: "", tag: "USER-UPDATE", show: true, msg: "Updating User Settings", includeLogs: false })
+			let FORM = {
+				Email: user.Email,
+				DeviceToken: user.DeviceToken.DT,
+				APIKey: inputs["APIKey"].APIKey
+			}
 
-		let FORM = {
-			Email: user.Email,
-			DeviceToken: user.DeviceToken.DT,
-			APIKey: inputs["APIKey"].APIKey
-		}
+			if (!FORM.APIKey || FORM.APIKey === "") {
+				props.toggleError("API Key missing, please generate a new API Key.")
+				props.toggleLoading(undefined)
+				return
+			}
 
-		if (!FORM.APIKey || FORM.APIKey === "") {
-			props.toggleError("API Key missing, please generate a new API Key.")
-			props.toggleLoading(undefined)
-			return
-		}
+			let FR = {
+				Path: "v3/user/update",
+				Method: "POST",
+				JSONData: FORM,
+				Timeout: 10000
+			}
 
-		let FR = {
-			Path: "v2/user/update",
-			Method: "POST",
-			JSONData: FORM,
-			Timeout: 20000
-		}
-
-		ForwardToController(FR).then((x) => {
-			console.dir(x)
-			if (x.Err) {
-				props.toggleError(x.Err)
+			// ForwardToController(FR).then((x) => {
+			let x = await API.method("forwardToController", FR)
+			if (x == undefined) {
+				console.dir(x)
+				props.toggleError("Unknown error, please try again in a moment")
 			} else {
-				if (x.Code === 200) {
+				if (x.status === 200) {
 					let nu = { ...user }
 					nu.APIKey = FORM.APIKey
 					STORE.Cache.SetObject("user", nu)
 					props.showSuccessToast("User updated", undefined)
 				} else {
-					props.toggleError(x.Data)
+					props.toggleError(x)
 				}
+
 			}
-		}).catch((e) => {
+
+		} catch (e) {
+			console.log("catch/try in UpdateUser")
 			console.dir(e)
-			props.toggleError("Unknown error, please try again in a moment")
-		})
+		}
 
 		props.toggleLoading(undefined)
+
+
+
 
 	}
 
@@ -611,9 +617,19 @@ const Settings = (props) => {
 								{dayjs(user.Updated).format("DD-MM-YYYY HH:mm:ss")}
 							</div>
 						</div>
+						{!user?.Disabled &&
+							<div className="item">
+								<div className="title warning-color" onClick={() => DisableAccount()} >Disable Account</div>
+							</div>
+						}
 
 						<div className="item extra-space">
-							<div className="title">Subcription</div>
+							{user.SubLevel === 666 &&
+								<div className="title">Trial Subcription</div>
+							}
+							{user.SubLevel !== 666 &&
+								<div className="title">Subcription</div>
+							}
 							<div className="value">
 								{user.SubLevel === 1 &&
 									<>Nice</>
@@ -652,11 +668,7 @@ const Settings = (props) => {
 								}
 							</>
 						}
-						{!user?.Disabled &&
-							<div className="item">
-								<div className="title warning-color" onClick={() => DisableAccount()} >Disable Account</div>
-							</div>
-						}
+
 
 
 						<div className="item extra-space">

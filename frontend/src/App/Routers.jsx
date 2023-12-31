@@ -1,20 +1,14 @@
 import { Navigate } from "react-router-dom";
 import React, { useState } from "react";
-
-
 import STORE from "../store";
 import { DesktopIcon, MagnifyingGlassIcon, EnterIcon } from "@radix-ui/react-icons";
+import API from "../api";
 
 const Routers = (props) => {
 
 	const [filter, setFilter] = useState("");
 
 	const switchRouter = async (router) => {
-
-		if (props.state?.Connected) {
-			props.toggleError("Unable to change routers while connected")
-			return
-		}
 
 
 		if (router.Tag === "") {
@@ -23,16 +17,17 @@ const Routers = (props) => {
 			props.toggleLoading({ tag: "ROUTERS", show: true, msg: "Switching to " + router.Tag })
 		}
 
-		// SwitchRouter(router.Tag).then((x) => {
-		// 	if (x.Err) {
-		// 		props.toggleError(x.Err)
-		// 	} else {
-		// 		props.showSuccessToast("Router switch complete")
-		// 	}
-		// }).catch((error) => {
-		// 	console.dir(error)
-		// 	props.toggleError("Unknown error, please try again in a moment");
-		// })
+		let x = await API.method("switchRouter", { Tag: router.Tag })
+		if (x === undefined) {
+			props.toggleError("Unknown error, please try again in a moment");
+
+		} else {
+			if (x.status === 200) {
+				props.showSuccessToast("Router switch complete")
+			} else {
+				props.toggleError("Unknown error, please try again in a moment");
+			}
+		}
 
 		props.toggleLoading(undefined)
 	}

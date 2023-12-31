@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"log"
 	"runtime/debug"
 
@@ -68,8 +69,8 @@ func serveMethod(e echo.Context) error {
 	switch method {
 	case "connect":
 		return HTTP_Connect(e)
-	case "switch":
-		return HTTP_Switch(e)
+	// case "switch":
+	// 	return HTTP_Switch(e)
 	case "disconnect":
 		return HTTP_Disconnect(e)
 	case "resetEverything":
@@ -78,6 +79,8 @@ func serveMethod(e echo.Context) error {
 		return HTTP_SetConfig(e)
 	case "getQRCode":
 		return HTTP_GetQRCode(e)
+	case "switchRouter":
+		return HTTP_SwitchRouter(e)
 	// case "getRoutersUnAuthenticated":
 	// 	return HTTP_GetRoutersUnAuthenticated(e)
 	// case "getRoutersAndAccessPoints":
@@ -125,32 +128,34 @@ func HTTP_GetState(e echo.Context) (err error) {
 // }
 
 func HTTP_Connect(e echo.Context) (err error) {
-	ns := new(CONTROLLER_SESSION_REQUEST)
+	ns := new(ConnectionRequest)
 	err = e.Bind(ns)
 	if err != nil {
+		fmt.Println("INVALID BIND:", err)
 		return e.JSON(400, err)
 	}
 
 	code, err := REF_ConnectToAccessPoint(ns)
 	if err != nil {
+		fmt.Println("ERRX:", code, err)
 		return e.JSON(400, err)
 	}
 	return e.JSON(code, nil)
 }
 
-func HTTP_Switch(e echo.Context) (err error) {
-	ns := new(CONTROLLER_SESSION_REQUEST)
-	err = e.Bind(ns)
-	if err != nil {
-		return e.JSON(400, err)
-	}
-
-	code, err := REF_ConnectToAccessPoint(ns)
-	if err != nil {
-		return e.JSON(400, err)
-	}
-	return e.JSON(code, nil)
-}
+// func HTTP_Switch(e echo.Context) (err error) {
+// 	ns := new(CONTROLLER_SESSION_REQUEST)
+// 	err = e.Bind(ns)
+// 	if err != nil {
+// 		return e.JSON(400, err)
+// 	}
+//
+// 	code, err := REF_ConnectToAccessPoint(ns)
+// 	if err != nil {
+// 		return e.JSON(400, err)
+// 	}
+// 	return e.JSON(code, nil)
+// }
 
 func HTTP_Disconnect(e echo.Context) (err error) {
 	// Disconnect()
@@ -160,6 +165,16 @@ func HTTP_Disconnect(e echo.Context) (err error) {
 func HTTP_ResetEverything(e echo.Context) (err error) {
 	// ResetEverything()
 	return e.JSON(200, nil)
+}
+
+func HTTP_SwitchRouter(e echo.Context) (err error) {
+	routerSwitchForm := new(RouterSwitchForm)
+	err = e.Bind(routerSwitchForm)
+	if err != nil {
+		return e.JSON(400, err)
+	}
+	code, err := REF_SwitchRouter(routerSwitchForm.Tag)
+	return e.JSON(code, err)
 }
 
 func HTTP_SetConfig(e echo.Context) (err error) {

@@ -108,6 +108,32 @@ const LaunchApp = () => {
 				ToggleError("Unknown error, please try again in a moment")
 			} else {
 				newState = { ...x.data }
+
+				const nodes = newState.Nodes.filter((node) => {
+					if (node !== null) {
+						return true
+					}
+					return false
+				})
+				newState.Nodes = nodes
+
+				const pnodes = newState.PrivateNodes.filter((node) => {
+					if (node !== null) {
+						return true
+					}
+					return false
+				})
+				newState.PrivateNodes = pnodes
+
+				const routers = newState.Routers.filter((node) => {
+					if (node !== null) {
+						return true
+					}
+					return false
+				})
+				newState.Routers = routers
+
+
 				STORE.Cache.SetObject("state", newState)
 
 				if (newState.C) {

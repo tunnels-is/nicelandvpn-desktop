@@ -29,6 +29,7 @@ const useForm = (props) => {
 	}
 
 	const HandleSubmit = async (event) => {
+		console.log("CLICK!!!!!")
 
 		let errors = {}
 		let hasErrors = false
@@ -86,7 +87,7 @@ const useForm = (props) => {
 		props.toggleLoading({ tag: "REGISTER", show: true, msg: "Creating your account" })
 
 		let x = await API.method("forwardToController", {
-			Path: "v2/user/create",
+			Path: "v3/user/create",
 			Method: "POST",
 			JSONData: inputs,
 			Timeout: 20000

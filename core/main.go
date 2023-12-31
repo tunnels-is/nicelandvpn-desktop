@@ -62,9 +62,9 @@ func AutoReconnect() (connected bool) {
 		return false
 	}
 
-	if C.PrevSession == nil {
-		return false
-	}
+	// if C.PrevSession == nil {
+	// 	return false
+	// }
 
 	// if GLOBAL_STATE.Connected || GLOBAL_STATE.Connecting || GLOBAL_STATE.Exiting {
 	// 	return false
@@ -380,8 +380,9 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 			NR.Country = Country
 			NR.AvailableMbps = Mbps
 			NR.Slots = Slots
-			NR.UserMbps = UserMbps
+			NR.AvailableUserMbps = UserMbps
 			NR.ListIndex = index
+			NR.Status = Status
 
 			vpnNode := GLOBAL_STATE.Nodes[index]
 			if vpnNode == nil {
@@ -394,7 +395,8 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 				GLOBAL_STATE.Nodes[index].AvailableMbps = NR.AvailableMbps
 				GLOBAL_STATE.Nodes[index].Status = NR.Status
 				GLOBAL_STATE.Nodes[index].Slots = NR.Slots
-				GLOBAL_STATE.Nodes[index].UserMbps = NR.UserMbps
+				GLOBAL_STATE.Nodes[index].AvailableUserMbps = NR.AvailableUserMbps
+				GLOBAL_STATE.Nodes[index].Status = NR.Status
 			}
 
 		}
@@ -404,7 +406,7 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 			NR := new(ROUTER)
 			NR.ListIndex = index
 			NR.Tag = Tag
-			NR.PublicIP = PublicIP
+			NR.IP = PublicIP
 			NR.Country = Country
 			NR.AvailableMbps = Mbps
 			NR.Slots = Slots
@@ -417,12 +419,13 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 				NR.MS = 9999
 			} else {
 				GLOBAL_STATE.RouterList[index].Tag = NR.Tag
-				GLOBAL_STATE.RouterList[index].PublicIP = NR.PublicIP
+				GLOBAL_STATE.RouterList[index].IP = NR.IP
 				GLOBAL_STATE.RouterList[index].Country = NR.Country
 				GLOBAL_STATE.RouterList[index].AvailableMbps = NR.AvailableMbps
 				GLOBAL_STATE.RouterList[index].Status = NR.Status
 				GLOBAL_STATE.RouterList[index].AvailableUserMbps = NR.AvailableUserMbps
 				GLOBAL_STATE.RouterList[index].Slots = NR.Slots
+				GLOBAL_STATE.RouterList[index].Status = NR.Status
 			}
 
 		}
@@ -470,20 +473,20 @@ func REF_PingAllRouters() {
 			continue
 		}
 
-		stats, err := REF_PingRouter(GLOBAL_STATE.RouterList[i].PublicIP, DEFAULT_GATEWAY.String())
+		stats, err := REF_PingRouter(GLOBAL_STATE.RouterList[i].IP, DEFAULT_GATEWAY.String())
 		if err != nil {
-			CreateErrorLog("loader", "Could not ping router: ", GLOBAL_STATE.RouterList[i].PublicIP, " // msg: ", err)
+			CreateErrorLog("loader", "Could not ping router: ", GLOBAL_STATE.RouterList[i].IP, " // msg: ", err)
 			continue
 		}
 
 		if stats.AvgRtt.Microseconds() == 0 {
-			CreateErrorLog("loader", "0 Microseconds ping, assuming router is offline: ", GLOBAL_STATE.RouterList[i].PublicIP)
+			CreateErrorLog("loader", "0 Microseconds ping, assuming router is offline: ", GLOBAL_STATE.RouterList[i].IP)
 			GLOBAL_STATE.RouterList[i].PingStats = *stats
 			GLOBAL_STATE.RouterList[i].MS = 9999
 		} else {
 			GLOBAL_STATE.RouterList[i].PingStats = *stats
 			GLOBAL_STATE.RouterList[i].MS = uint64(stats.AvgRtt.Milliseconds())
-			CreateLog("loader", GLOBAL_STATE.RouterList[i].PublicIP, " // Avarage latency: ", GLOBAL_STATE.RouterList[i].PingStats.AvgRtt)
+			CreateLog("loader", GLOBAL_STATE.RouterList[i].IP, " // Avarage latency: ", GLOBAL_STATE.RouterList[i].PingStats.AvgRtt)
 		}
 
 	}
@@ -538,9 +541,9 @@ func REF_RefreshRouterList() (err error) {
 }
 
 func REF_SetActiveRouter(index int) {
-	_ = tunnels.IP_AddRoute(GLOBAL_STATE.RouterList[index].PublicIP, DEFAULT_GATEWAY.String(), "0")
+	_ = tunnels.IP_AddRoute(GLOBAL_STATE.RouterList[index].IP, DEFAULT_GATEWAY.String(), "0")
 	GLOBAL_STATE.ActiveRouter = GLOBAL_STATE.RouterList[index]
-	CreateLog("loader", "Active router changed >> ", GLOBAL_STATE.ActiveRouter.PublicIP, " >> Latency is ", GLOBAL_STATE.ActiveRouter.MS, " MS")
+	CreateLog("loader", "Active router changed >> ", GLOBAL_STATE.ActiveRouter.IP, " >> Latency is ", GLOBAL_STATE.ActiveRouter.MS, " MS")
 }
 
 func GetLowestLatencyRouter() (int, error) {
@@ -577,18 +580,15 @@ func GetLowestLatencyRouter() (int, error) {
 func REF_ConnectToRouter(EntryIndex int, proto, port string) (TUNNEL net.Conn, err error) {
 	defer RecoverAndLogToFile()
 
-	if port == "" {
-		if proto == "tcp" {
-			port = "443"
-		} else {
-			port = "444"
-		}
-	}
+	// HARDCODED FOR NOW
+	// - might switch this up later
+	port = "443"
+	proto = "tcp"
 
 	var routerIP string
 	r := GLOBAL_STATE.RouterList[EntryIndex]
 	if r != nil {
-		routerIP = r.PublicIP
+		routerIP = r.IP
 	}
 
 	if routerIP == "" {
@@ -620,7 +620,7 @@ func ConnectToActiveRouter(RoutingBuffer [8]byte) (TUNNEL net.Conn, err error) {
 	if GLOBAL_STATE.ActiveRouter != nil {
 
 		dialer := net.Dialer{Timeout: time.Duration(10 * time.Second)}
-		TUNNEL, err = dialer.Dial("tcp", GLOBAL_STATE.ActiveRouter.PublicIP+":443")
+		TUNNEL, err = dialer.Dial("tcp", GLOBAL_STATE.ActiveRouter.IP+":443")
 		if err != nil {
 			return nil, err
 		}

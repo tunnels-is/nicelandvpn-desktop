@@ -335,7 +335,7 @@ func StartTui() {
 }
 
 func ConnectToAP(Tag string) {
-	var NS core.CONTROLLER_SESSION_REQUEST
+	// var NS core.CONTROLLER_SESSION_REQUEST
 	// var AP *core.VPNNode
 
 	// for _, v := range core.GLOBAL_STATE.Nodes {
@@ -352,11 +352,11 @@ func ConnectToAP(Tag string) {
 	// NS.XROUTERID = AP.ROUTERID
 	// NS.DEVICEID = AP.DEVICEID
 
-	code, err := core.REF_ConnectToAccessPoint(&NS)
-	if err != nil {
-		fmt.Println("There was an error: ", err)
-		fmt.Println("Code: ", code)
-	}
+	// code, err := core.REF_ConnectToAccessPoint(&NS)
+	// if err != nil {
+	// 	fmt.Println("There was an error: ", err)
+	// 	fmt.Println("Code: ", code)
+	// }
 }
 
 // Probably I should refactor detailedStatsUpdate() and detailedStatsInit() too much spaghet

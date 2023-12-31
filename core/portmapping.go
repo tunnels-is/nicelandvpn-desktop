@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/binary"
 	"net"
 	"sync"
 	"time"
@@ -81,28 +82,28 @@ func (V *VPNConnection) CreateOrGetPortMapping(protoMap *[256]*O1, ip [4]byte, l
 		return mapping
 	}
 
-	// newPort := [2]byte{}
-	// for i := V.StartPort; i <= V.EndPort; i++ {
+	newPort := [2]byte{}
+	for i := V.StartPort; i <= V.EndPort; i++ {
 
-	// binary.BigEndian.PutUint16(newPort[:], i)
-	// m.Lock.Lock()
-	// XR, ok := m.REMOTE[newPort]
-	// m.Lock.Unlock()
-	//
-	// if !ok || XR == nil {
-	//
-	// 	m.Lock.Lock()
-	// 	m.REMOTE[newPort] = new(RP)
-	// 	m.REMOTE[newPort].LastActivity = time.Now()
-	// 	m.REMOTE[newPort].Local = lport
-	// 	m.REMOTE[newPort].Mapped = newPort
-	// 	m.REMOTE[newPort].Remote = rport
-	// 	m.LOCAL[lport] = m.REMOTE[newPort]
-	// 	m.Lock.Unlock()
-	// 	// log.Println("CU:", ip, "L:", lport, "R:", rport, "M:", i)
-	// 	return m.REMOTE[newPort]
-	// }
-	// }
+		binary.BigEndian.PutUint16(newPort[:], i)
+		m.Lock.Lock()
+		XR, ok := m.REMOTE[newPort]
+		m.Lock.Unlock()
+
+		if !ok || XR == nil {
+
+			m.Lock.Lock()
+			m.REMOTE[newPort] = new(RP)
+			m.REMOTE[newPort].LastActivity = time.Now()
+			m.REMOTE[newPort].Local = lport
+			m.REMOTE[newPort].Mapped = newPort
+			m.REMOTE[newPort].Remote = rport
+			m.LOCAL[lport] = m.REMOTE[newPort]
+			m.Lock.Unlock()
+			// log.Println("CU:", ip, "L:", lport, "R:", rport, "M:", i)
+			return m.REMOTE[newPort]
+		}
+	}
 
 	CreateLog("", "Unable to create port mapping")
 	// log.Println("", "Create (NO PORTS): ", ip, " L: ", lport, " R: ", rport)

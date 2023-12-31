@@ -21,6 +21,11 @@ const Dashboard = (props) => {
 		setFilter(event.target.value)
 	}
 
+	let user = STORE.GetUser()
+	if (!user) {
+		return (<Navigate to={"/login"} />)
+	}
+
 	const LogOut = () => {
 		props.toggleError("You have been logged out")
 		STORE.Cache.Clear()
@@ -115,31 +120,27 @@ const Dashboard = (props) => {
 		navigate("/accesspoint/" + id)
 	}
 
-	let user = STORE.GetUser()
-	if (!user) {
-		return (<Navigate to={"/login"} />)
-	}
 
 
-	const RenderServer = (ap, ar, editButton, isConnected) => {
-		let method = undefined
-		if (isConnected) {
-			method = undefined
-		} else {
-			method = ConfirmConnect
-		}
+	const RenderServer = (node, ar) => {
+		// let method = undefined
+		// if (isConnected) {
+		// 	method = undefined
+		// } else {
+		let method = ConfirmConnect
+		// }
 
 		let connected = false
-		if (props.state?.ActiveAccessPoint?._id == ap._id) {
-			connected = true
-		}
+		// if (props.state?.ActiveAccessPoint?._id == ap._id) {
+		// 	connected = true
+		// }
 
-		if (!ap.Online) {
+		if (!node.Online) {
 			return (
 				<>
-					<div className={`server`} onClick={() => NavigateToEditAP(ap._id)}>
+					<div className={`server`} onClick={() => NavigateToEditAP(node._id)}>
 
-						<div className="item tag tag-offline" >{ap.Tag} </div>
+						<div className="item tag tag-offline" >{node.Tag} </div>
 						<div className="item offline-text" >
 							{`( OFFLINE )`}
 
@@ -157,26 +158,24 @@ const Dashboard = (props) => {
 		}
 
 		let country = "icon"
-		if (ap.GEO !== undefined && ap.GEO.Country !== "") {
-			country = ap.GEO.Country.toLowerCase()
-		} else if (ap.Country !== "") {
-			country = ap.Country.toLowerCase()
+		if (node.Country !== "") {
+			country = node.Country.toLowerCase()
 		}
 
 
 		return (
 			<>
-				<div className={`server ${isConnected ? `is-connected` : ``}`} onClick={() => method(ap, ar)} >
+				<div className={`server ${connected ? `is-connected` : ``}`} onClick={() => method(node, ar)} >
 
 					{connected &&
 						<div className="item tag"  >
 							<EnterIcon className="icon"></EnterIcon>
-							{ap.Tag}
+							{node.Tag}
 						</div>
 					}
 					{!connected &&
 						<div className="item tag"  >
-							{ap.Tag}</div>
+							{node.Tag}</div>
 					}
 
 					<div className="item country" >
@@ -204,14 +203,14 @@ const Dashboard = (props) => {
 
 					</div>
 
-					{ap.Router &&
+					{node.Router &&
 						<>
-							<div className="item x3">{ap.Router.Score}</div>
-							<div className="item x3">{ap.Router.AvailableSlots} / {ap.Router.Slots}</div>
-							<div className="item x3">{ap.Router.AvailableMbps / 1000}</div>
-							<div className="item x3">{ap.Router.AIBP} / {ap.Router.AEBP}</div>
-							<div className="item x3">{ap.Router.CPUP}</div>
-							<div className="item x3">{ap.Router.RAMUsage}</div>
+							<div className="item x3">{node.Score}</div>
+							<div className="item x3">{node.AvailableSlots} / {node.Router.Slots}</div>
+							<div className="item x3">{node.AvailableMbps / 1000}</div>
+							<div className="item x3">{'??'} / {"??"}</div>
+							<div className="item x3">{'??'}</div>
+							<div className="item x3">{'??'}</div>
 						</>
 					}
 				</div>
@@ -219,15 +218,15 @@ const Dashboard = (props) => {
 		)
 	}
 
-	let AccessPoints = []
-	let PrivateAccessPoints = []
+	let Nodes = []
+	let PrivateNodes = []
 
-	if (props?.state?.PrivateAccessPoints) {
+	if (props?.state?.PrivateNodes) {
 
 		if (filter && filter !== "") {
 
 
-			props.state.PrivateAccessPoints.map(r => {
+			props.state.PrivateNodes.map(r => {
 
 				let filterMatch = false
 				if (r.Tag?.toLowerCase().includes(filter)) {
@@ -235,67 +234,55 @@ const Dashboard = (props) => {
 				}
 
 				if (filterMatch) {
-					PrivateAccessPoints.push(r)
+					PrivateNodes.push(r)
 				}
 
 			})
 
 		} else {
-			PrivateAccessPoints = props.state.PrivateAccessPoints
+			PrivateNodes = props.state.PrivateNodes
 		}
 
 	}
 
-	if (props?.state?.AccessPoints) {
+	if (props?.state?.Nodes) {
 
 		if (filter && filter !== "") {
 
-			props.state.AccessPoints.map(r => {
+			props.state.Nodes.map(r => {
 
 				let filterMatch = false
 				if (r.Tag?.toLowerCase().includes(filter)) {
 					filterMatch = true
-				} else if (r.GEO?.Country?.toLowerCase().includes(filter)) {
+				} else if (r.Country?.toLowerCase().includes(filter)) {
 					filterMatch = true
-				} else if (r.GEO?.CountryFull?.toLowerCase().includes(filter)) {
+				} else if (r.CountryFull?.toLowerCase().includes(filter)) {
 					filterMatch = true
 				}
 
 				if (filterMatch) {
-					AccessPoints.push(r)
+					Nodes.push(r)
 				}
 
 			})
 
 		} else {
-			AccessPoints = props.state.AccessPoints
+			Nodes = props.state.Nodes
 		}
 
 	}
 
-	const RenderSimpleServer = (ap, ar) => {
+	const RenderSimpleServer = (ap) => {
 		let country = "icon"
-		if (ap.GEO !== undefined && ap.GEO.Country !== "") {
-			country = ap.GEO.Country.toLowerCase()
-		} else if (ap.Country !== "") {
+		if (ap.Country !== "") {
 			country = ap.Country.toLowerCase()
 		}
 
-		let connected = false
-		if (props.state?.ActiveAccessPoint?._id == ap._id) {
-			connected = true
-		}
-
-		let method = function(x, y) {
-			props.toggleError("You are already connected to this VPN")
-		}
-		if (!connected) {
-			method = ConfirmConnect
-		}
 
 
 		return (
-			<div className={`item ${connected ? "connected" : ""}`} onClick={() => method(ap, activeR)}>
+			// <div className={`item ${connected ? "connected" : ""}`} onClick={() => ConfirmConnect(ap, activeR)}>
+			<div className={`item`} onClick={() => ConfirmConnect(ap, activeR)}>
 
 				{country !== "icon" &&
 					<>
@@ -309,7 +296,6 @@ const Dashboard = (props) => {
 				{country === "icon" &&
 					<div className="icon">
 						<DesktopIcon className="icon" height={"auto"} width={"auto"}></DesktopIcon>
-
 					</div>
 				}
 
@@ -318,7 +304,7 @@ const Dashboard = (props) => {
 						{ap.Tag}
 					</div>
 					{ap.Online &&
-						<div className="score">Quality Score: {ap.Router.Score}</div>
+						<div className="score">Quality Score: {'99'}</div>
 					}
 					{!ap.Online &&
 						<div className="score offline">OFFLINE</div>
@@ -340,7 +326,7 @@ const Dashboard = (props) => {
 				</div>
 
 
-				{(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
+				{(Nodes.length < 1 && PrivateNodes.length < 1 && filter == "") &&
 					<Loader
 						className="spinner"
 						loading={true}
@@ -351,16 +337,13 @@ const Dashboard = (props) => {
 				}
 
 				<div className="simple-list">
-
-					{PrivateAccessPoints.map((ap) => {
+					{PrivateNodes.map((ap) => {
 						return RenderSimpleServer(ap, activeR)
 					})}
-
 				</div>
 
 				<div className="simple-list">
-
-					{AccessPoints.map(ap => {
+					{Nodes.map(ap => {
 						return RenderSimpleServer(ap, activeR)
 					})}
 				</div>
@@ -403,7 +386,7 @@ const Dashboard = (props) => {
 						</div>
 					</div>
 
-					{(AccessPoints.length < 1 && PrivateAccessPoints.length < 1 && filter == "") &&
+					{(Nodes.length < 1 && PrivateNodes.length < 1 && filter == "") &&
 						<Loader
 							className="spinner"
 							loading={true}
@@ -413,17 +396,13 @@ const Dashboard = (props) => {
 						/>
 					}
 
-					{PrivateAccessPoints.length > 0 &&
-						PrivateAccessPoints.map(ap => {
-							return RenderServer(ap, activeR, false, false)
-						})
-					}
+					{PrivateNodes.map(ap => {
+						return RenderServer(ap, activeR)
+					})}
 
-					{AccessPoints.length > 0 &&
-						AccessPoints.map(ap => {
-							return RenderServer(ap, activeR, false, false)
-						})
-					}
+					{Nodes.map(ap => {
+						return RenderServer(ap, activeR)
+					})}
 
 				</div>
 			}

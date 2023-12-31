@@ -3,6 +3,8 @@
 package core
 
 import (
+	"fmt"
+	"log"
 	"math"
 	"time"
 )
@@ -26,11 +28,11 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 		sendLocal  bool
 		sendRemote bool
 		tempBytes  = make([]byte, math.MaxUint16)
-		encBytes   = make([]byte, math.MaxUint16)
 	)
 
 	for {
 		packetLength, err = V.Tun.Read(tempBytes)
+		fmt.Println(tempBytes[:packetLength])
 		if err != nil {
 			CreateLog("general", err, "error in interface reader loop")
 			return
@@ -56,10 +58,11 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 
 		sendRemote, sendLocal = V.ProcessEgressPacket(&packet)
 		if !sendLocal && !sendRemote {
-			// log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
+			log.Println("NOT SENDING EGRESS PACKET - PROTO:", packet[9])
 			continue
 		} else if sendLocal {
 
+			fmt.Println("SEND LOCAL:", packet)
 			writtenBytes, writeError = V.Tun.Write(packet)
 			if writeError != nil {
 				CreateErrorLog("", "Send: ", writeError)
@@ -67,8 +70,9 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 
 			continue
 		}
+		fmt.Println("OUT", packet)
 
-		writtenBytes, err = V.EVPNS.Write(encBytes, packet, len(packet))
+		writtenBytes, err = V.EVPNS.Write(packet)
 		if err != nil {
 			_ = V.EVPNS.SOCKET.Close()
 			return
@@ -86,18 +90,17 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 	}()
 
 	var (
-		writeErr          error
-		readErr           error
-		receivedBytes     int
-		encryptedReceiver = make([]byte, math.MaxUint16)
-		decryptedReceiver = make([]byte, math.MaxUint16)
-		packet            []byte
+		writeErr      error
+		readErr       error
+		receivedBytes int
+		// encryptedReceiver = make([]byte, math.MaxUint16)
+		// decryptedReceiver = make([]byte, math.MaxUint16)
+		packet []byte
 	)
 
 	for {
 
-		receivedBytes, packet, readErr = V.EVPNS.Read(encryptedReceiver,
-			decryptedReceiver)
+		receivedBytes, packet, readErr = V.EVPNS.Read()
 		if readErr != nil {
 			CreateErrorLog("", "")
 			return
@@ -111,7 +114,7 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 		V.IngressPackets++
 		V.IngressBytes += receivedBytes
 		if !V.ProcessIngressPacket(packet) {
-			//log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
+			// log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
 			continue
 		}
 

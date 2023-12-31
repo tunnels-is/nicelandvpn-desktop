@@ -162,22 +162,26 @@ type List struct {
 	Domains  string
 }
 
+type RouterSwitchForm struct {
+	Tag string `json:"Tag"`
+}
+
 type CONFIG_FORM struct {
-	DNS1                      string                      `json:"DNS1"`
-	DNS2                      string                      `json:"DNS2"`
-	ManualRouter              bool                        `json:"ManualRouter"`
-	Region                    string                      `json:"Region"`
-	Version                   string                      `json:"Version"`
-	RouterFilePath            string                      `json:"RouterFilePath"`
-	DebugLogging              bool                        `json:"DebugLogging"`
-	AutoReconnect             bool                        `json:"AutoReconnect"`
-	KillSwitch                bool                        `json:"KillSwitch"`
-	PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
-	DisableIPv6OnConnect      bool                        `json:"DisableIPv6OnConnect"`
-	CloseConnectionsOnConnect bool                        `json:"CloseConnectionsOnConnect"`
-	CustomDNS                 bool                        `json:"CustomDNS"`
-	EnabledBlockLists         []string                    `json:"EnabledBlockLists"`
-	LogBlockedDomains         bool                        `json:"LogBlockedDomains"`
+	DNS1           string `json:"DNS1"`
+	DNS2           string `json:"DNS2"`
+	ManualRouter   bool   `json:"ManualRouter"`
+	Region         string `json:"Region"`
+	Version        string `json:"Version"`
+	RouterFilePath string `json:"RouterFilePath"`
+	DebugLogging   bool   `json:"DebugLogging"`
+	AutoReconnect  bool   `json:"AutoReconnect"`
+	KillSwitch     bool   `json:"KillSwitch"`
+	// PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
+	DisableIPv6OnConnect      bool     `json:"DisableIPv6OnConnect"`
+	CloseConnectionsOnConnect bool     `json:"CloseConnectionsOnConnect"`
+	CustomDNS                 bool     `json:"CustomDNS"`
+	EnabledBlockLists         []string `json:"EnabledBlockLists"`
+	LogBlockedDomains         bool     `json:"LogBlockedDomains"`
 }
 
 var (
@@ -203,8 +207,10 @@ type VPNConnection struct {
 	Routes       []string
 
 	// ??????
-	Session *CLIENT_SESSION
-	EVPNS   *tcpcrypt.SocketWrapper
+	Session   *CLIENT_SESSION
+	StartPort uint16
+	EndPort   uint16
+	EVPNS     *tcpcrypt.SocketWrapper
 
 	// STATES
 	PingReceived time.Time
@@ -304,7 +310,7 @@ type Config struct {
 	CloseConnectionsOnConnect bool
 	CustomDNS                 bool
 
-	PrevSession *CONTROLLER_SESSION_REQUEST `json:"-"`
+	// PrevSession *CONTROLLER_SESSION_REQUEST `json:"-"`
 }
 
 type LOADING_LOGS_RESPONSE struct {
@@ -453,7 +459,7 @@ type INTERFACE_SETTINGS struct {
 
 type ROUTER struct {
 	ListIndex int    `json:"ListIndex"`
-	PublicIP  string `json:"PublicIP"`
+	IP        string `json:"IP"`
 	Tag       string `json:"Tag"`
 	Online    bool   `json:"Online"`
 	Country   string `json:"Country"`
@@ -483,30 +489,60 @@ type ROUTER_STATS struct {
 	DiskUsage int
 }
 
-type CONTROLLER_SESSION_REQUEST struct {
-	UserID primitive.ObjectID
-	ID     primitive.ObjectID
+type ConnectionRequest struct {
+	// ADDED VALUES
+	UserID      primitive.ObjectID `json:"UserID"`
+	DeviceToken string             `json:"DeviceToken"`
 
-	DeviceToken string `json:",omitempty"`
+	RouterProtocol string `json:"RouterProtocol,omitempty"`
+	RouterPort     string `json:"RouterPort,omitempty"`
 
-	SLOTID int
-	Type   string `json:",omitempty"`
+	// FOR QUICK CONNECT
+	Country string `json:"Country,omitempty"`
 
-	Permanent bool `json:",omitempty"`
-	Count     int  `json:",omitempty"`
-
-	Proto      string `json:"Proto"`
-	Port       string `json:"Port"`
-	EntryIndex int    `json:"EntryIndex"`
-	ProxyIndex int    `json:"ProxyIndex"`
-	ExitIndex  int    `json:"ExitIndex"`
-
-	// QUICK CONNECT
-	Country string `json:",omitempty"`
-
-	// NEW REF
-	Name string `json:"-"`
+	// BASE VALUES
+	Name        string `json:"Name"`
+	IPv4Address string `json:"IPv4Address"`
+	IPv6Address string `json:"IPv6Address"`
+	IFName      string `json:"IFName"`
+	MTU         int32  `json:"MTU"`
+	TxQueueLen  int32  `json:"TxQueueLen"`
+	Persistent  bool   `json:"Persistent"`
+	Routes      []struct {
+		Name  string `json:"Name"`
+		Route string `json:"Route"`
+	} `json:"Routes"`
+	RouterIndex   int      `json:"RouterIndex"`
+	NodeIndex     int      `json:"NodeIndex"`
+	ProxyIndex    int      `json:"ProxyIndex"`
+	NodePrivate   string   `json:"NodePrivate"`
+	AutoReconnect bool     `json:"AutoReconnect"`
+	DNS           []string `json:"DNS"`
 }
+
+// type CONTROLLER_SESSION_REQUEST struct {
+// UserID      primitive.ObjectID `json:"UserID"`
+// DeviceToken string             `json:"DeviceToken"`
+//
+// RouterIndex int                `json:"RouterIndex"`
+// NodeIndex   int                `json:"NodeIndex"`
+// NodePrivate primitive.ObjectID `json:"NodePrivate"`
+
+// QUICK CONNECT
+// Country string `json:"Country,omitempty"`
+
+// COMES BACK ON SUCCESS
+// ID         primitive.ObjectID `json:"_id,omitempty"`
+// ProxyIndex int                `json:"ProxyIndex,omitempty"`
+
+// MAYBE USE LATER
+// SLOTID int
+// Type   string `json:",omitempty"`
+// Permanent bool `json:",omitempty"`
+// Count     int  `json:",omitempty"`
+// Proto string `json:"Proto,omitempty"`
+// Port  string `json:"Port,omitempty"`
+// }
 
 type CLIENT_SESSION struct {
 	// CONTROLLER_SESSION
@@ -514,12 +550,15 @@ type CLIENT_SESSION struct {
 
 	// This comes from the node once the encryption handshake
 	// has been completed
-	StartPort uint16
-	EndPort   uint16
-	VPNIP     []byte
-	XGROUP    uint8 `bson:"XG"`
-	XROUTERID uint8 `bson:"XRID"`
-	DEVICEID  uint8 `bson:"APID"`
+	StartPort   uint16
+	EndPort     uint16
+	InterfaceIP net.IP
+	Type        tcpcrypt.EncType
+	// RouterIP    string `json:"RouterIP"`
+	// RouterPort  string `json:"RouterPort"`
+	// XGROUP    uint8 `bson:"XG"`
+	// XROUTERID uint8 `bson:"XRID"`
+	// DEVICEID  uint8 `bson:"APID"`
 }
 
 //type CONTROLLER_SESSION struct {
@@ -544,14 +583,14 @@ type CLIENT_SESSION struct {
 
 type VPNNode struct {
 	// DELIVERED WITH INITIAL LIST
-	Tag           string `json:"Tag"`
-	ListIndex     int    `json:"ListIndex"`
-	IP            string `json:"IP"`
-	Status        int    `json:"Status"`
-	Country       string `json:"Country"`
-	AvailableMbps int    `json:"AvailableMbps"`
-	Slots         int    `json:"Slots"`
-	UserMbps      int    `json:"UserMbps"`
+	Tag               string `json:"Tag"`
+	ListIndex         int    `json:"ListIndex"`
+	IP                string `json:"IP"`
+	Status            int    `json:"Status"`
+	Country           string `json:"Country"`
+	AvailableMbps     int    `json:"AvailableMbps"`
+	Slots             int    `json:"Slots"`
+	AvailableUserMbps int    `json:"AvailableUserMbps"`
 	// CountryFull string             `json:"CountryFull" bson:"CountryFull"`
 
 	// PARSED AFTER LIST DELIVERY

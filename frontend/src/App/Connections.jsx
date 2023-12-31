@@ -4,28 +4,35 @@ import React, { useState } from "react";
 
 import STORE from "../store";
 import { DesktopIcon, MagnifyingGlassIcon, EnterIcon } from "@radix-ui/react-icons";
+import API from "../api";
 
 
 var xxxxx = [
 	{
+		Name: "Niceland",
 		IPv4Address: "10.4.3.2",
 		IPv6Address: "",
-		Name: "Niceland",
+		IFName: "nvpnclient",
 		MTU: 1500,
 		TxQueueLen: 3000,
 		Persistent: true,
 		Routes: [
 			{ Name: "default", Route: "0.0.0.0/0" },
 		],
-		Router: "london-01",
-		Node: "finland-01",
+		RouterIndex: 5,
+		ProxyIndex: 5,
+		NodeIndex: 0,
+		NodePrivate: "",
 		AutoReconnect: false,
 		DNS: ["1.1.1.1", "9.9.9.9"],
+		RouterProtocol: "tcp",
+		RouterPort: "443",
 	},
 	{
+		Name: "Cloud Edge 1",
 		IPv4Address: "10.4.3.3",
 		IPv6Address: "",
-		Name: "cloud-edge-router",
+		IFName: "ce1",
 		MTU: 1500,
 		TxQueueLen: 3000,
 		Persistent: true,
@@ -33,12 +40,17 @@ var xxxxx = [
 			{ Name: "app-network", Route: "172.17.1.0/24" },
 			{ Name: "db-network", Route: "172.18.1.0/24" }
 		],
-		Router: "finland-01",
-		Node: "edge-router",
+		RouterIndex: 5,
+		ProxyIndex: 5,
+		NodeIndex: 0,
+		NodePrivate: "",
 		AutoReconnect: true,
 		DNS: ["1.1.1.1", "9.9.9.9"],
+		RouterProtocol: "tcp",
+		RouterPort: "443",
 	}
 ]
+
 
 const Connections = (props) => {
 	STORE.Cache.SetObject("connections", xxxxx)
@@ -72,6 +84,60 @@ const Connections = (props) => {
 
 	}
 
+
+	const LogOut = () => {
+		props.toggleError("You have been logged out")
+		STORE.Cache.Clear()
+	}
+
+	const ConnectToVPN = async (connection) => {
+
+		try {
+
+			props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Initializing " + connection.Name, includeLogs: true })
+
+			let user = STORE.GetUser()
+			if (!user) {
+				LogOut()
+				return (<Navigate to={"/login"} />)
+			}
+
+			// let method = undefined
+			// if (props.state?.ActiveAccessPoint) {
+			// 	method = "switch"
+			// } else {
+			let method = "connect"
+			// }
+
+
+			let connectionRequest = { ...connection }
+			connectionRequest.UserID = user._id
+			connectionRequest.DeviceToken = user.DeviceToken.DT
+
+
+			let x = await API.method(method, connectionRequest)
+			if (x === undefined) {
+				props.toggleError("Unknown error, please try again in a moment")
+			} else {
+				if (x.status === 401) {
+					LogOut()
+				}
+				if (x.status === 200) {
+					props.showSuccessToast(connection.Name + " initialized", undefined)
+				} else {
+					props.toggleError(x.data)
+				}
+			}
+
+		} catch (error) {
+			console.dir(error)
+		}
+
+		props.toggleLoading(undefined)
+
+
+	}
+
 	const updateDNS = (c, index, newValue) => {
 
 		console.dir(index)
@@ -95,7 +161,7 @@ const Connections = (props) => {
 
 	const updateRoute = (c, type, key, newValue) => {
 
-		console.dir(id)
+		// console.dir(id)
 		console.dir(c)
 		console.dir(newValue)
 
@@ -113,7 +179,7 @@ const Connections = (props) => {
 					}
 				} else {
 					if (route.Route === key) {
-						route.Name = key
+						route.Name = newValue
 					}
 				}
 
@@ -149,11 +215,13 @@ const Connections = (props) => {
 
 	const RenderConnection = (c) => {
 		return (
-			<div className="connection" key={c.Name} onClick={() => console.dir("clicked")}>
+			<div className="connection" key={c.Name} >
 				<div className="name">
 					{c.Name}
 				</div>
-				<div className="connect">CONNECT</div>
+				<div className="connect" onClick={() => ConnectToVPN(c)}>
+					CONNECT
+				</div>
 
 				<div className="title">Tunnel</div>
 				<div className="cell">IPv4
@@ -237,16 +305,16 @@ const Connections = (props) => {
 
 				<div className="title">( Entry ) Router</div>
 				<div className="cell">Tag
-					<select name="Router" id="Router" value={c.Router}>
+					<select name="Router" id="Router" value={c.RouterIndex}>
 						<option defaultChecked className="hidden" key={"none"} value={"none"}>Select Router</option>
 						{props.state?.Routers?.map((r) => {
-							if (r.Tag === c.Router) {
+							if (r.ListIndex === c.RouterIndex) {
 								return (
-									<option className="hidden" key={r.Tag} value={r.Tag}>{r.Tag}</option>
+									<option className="hidden" key={r.Tag} value={r.ListIndex}>{r.Tag}</option>
 								)
 							} else {
 								return (
-									<option key={r.Tag} value={r.Tag}>{r.Tag}</option>
+									<option key={r.Tag} value={r.ListIndex}>{r.Tag}</option>
 								)
 							}
 						})}
@@ -254,7 +322,7 @@ const Connections = (props) => {
 				</div>
 
 				{props.state?.Routers?.map((x) => {
-					if (x.Tag === c.Router) {
+					if (x.ListIndex === c.RouterIndex) {
 						return (
 							<>
 								<div className="cell">IP
@@ -276,37 +344,72 @@ const Connections = (props) => {
 
 				<div className="title">( Exit ) Node</div>
 				<div className="cell">Tag
-					<select name="Node" id="Node" value={c.Node} >
+
+					<select name="Node" id="Node" value={c.NodePrivate === "" ? c.NodeIndex : c.NodePrivate} >
 						<option defaultChecked className="hidden" key={"none"} value={"none"}>Select Node</option>
-						{props.state?.AccessPoints?.map((r) => {
-							if (r.Tag === c.Node) {
+						{props.state?.PrivateNodes?.map((r) => {
+							if (r._id === c.NodePrivate) {
 								return (
-									<option className="hidden" key={r.Tag} value={r.Tag}>{r.Tag}</option>
+									<option className="hidden" key={r.ListIndex} value={r.ListIndex}>{r.Tag} </option>
 								)
 							} else {
 								return (
-									<option key={r.Tag} value={r.Tag}>{r.Tag}</option>
+									<option key={r.ListIndex} value={r.ListIndex}>{r.Tag}</option>
+								)
+							}
+						})}
+						{props.state?.PrivateNodes?.length > 0 &&
+							<option disabled key={"seperator"} value={"------"}>----------</option>
+						}
+						{props.state?.Nodes?.map((r) => {
+							if (r.ListIndex === c.NodeIndex) {
+								return (
+									<option className="hidden" key={r.ListIndex} value={r.ListIndex}>{r.Tag}</option>
+								)
+							} else {
+								return (
+									<option key={r.ListIndex} value={r.ListIndex}>{r.Tag}</option>
 								)
 							}
 						})}
 					</select>
 				</div>
 
-				{props.state?.AccessPoints?.map((x) => {
-					if (x.Tag === c.Node) {
+				{props.state?.Nodes?.map((x) => {
+					if (x.ListIndex === c.NodeIndex) {
 						return (
 							<>
 								<div className="cell">IP
-									<input className="value" disabled value={x.Router.PublicIP} />
+									<input className="value" disabled value={x.IP} />
 								</div>
 								<div className="cell">Mbps
-									<input className="value" disabled value={x.Router.AvailableMbps} />
+									<input className="value" disabled value={x.AvailableMbps} />
 								</div>
 								<div className="cell">MS
-									<input className="value" disabled value={x.Router.MS} />
+									<input className="value" disabled value={x.MS} />
 								</div>
 								<div className="cell">Availability(slots)
-									<input className="value" disabled value={x.Router.AvailableSlots} />
+									<input className="value" disabled value={x.AvailableSlots} />
+								</div>
+							</>
+						)
+					}
+				})}
+				{props.state?.PrivateNodes?.map((x) => {
+					if (x._id === c.NodePrivate) {
+						return (
+							<>
+								<div className="cell">IP
+									<input className="value" disabled value={x.IP} />
+								</div>
+								<div className="cell">Mbps
+									<input className="value" disabled value={x.AvailableMbps} />
+								</div>
+								<div className="cell">MS
+									<input className="value" disabled value={x.MS} />
+								</div>
+								<div className="cell">Availability(slots)
+									<input className="value" disabled value={x.AvailableSlots} />
 								</div>
 							</>
 						)

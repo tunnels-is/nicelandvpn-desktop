@@ -512,12 +512,12 @@ type ConnectionRequest struct {
 		Name  string `json:"Name"`
 		Route string `json:"Route"`
 	} `json:"Routes"`
-	RouterIndex   int      `json:"RouterIndex"`
-	NodeIndex     int      `json:"NodeIndex"`
-	ProxyIndex    int      `json:"ProxyIndex"`
-	NodePrivate   string   `json:"NodePrivate"`
-	AutoReconnect bool     `json:"AutoReconnect"`
-	DNS           []string `json:"DNS"`
+	RouterIndex   int                `json:"RouterIndex"`
+	NodeID        primitive.ObjectID `json:"NodeID"`
+	ProxyIndex    int                `json:"ProxyIndex"`
+	NodePrivate   string             `json:"NodePrivate"`
+	AutoReconnect bool               `json:"AutoReconnect"`
+	DNS           []string           `json:"DNS"`
 }
 
 // type CONTROLLER_SESSION_REQUEST struct {

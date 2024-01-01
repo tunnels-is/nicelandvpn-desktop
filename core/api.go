@@ -916,7 +916,7 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	fmt.Println("CR")
 	fmt.Println(ConnectionFromUser)
 	fmt.Println(ConnectionFromUser.RouterIndex)
-	fmt.Println(ConnectionFromUser.NodeIndex)
+	fmt.Println(ConnectionFromUser.NodeID)
 	fmt.Println(ConnectionFromUser.UserID)
 	fmt.Println(ConnectionFromUser.DeviceToken)
 

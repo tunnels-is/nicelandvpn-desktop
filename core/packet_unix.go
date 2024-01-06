@@ -32,7 +32,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 
 	for {
 		packetLength, err = V.Tun.Read(tempBytes)
-		fmt.Println(tempBytes[:packetLength])
+		// fmt.Println(tempBytes[:packetLength])
 		if err != nil {
 			CreateLog("general", err, "error in interface reader loop")
 			return
@@ -70,7 +70,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 
 			continue
 		}
-		fmt.Println("OUT", packet)
+		// fmt.Println("OUT", packet)
 
 		writtenBytes, err = V.EVPNS.Write(packet)
 		if err != nil {
@@ -105,6 +105,7 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 			CreateErrorLog("", "")
 			return
 		}
+		// fmt.Println("IN:", packet)
 
 		if packet[0] == CODE_pingPong {
 			V.PingReceived = time.Now()
@@ -114,9 +115,10 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 		V.IngressPackets++
 		V.IngressBytes += receivedBytes
 		if !V.ProcessIngressPacket(packet) {
-			// log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
+			log.Println("NOT SENDING INGRESS PACKET - PROTO:", packet[9])
 			continue
 		}
+		// fmt.Println("INP:", packet)
 
 		_, writeErr = V.Tun.Write(packet)
 		if writeErr != nil {

@@ -174,6 +174,8 @@ const useForm = (props) => {
 		STORE.Cache.Set("default-device-name", inputs["devicename"])
 		STORE.Cache.Set("default-email", inputs["email"])
 
+
+
 		let x = await API.method("forwardToController", FR)
 		if (x === undefined) {
 			props.toggleError("unknown error")

@@ -1018,16 +1018,21 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// TODO
 	VPNC.Name = ConnectionFromUser.IFName
 	VPNC.Address = ConnectionFromUser.IPv4Address
-	VPNC.AddressNetIP = net.ParseIP(VPNC.Address)
+	VPNC.AddressNetIP = net.ParseIP(VPNC.Address).To4()
 
 	VPNC.StartPort = VPNC.Session.StartPort
 	VPNC.EndPort = VPNC.Session.EndPort
 
 	// THIS IS THE IP USED WHEN CHANGING PACKETS
-	VPNC.EP_VPNSrcIP[0] = VPNC.Session.InterfaceIP[0]
-	VPNC.EP_VPNSrcIP[1] = VPNC.Session.InterfaceIP[1]
-	VPNC.EP_VPNSrcIP[2] = VPNC.Session.InterfaceIP[2]
-	VPNC.EP_VPNSrcIP[3] = VPNC.Session.InterfaceIP[3]
+	fmt.Println("IFIP")
+	fmt.Println(VPNC.Session.InterfaceIP)
+	fmt.Println(VPNC.AddressNetIP)
+
+	to4 := VPNC.Session.InterfaceIP.To4()
+	VPNC.EP_VPNSrcIP[0] = to4[0]
+	VPNC.EP_VPNSrcIP[1] = to4[1]
+	VPNC.EP_VPNSrcIP[2] = to4[2]
+	VPNC.EP_VPNSrcIP[3] = to4[3]
 
 	VPNC.PingReceived = time.Now()
 
@@ -1035,8 +1040,8 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 		VPNC.Name,
 		VPNC.Address,
 		"255.255.255.0",
-		ConnectionFromUser.MTU,
 		ConnectionFromUser.TxQueueLen,
+		ConnectionFromUser.MTU,
 		ConnectionFromUser.Persistent,
 	)
 	if err != nil {

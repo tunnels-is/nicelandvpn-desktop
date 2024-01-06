@@ -52,7 +52,6 @@ func (V *VPNConnection) ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLoc
 
 	V.EP_SrcPort[0] = V.EP_TPHeader[0]
 	V.EP_SrcPort[1] = V.EP_TPHeader[1]
-
 	V.EP_DstPort[0] = V.EP_TPHeader[2]
 	V.EP_DstPort[1] = V.EP_TPHeader[3]
 

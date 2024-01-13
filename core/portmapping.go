@@ -139,7 +139,7 @@ func GetIngressPortMapping(protoMap *[256]*O1, ip [4]byte, port [2]byte) (mappin
 func CleanPorts(MONITOR chan int) {
 	defer func() {
 		time.Sleep(10 * time.Second)
-		// MONITOR <- 9
+		MONITOR <- 6
 	}()
 
 	// GLOBAL_EventQueue <- func() {
@@ -152,7 +152,7 @@ func CleanPorts(MONITOR chan int) {
 	// CleanPortMap(&UDP_o0, "udp")
 }
 
-func CleanPortMap(protoMap *[256]*O1, mapType string) {
+func (V *VPNConnection) CleanPortMap(protoMap *[256]*O1, mapType string) {
 	// start := time.Now()
 
 	var count int = 0
@@ -187,7 +187,7 @@ func CleanPortMap(protoMap *[256]*O1, mapType string) {
 
 						var timeout float64 = 29
 						ip := net.IP{byte(i), byte(i), byte(i), byte(i)}.String()
-						if ip == C.DNS1 || ip == C.DNS2 {
+						if ip == V.Meta.DNS1 || ip == V.Meta.DNS2 {
 							timeout = 4
 						}
 

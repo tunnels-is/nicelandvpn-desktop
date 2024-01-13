@@ -142,12 +142,12 @@ type State struct {
 	PrivateNodes [10000]*VPNNode `json:"PrivateNodes"`
 
 	// FILE PATHS
-	LogFileName   string `json:"LogFileName"`
-	LogPath       string `json:"LogPath"`
-	ConfigPath    string `json:"ConfigPath"`
-	BackupPath    string `json:"BackupPath"`
-	BlockListPath string `json:"BlockListPath"`
-	BasePath      string `json:"BasePath"`
+	LogFileName string `json:"LogFileName"`
+	LogPath     string `json:"LogPath"`
+	ConfigPath  string `json:"ConfigPath"`
+	// BackupPath    string `json:"BackupPath"`
+	// BlockListPath string `json:"BlockListPath"`
+	BasePath string `json:"BasePath"`
 
 	Version string `json:"Version"`
 
@@ -167,16 +167,15 @@ type RouterSwitchForm struct {
 }
 
 type CONFIG_FORM struct {
-	DNS1           string `json:"DNS1"`
-	DNS2           string `json:"DNS2"`
-	ManualRouter   bool   `json:"ManualRouter"`
-	Region         string `json:"Region"`
-	Version        string `json:"Version"`
-	RouterFilePath string `json:"RouterFilePath"`
-	DebugLogging   bool   `json:"DebugLogging"`
-	AutoReconnect  bool   `json:"AutoReconnect"`
-	KillSwitch     bool   `json:"KillSwitch"`
-	// PrevSession               *CONTROLLER_SESSION_REQUEST `json:"PrevSlot"`
+	DNS1                      string   `json:"DNS1"`
+	DNS2                      string   `json:"DNS2"`
+	ManualRouter              bool     `json:"ManualRouter"`
+	Region                    string   `json:"Region"`
+	Version                   string   `json:"Version"`
+	RouterFilePath            string   `json:"RouterFilePath"`
+	DebugLogging              bool     `json:"DebugLogging"`
+	AutoReconnect             bool     `json:"AutoReconnect"`
+	KillSwitch                bool     `json:"KillSwitch"`
 	DisableIPv6OnConnect      bool     `json:"DisableIPv6OnConnect"`
 	CloseConnectionsOnConnect bool     `json:"CloseConnectionsOnConnect"`
 	CustomDNS                 bool     `json:"CustomDNS"`
@@ -185,14 +184,80 @@ type CONFIG_FORM struct {
 }
 
 var (
-	CT_LOCK = sync.Mutex{}
-	// TUNNELS     = make(map[string]*TunInterface, 100)
+	CT_LOCK     = sync.Mutex{}
 	CONNECTIONS = make(map[string]*VPNConnection, 100)
 )
 
+type ConnectionNetwork struct {
+	Tag     string `json:"Tag" bson:"Tag"`
+	Network string `json:"Network" bson:"Network"`
+	Nat     string `json:"Nat" bson:"Nat"`
+	Routes  []*Route
+}
+type Route struct {
+	Address string
+	Metric  string
+}
+
+type ConnectionDNS struct {
+	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
+	IP       []string `json:"IP" bson:"IP"`
+	TXT      []string `json:"TXT" bson:"TXT"`
+	CNAME    string   `json:"CNAME" bson:"CNAME"`
+}
+
+type VPNConnectionMETA struct {
+	// controlled by user only
+	Country         string
+	CustomDNS       bool
+	RouterIndex     int
+	AutomaticRouter bool
+	AutoReconnect   bool
+	KillSwitch      bool
+	Persistent      bool
+	// EXPERIMENTAL
+	CloseConnectionsOnConnect bool
+
+	// Is delivered from company but can be overwirtten by user
+	Networks   []*ConnectionNetwork
+	TxQueueLen int32
+	MTU        int32
+	IFName     string
+
+	// IS controller by ORG if user is part of one
+	ID             primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Tag            string
+	IPv4Address    string
+	IPv6Address    string
+	NetMask        string
+	RouterProtocol string
+	RouterPort     string
+	ProxyIndex     int
+	NodeID         string
+	// Routes
+	DNS map[string]*ConnectionDNS
+	// Encryption
+	EncryptionProtocol int // default 3 (AES256)
+	// DNS1
+	DNS1      string
+	DNS1Bytes [4]byte `json:"-"`
+	DNS1IP    net.IP  `json:"-"`
+	// DNS2
+	DNS2      string
+	DNS2Bytes [4]byte `json:"-"`
+	DNS2IP    net.IP  `json:"-"`
+}
+
+func (m *VPNConnectionMETA) Initialize() {
+	m.DNS1IP = net.ParseIP(m.DNS1).To4()
+	m.DNS1Bytes = [4]byte(m.DNS1IP)
+	m.DNS2IP = net.ParseIP(m.DNS2).To4()
+	m.DNS2Bytes = [4]byte(m.DNS2IP)
+	return
+}
+
 type VPNConnection struct {
-	ID   string
-	Name string
+	Meta *VPNConnectionMETA
 
 	// Stats
 	EgressBytes    int
@@ -201,8 +266,8 @@ type VPNConnection struct {
 	IngressPackets int
 
 	// TUN/TAP
-	Tun          *TunInterface
-	Address      string
+	Tun *TunInterface
+	// Address      string
 	AddressNetIP net.IP
 	Routes       []string
 
@@ -292,25 +357,22 @@ type VPNConnection struct {
 }
 
 type Config struct {
-	AutoReconnect  bool
-	KillSwitch     bool
-	DNS1           string
-	DNS1Bytes      [4]byte
-	DNSIP          net.IP
-	DNS2           string
-	ManualRouter   bool
-	DebugLogging   bool
+	// AutoReconnect        bool
+	// KillSwitch           bool
+	// ManualRouter         bool
+	DebugLogging         bool
+	DisableIPv6OnConnect bool
+
 	Version        string
 	RouterFilePath string
 
-	DomainWhitelist           string
-	EnabledBlockLists         []string
-	LogBlockedDomains         bool
-	DisableIPv6OnConnect      bool
-	CloseConnectionsOnConnect bool
-	CustomDNS                 bool
+	// DNS Blocking
+	DomainWhitelist   string
+	EnabledBlockLists []string
+	LogBlockedDomains bool
 
-	// PrevSession *CONTROLLER_SESSION_REQUEST `json:"-"`
+	// Connections
+	Connections []*VPNConnectionMETA
 }
 
 type LOADING_LOGS_RESPONSE struct {
@@ -490,34 +552,17 @@ type ROUTER_STATS struct {
 }
 
 type ConnectionRequest struct {
-	// ADDED VALUES
+	ID primitive.ObjectID `json:"ID"`
+
 	UserID      primitive.ObjectID `json:"UserID"`
 	DeviceToken string             `json:"DeviceToken"`
 
-	RouterProtocol string `json:"RouterProtocol,omitempty"`
-	RouterPort     string `json:"RouterPort,omitempty"`
+	RouterIndex int                `json:"RouterIndex"`
+	ProxyIndex  int                `bson:"ProxyIndex"`
+	NodeID      primitive.ObjectID `json:"NodeID" bson:"NodeID"`
 
-	// FOR QUICK CONNECT
-	Country string `json:"Country,omitempty"`
-
-	// BASE VALUES
-	Name        string `json:"Name"`
-	IPv4Address string `json:"IPv4Address"`
-	IPv6Address string `json:"IPv6Address"`
-	IFName      string `json:"IFName"`
-	MTU         int32  `json:"MTU"`
-	TxQueueLen  int32  `json:"TxQueueLen"`
-	Persistent  bool   `json:"Persistent"`
-	Routes      []struct {
-		Name  string `json:"Name"`
-		Route string `json:"Route"`
-	} `json:"Routes"`
-	RouterIndex   int                `json:"RouterIndex"`
-	NodeID        primitive.ObjectID `json:"NodeID"`
-	ProxyIndex    int                `json:"ProxyIndex"`
-	NodePrivate   string             `json:"NodePrivate"`
-	AutoReconnect bool               `json:"AutoReconnect"`
-	DNS           []string           `json:"DNS"`
+	// QUICK CONNECT
+	Country string `json:",omitempty" bson:"Country"`
 }
 
 // type CONTROLLER_SESSION_REQUEST struct {
@@ -610,10 +655,10 @@ type VPNNode struct {
 	Online     bool      `json:"Online"`
 	LastOnline time.Time `json:"LastOnline"`
 
-	NAT             []*DeviceNatRegistration          `json:"NAT"`
-	BlockedNetworks []string                          `json:"BlockedNetworks"`
-	DNS             map[string]*DeviceDNSRegistration `json:"DNS"`
-	DNSWhiteList    bool                              `json:"DNSWhiteList"`
+	// NAT             []*DeviceNatRegistration          `json:"NAT"`
+	// BlockedNetworks []string                          `json:"BlockedNetworks"`
+	// DNS             map[string]*DeviceDNSRegistration `json:"DNS"`
+	DNSWhiteList bool `json:"DNSWhiteList"`
 
 	// MAYBE??
 	// NAT_CACHE         map[[4]byte][4]byte `json:"-"`
@@ -623,18 +668,18 @@ type VPNNode struct {
 	// Router    *ROUTER `json:"Router"`
 }
 
-type DeviceDNSRegistration struct {
-	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
-	IP       []string `json:"IP" bson:"IP"`
-	TXT      []string `json:"TXT" bson:"TXT"`
-	CNAME    string   `json:"CNAME" bson:"CNAME"`
-}
-
-type DeviceNatRegistration struct {
-	Tag     string `json:"Tag" bson:"T"`
-	Network string `json:"Network" bson:"N"`
-	Nat     string `json:"Nat" bson:"L"`
-}
+// type DeviceDNSRegistration struct {
+// 	Wildcard bool     `json:"Wildcard" bson:"Wildcard"`
+// 	IP       []string `json:"IP" bson:"IP"`
+// 	TXT      []string `json:"TXT" bson:"TXT"`
+// 	CNAME    string   `json:"CNAME" bson:"CNAME"`
+// }
+//
+// type DeviceNatRegistration struct {
+// 	Tag     string `json:"Tag" bson:"T"`
+// 	Network string `json:"Network" bson:"N"`
+// 	Nat     string `json:"Nat" bson:"L"`
+// }
 
 type DeviceUserRegistration struct {
 	UID primitive.ObjectID `json:"UID" bson:"UID"`

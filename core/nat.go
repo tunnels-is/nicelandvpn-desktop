@@ -13,11 +13,22 @@ func inc(ip net.IP) {
 	}
 }
 
-func (V *VPNConnection) BuildNATMap(AP *VPNNode) (err error) {
+func (V *VPNConnection) BuildNATMap() (err error) {
+	if V.Meta.Networks == nil {
+		CreateLog("connect", "no NAT map found")
+		return
+	}
+
 	V.NAT_CACHE = make(map[[4]byte][4]byte)
 	V.REVERSE_NAT_CACHE = make(map[[4]byte][4]byte)
 
-	for _, v := range AP.NAT {
+	for _, v := range V.Meta.Networks {
+		if v.Nat == "" {
+			continue
+		}
+		if v.Network == "" {
+			continue
+		}
 		ip2, ip2net, err := net.ParseCIDR(v.Nat)
 		if err != nil {
 			return err

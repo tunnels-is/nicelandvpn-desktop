@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	VERSION          = "1.1.5"
+	VERSION          = "2.0.0"
 	PRODUCTION       = false
 	ENABLE_INTERFACE = true
 )
@@ -56,13 +56,11 @@ func Start() {
 			} else if ID == 5 {
 				go core.GeneralRoutine(routineMonitor)
 			} else if ID == 6 {
-			} else if ID == 7 {
-			} else if ID == 8 {
-				// go core.StateMaintenance(routineMonitor)
-				// go core.GetDefaultGateway(routineMonitor)
-				// go core.ProbeRouters(routineMonitor)
-				// go core.CleanPorts(routineMonitor)
+				go core.CleanPorts(routineMonitor)
 			}
+		// go core.StateMaintenance(routineMonitor)
+		// go core.GetDefaultGateway(routineMonitor)
+		// go core.ProbeRouters(routineMonitor)
 		default:
 			// log.Println("default")
 			time.Sleep(500 * time.Millisecond)

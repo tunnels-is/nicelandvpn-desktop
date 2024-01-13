@@ -136,9 +136,10 @@ const LaunchApp = () => {
 
 				STORE.Cache.SetObject("state", newState)
 
-				if (newState.C) {
-					STORE.Cache.SetObject("config", newState.C)
-				}
+				// if (newState.C) {
+				// 	STORE.Cache.SetObject("config", newState.C)
+				// 	STORE.Cache.SetObject("config", newState.C)
+				// }
 				setState(newState)
 
 			}
@@ -179,7 +180,7 @@ const LaunchApp = () => {
 					top: "20px", left: "20px", position: 'fixed',
 				}}
 				toastOptions={{
-					className: 'toast', position: "top-left", success: {
+					className: 'toast', position: "top-right", success: {
 						duration: 5000,
 					}, icon: null, error: {
 						duration: 5000, style: {},

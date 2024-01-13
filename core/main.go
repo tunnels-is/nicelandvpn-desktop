@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-ping/ping"
 	"github.com/zveinn/tunnels"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func StartService() {
@@ -30,16 +31,11 @@ func StartService() {
 	C.DebugLogging = true
 
 	AdminCheck()
-
-	// THINK ABOUT THIS ....
 	InitPaths()
 	CreateBaseFolder()
 	InitLogfile()
 	LoadConfig()
-	///////////////////
-
 	LoadBlockLists()
-
 	getDefaultGateway()
 
 	CreateLog("loader", "Niceland is ready")
@@ -49,18 +45,18 @@ func StartService() {
 func AutoReconnect() (connected bool) {
 	defer RecoverAndLogToFile()
 
-	connectingStateChangedLocally := false
+	// connectingStateChangedLocally := false
 	defer func() {
-		if connectingStateChangedLocally {
-			// GLOBAL_STATE.Connecting = false
-		}
+		// if connectingStateChangedLocally {
+		// GLOBAL_STATE.Connecting = false
+		// }
 		// STATE_LOCK.Unlock()
 	}()
 	// STATE_LOCK.Lock()
 
-	if !C.AutoReconnect {
-		return false
-	}
+	// if !C.AutoReconnect {
+	// 	return false
+	// }
 
 	// if C.PrevSession == nil {
 	// 	return false
@@ -75,7 +71,7 @@ func AutoReconnect() (connected bool) {
 	}
 
 	// GLOBAL_STATE.Connecting = true
-	connectingStateChangedLocally = true
+	// connectingStateChangedLocally = true
 
 	LastConnectionAttemp = time.Now()
 	CreateLog("", "Automatic reconnect..")
@@ -91,7 +87,7 @@ func AutoReconnect() (connected bool) {
 	return true
 }
 
-func SaveConfig() (err error) {
+func SaveConfig(c *Config) (err error) {
 	var config *os.File
 	defer func() {
 		if config != nil {
@@ -100,9 +96,9 @@ func SaveConfig() (err error) {
 	}()
 	defer RecoverAndLogToFile()
 
-	C.Version = GLOBAL_STATE.Version
+	c.Version = GLOBAL_STATE.Version
 
-	cb, err := json.Marshal(C)
+	cb, err := json.Marshal(c)
 	if err != nil {
 		CreateErrorLog("", "Unable to turn new config into bytes: ", err)
 		return err
@@ -136,52 +132,88 @@ func LoadConfig() {
 		}
 	}()
 
-	CreateLog("loader", "Loading config")
+	CreateLog("config", "Loading config")
 
-	GLOBAL_STATE.ConfigPath = GLOBAL_STATE.BasePath + "config"
+	GLOBAL_STATE.ConfigPath = GLOBAL_STATE.BasePath + "config.json"
 	config, err = os.Open(GLOBAL_STATE.ConfigPath)
 	if err != nil {
 
-		CreateErrorLog("", "Unable to open config: ", err)
-		CreateLog("", "Generating a new default config")
+		CreateLog("config", "Generating a new default config")
 
 		NC := new(Config)
-		NC.DNS1Bytes = [4]byte{1, 1, 1, 1}
-		NC.DNS1 = "1.1.1.1"
-		NC.DNS2 = "8.8.8.8"
-		NC.DNSIP = net.IP{NC.DNS1Bytes[0], NC.DNS1Bytes[1], NC.DNS1Bytes[2], NC.DNS1Bytes[3]}
-		NC.ManualRouter = false
+		// NC.ManualRouter = false
 		NC.DebugLogging = true
 		NC.Version = ""
 		NC.RouterFilePath = ""
-		NC.AutoReconnect = true
-		NC.KillSwitch = false
-		NC.DisableIPv6OnConnect = true
+		NC.DisableIPv6OnConnect = false
 		NC.LogBlockedDomains = true
-		NC.CustomDNS = false
+
+		newCon := new(VPNConnectionMETA)
+		newCon.ID = primitive.NewObjectID()
+		newCon.AutomaticRouter = true
+		newCon.IPv4Address = "10.4.4.4"
+		newCon.NetMask = "255.255.255.0"
+		newCon.Tag = "Niceland Network"
+		newCon.IFName = "nicelandvpn"
+		newCon.TxQueueLen = 3000
+		newCon.MTU = 65535
+		newCon.RouterProtocol = "tcp"
+		newCon.RouterPort = "443"
+		newCon.RouterIndex = 0
+		newCon.ProxyIndex = 0
+		newCon.NodeID = ""
+		newCon.AutoReconnect = false
+		newCon.KillSwitch = false
+		newCon.EncryptionProtocol = 3 // AES-256-GCM
+		newCon.CustomDNS = false
+		newCon.DNS1 = "9.9.9.9"
+		newCon.DNS2 = "149.112.112.112"
+		newCon.CloseConnectionsOnConnect = false
+		newCon.Networks = make([]*ConnectionNetwork, 0)
+		newCon.DNS = make(map[string]*ConnectionDNS)
+		newCon.Initialize()
+
+		DNS1 := new(ConnectionDNS)
+		DNS1.TXT = []string{"welcome to niceland!"}
+		newCon.DNS["welcome.niceland.is"] = DNS1
+
+		newNetwork := &ConnectionNetwork{
+			Tag:     "default",
+			Network: "",
+			Nat:     "",
+			Routes:  []*Route{},
+		}
+		newNetwork.Routes = append(newNetwork.Routes, &Route{
+			Address: "34.117.186.192",
+			Metric:  "0",
+		})
+		newCon.Networks = append(newCon.Networks, newNetwork)
+
+		NC.Connections = make([]*VPNConnectionMETA, 0)
+		NC.Connections = append(NC.Connections, newCon)
 
 		var cb []byte
 		cb, err = json.Marshal(NC)
 		if err != nil {
-			CreateErrorLog("", "Unable to turn new config into bytes: ", err)
+			CreateErrorLog("config", "Unable to turn new config into bytes: ", err)
 			return
 		}
 
 		config, err = os.Create(GLOBAL_STATE.ConfigPath)
 		if err != nil {
-			CreateErrorLog("", "Unable to create new config file: ", err)
+			CreateErrorLog("config", "Unable to create new config file: ", err)
 			return
 		}
 
 		err = os.Chmod(GLOBAL_STATE.ConfigPath, 0o777)
 		if err != nil {
-			CreateErrorLog("", "Unable to change ownership of log file: ", err)
+			CreateErrorLog("config", "Unable to change ownership of log file: ", err)
 			return
 		}
 
 		_, err = config.Write(cb)
 		if err != nil {
-			CreateErrorLog("", "Unable to write config bytes to new config file: ", err)
+			CreateErrorLog("config", "Unable to write config bytes to new config file: ", err)
 			return
 		}
 
@@ -192,22 +224,26 @@ func LoadConfig() {
 		var cb []byte
 		cb, err = io.ReadAll(config)
 		if err != nil {
-			CreateErrorLog("", "Unable to read bytes from config file: ", err)
+			CreateErrorLog("config", "Unable to read bytes from config file: ", err)
 			return
 		}
 
 		err = json.Unmarshal(cb, C)
 		if err != nil {
-			CreateErrorLog("", "Unable to turn config file into config object: ", err)
+			CreateErrorLog("config", "Unable to turn config file into config object: ", err)
 			return
 		}
 
-		C.DNSIP = net.ParseIP(C.DNS1).To4()
-		C.DNS1Bytes = [4]byte{C.DNSIP[0], C.DNSIP[1], C.DNSIP[2], C.DNSIP[3]}
+		for i := range C.Connections {
+			if C.Connections[i] == nil {
+				continue
+			}
+			C.Connections[i].Initialize()
+		}
 
 	}
 
-	CreateLog("loader", "Configurations loaded")
+	CreateLog("config", "Configurations loaded")
 	GLOBAL_STATE.C = C
 	GLOBAL_STATE.ConfigInitialized = true
 }

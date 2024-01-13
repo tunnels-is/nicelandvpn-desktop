@@ -11,8 +11,8 @@ func GenerateBaseFolderPath() string {
 }
 
 func CreateBaseFolder() {
-	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
-	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
+	// GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
+	// GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
 
 	_, err := os.Stat(GLOBAL_STATE.BasePath)
 	if err != nil {

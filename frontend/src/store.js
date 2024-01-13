@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import axios from "axios"
 const DATA = "data_";
 
 var STORE = {

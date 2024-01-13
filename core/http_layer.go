@@ -102,7 +102,7 @@ func serveMethod(e echo.Context) error {
 }
 
 func HTTP_GetState(e echo.Context) (err error) {
-	PrepareState(e)
+	_ = PrepareState(e)
 	return e.JSON(200, GLOBAL_STATE)
 }
 
@@ -137,8 +137,7 @@ func HTTP_Connect(e echo.Context) (err error) {
 
 	code, err := REF_ConnectToAccessPoint(ns)
 	if err != nil {
-		fmt.Println("ERRX:", code, err)
-		return e.JSON(400, err)
+		return e.String(code, err.Error())
 	}
 	return e.JSON(code, nil)
 }
@@ -178,7 +177,7 @@ func HTTP_SwitchRouter(e echo.Context) (err error) {
 }
 
 func HTTP_SetConfig(e echo.Context) (err error) {
-	config := new(CONFIG_FORM)
+	config := new(Config)
 	err = e.Bind(config)
 	if err != nil {
 		return e.JSON(400, err)

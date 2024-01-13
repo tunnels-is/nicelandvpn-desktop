@@ -18,11 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/xlzd/gotp"
 	tp "github.com/zveinn/tcpcrypt"
-	"github.com/zveinn/tunnels"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ControllerCustomDialer(ctx context.Context, _ string, addr string) (net.Conn, error) {
@@ -71,7 +70,7 @@ func REF_SwitchRouter(Tag string) (code int, err error) {
 	fmt.Println("SWITCHING:", Tag)
 
 	if Tag == "" {
-		C.ManualRouter = false
+		// C.ManualRouter = false
 
 		err := REF_RefreshRouterList()
 		if err != nil {
@@ -79,7 +78,7 @@ func REF_SwitchRouter(Tag string) (code int, err error) {
 		}
 
 	} else {
-		C.ManualRouter = true
+		// C.ManualRouter = true
 
 		for i := range GLOBAL_STATE.RouterList {
 			if GLOBAL_STATE.RouterList[i] != nil {
@@ -626,18 +625,13 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 var NEXT_SERVER_REFRESH time.Time
 
 func SetRouterFile(path string) error {
-	// defer STATE_LOCK.Unlock()
 	defer RecoverAndLogToFile()
-	// STATE_LOCK.Lock()
-
-	CreateLog("START", "")
 
 	C.RouterFilePath = path
-	C.ManualRouter = false
 
-	err := SaveConfig()
+	err := SaveConfig(C)
 	if err != nil {
-		CreateErrorLog("", "Unable to save config: ", err)
+		CreateErrorLog("config", "Unable to save config: ", err)
 		return errors.New("unable to save config")
 	}
 
@@ -646,74 +640,33 @@ func SetRouterFile(path string) error {
 		return errors.New(err.Error())
 	}
 
-	CreateLog("loader", "Router file updated")
+	CreateLog("config", "Router file updated")
 	return nil
 }
 
-func SetConfig(SF *CONFIG_FORM) error {
-	// defer STATE_LOCK.Unlock()
+func SetConfig(config *Config) error {
 	defer RecoverAndLogToFile()
-	// STATE_LOCK.Lock()
 
-	CreateLog("START", "")
+	fmt.Println(config)
+	fmt.Println(config.Connections)
 
-	if C.CustomDNS != SF.CustomDNS {
-		CreateLog("loader", "unable to change custom DNS state while connected")
-		return errors.New("unable to change custom DNS state while connected")
-	}
-
-	if SF.Version != "" {
-		C.Version = SF.Version
-	}
-
-	C.RouterFilePath = SF.RouterFilePath
-	C.DebugLogging = SF.DebugLogging
-	C.AutoReconnect = SF.AutoReconnect
-	C.KillSwitch = SF.KillSwitch
-	C.DisableIPv6OnConnect = SF.DisableIPv6OnConnect
-	C.CloseConnectionsOnConnect = SF.CloseConnectionsOnConnect
-	C.CustomDNS = SF.CustomDNS
-
-	C.LogBlockedDomains = SF.LogBlockedDomains
-	if slices.Compare(C.EnabledBlockLists, SF.EnabledBlockLists) != 0 {
-		C.EnabledBlockLists = SF.EnabledBlockLists
+	C.LogBlockedDomains = config.LogBlockedDomains
+	if slices.Compare(C.EnabledBlockLists, config.EnabledBlockLists) != 0 {
+		C.EnabledBlockLists = config.EnabledBlockLists
 		for i := range C.EnabledBlockLists {
 			GLOBAL_STATE.BLists[i].Enabled = true
 		}
 		BuildDomainBlocklist()
 	}
-	// C.EnabledBlockLists = SF.EnabledBlockLists
-	// if SF.PrevSession != nil {
-	// 	C.PrevSession = SF.PrevSession
-	// }
+	C.EnabledBlockLists = config.EnabledBlockLists
 
-	if !SF.DebugLogging {
+	if !config.DebugLogging {
 		for i := range L.LOGS {
 			L.LOGS[i] = ""
 		}
 	}
 
-	// var dnsWasChanged bool = false
-	if SF.DNS1 != "" {
-		if C.DNS1 != SF.DNS1 {
-			C.DNS1 = SF.DNS1
-			C.DNSIP = net.ParseIP(C.DNS1).To4()
-			if len(C.DNSIP) < 4 {
-				return errors.New("DNS1 is invalid or empty")
-			}
-			C.DNS1Bytes = [4]byte{C.DNSIP[0], C.DNSIP[1], C.DNSIP[2], C.DNSIP[3]}
-			// dnsWasChanged = true
-		}
-	} else {
-
-		CreateLog("loader", "Error while updating config || DNS1 is invalid: ", SF.DNS1)
-		return errors.New("DNS1 is invalid or empty")
-	}
-
-	if C.DNS2 != SF.DNS2 {
-		C.DNS2 = SF.DNS2
-		// dnsWasChanged = true
-	}
+	GLOBAL_STATE.C = config
 
 	// if dnsWasChanged {
 	// 	err := ChangeDNSWhileConnected()
@@ -722,13 +675,13 @@ func SetConfig(SF *CONFIG_FORM) error {
 	// 	}
 	// }
 
-	err := SaveConfig()
+	err := SaveConfig(config)
 	if err != nil {
-		CreateErrorLog("", "Unable to save config: ", err)
+		CreateErrorLog("config", "Unable to save config: ", err)
 		return errors.New("unable to save config")
 	}
 
-	CreateLog("", "Config update || new config: ", *C)
+	CreateLog("config", "Config update || new config: ", *config)
 	return nil
 }
 
@@ -914,17 +867,27 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// }
 
 	fmt.Println("CR")
-	fmt.Println(ConnectionFromUser)
-	fmt.Println(ConnectionFromUser.RouterIndex)
-	fmt.Println(ConnectionFromUser.NodeID)
+	fmt.Println(ConnectionFromUser.ID)
 	fmt.Println(ConnectionFromUser.UserID)
 	fmt.Println(ConnectionFromUser.DeviceToken)
 
 	CreateLog("connect", "Creating a route to VPN")
-	_ = tunnels.IP_AddRoute(GLOBAL_STATE.ActiveRouter.IP, DEFAULT_GATEWAY.String(), "0")
 
+	var CMETA *VPNConnectionMETA
 	VPNC := new(VPNConnection)
-	VPNC.ID = uuid.NewString()
+	for i, v := range GLOBAL_STATE.C.Connections {
+		if v.ID == ConnectionFromUser.ID {
+			CMETA = GLOBAL_STATE.C.Connections[i]
+		}
+	}
+	if CMETA == nil {
+		CreateErrorLog("", "vpn connection metadata not found for tag: ", ConnectionFromUser.ID)
+		return 500, errors.New("error in router tunnel")
+	}
+	VPNC.Meta = CMETA
+	CMETA.Initialize()
+	fmt.Println("NODEID:", CMETA.NodeID)
+
 	var err error
 
 	// -------------------------------------------
@@ -935,10 +898,27 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// -------------------------------------------
 	// -------------------------------------------
 	CreateLog("connect", "Connecting to router")
+
+	ConnectionFromUser.NodeID, err = primitive.ObjectIDFromHex(CMETA.NodeID)
+	if err != nil {
+		CreateErrorLog("connect", "node id format is invalid: ", err)
+		return 400, errors.New("invalid node id")
+	}
+
+	var routerIndexForConnection int
+	if CMETA.AutomaticRouter {
+		routerIndexForConnection = GLOBAL_STATE.ActiveRouter.ListIndex
+	} else {
+		routerIndexForConnection = CMETA.RouterIndex
+	}
+
+	ConnectionFromUser.ProxyIndex = CMETA.ProxyIndex
+	ConnectionFromUser.Country = CMETA.Country
+
 	ARS, err := REF_ConnectToRouter(
-		ConnectionFromUser.RouterIndex,
-		ConnectionFromUser.RouterProtocol,
-		ConnectionFromUser.RouterPort,
+		routerIndexForConnection,
+		CMETA.RouterProtocol,
+		CMETA.RouterPort,
 	)
 	if err != nil {
 		CreateErrorLog("", "Unable to open tunnel to active router: ", err)
@@ -986,7 +966,7 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// -------------------------------------------
 	// -------------------------------------------
 
-	VPNC.EVPNS, err = tp.NewSocketWrapper(ARS, tp.AES256)
+	VPNC.EVPNS, err = tp.NewSocketWrapper(ARS, tp.EncType(CMETA.EncryptionProtocol))
 	if err != nil {
 		CreateErrorLog("connect", "unable to create encryption seal for vpn endpoint", err)
 		return 500, errors.New("")
@@ -1015,11 +995,7 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	}
 	VPNC.Session.Created = time.Now()
 
-	// TODO
-	VPNC.Name = ConnectionFromUser.IFName
-	VPNC.Address = ConnectionFromUser.IPv4Address
-	VPNC.AddressNetIP = net.ParseIP(VPNC.Address).To4()
-
+	VPNC.AddressNetIP = net.ParseIP(CMETA.IPv4Address).To4()
 	VPNC.StartPort = VPNC.Session.StartPort
 	VPNC.EndPort = VPNC.Session.EndPort
 
@@ -1037,47 +1013,44 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	VPNC.PingReceived = time.Now()
 
 	VPNC.Tun, err = CB_CreateNewTunnelInterface(
-		VPNC.Name,
-		VPNC.Address,
-		"255.255.255.0",
-		ConnectionFromUser.TxQueueLen,
-		ConnectionFromUser.MTU,
-		ConnectionFromUser.Persistent,
+		CMETA.IFName,
+		CMETA.IPv4Address,
+		CMETA.NetMask,
+		CMETA.TxQueueLen,
+		CMETA.MTU,
+		CMETA.Persistent,
 	)
 	if err != nil {
 		CreateErrorLog("connect", "unable to create tunnel interface", err)
 		return 500, errors.New("")
 	}
 
-	// err = VPNC.BuildNATMap(VPNC.Node)
-	// if err != nil {
-	// 	CreateErrorLog("connect", "unable to build NAT map", err)
-	// 	return 500, errors.New("")
-	// }
+	err = VPNC.BuildNATMap()
+	if err != nil {
+		CreateErrorLog("connect", "unable to build NAT map", err)
+		return 500, errors.New("")
+	}
 
-	err = VPNC.Tun.PreConnect()
+	err = VPNC.Tun.PreConnect(VPNC.Meta)
 	if err != nil {
 		CreateErrorLog("connect", "unable to configure tunnel interface", err)
 		return 500, errors.New("")
 	}
 
-	// err = VPNC.Tun.Connect()
-	// if err != nil {
-	// 	CreateErrorLog("connect", "unable to configure tunnel interface", err)
-	// 	return 500, errors.New("")
-	// }
-
-	CT_LOCK.Lock()
-	for i, v := range CONNECTIONS {
-		if v.Name != VPNC.Name {
-			continue
-		}
-		_ = v.EVPNS.SOCKET.Close()
-		_ = v.Tun.Close()
-		delete(CONNECTIONS, i)
+	err = VPNC.Tun.Connect(VPNC.Meta)
+	if err != nil {
+		CreateErrorLog("connect", "unable to configure tunnel interface", err)
+		return 500, errors.New("")
 	}
 
-	CONNECTIONS[VPNC.ID] = VPNC
+	CT_LOCK.Lock()
+	v, ok := CONNECTIONS[VPNC.Meta.Tag]
+	if ok {
+		_ = v.EVPNS.SOCKET.Close()
+		_ = v.Tun.Close()
+		delete(CONNECTIONS, VPNC.Meta.Tag)
+	}
+	CONNECTIONS[VPNC.Meta.Tag] = VPNC
 	CT_LOCK.Unlock()
 
 	VPNC.Connected = true

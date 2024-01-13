@@ -45,7 +45,7 @@ func CB_CreateNewTunnelInterface(
 	OUTIF.Netmask = OUTIF.LINUX_IF.Syscall_NetMask
 	OUTIF.Delete = OUTIF.LINUX_IF.Syscall_Delete
 
-	OUTIF.PreConnect = func() (err error) {
+	OUTIF.PreConnect = func(_ *VPNConnectionMETA) (err error) {
 		if err = OUTIF.LINUX_IF.Syscall_Addr(); err != nil {
 			return
 		}
@@ -62,28 +62,32 @@ func CB_CreateNewTunnelInterface(
 		return
 	}
 
-	OUTIF.Connect = func() (err error) {
+	OUTIF.Connect = func(V *VPNConnectionMETA) (err error) {
 		// CHANGE DNS ?? (only on windows)
 
-		var out []byte
-		out, err = exec.Command("ip", "route", "add", "default", "via", OUTIF.LINUX_IF.IPv4Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
-		if err != nil {
-			return errors.New("err: " + err.Error() + " || out: " + string(out))
+		for _, n := range V.Networks {
+			for _, v := range n.Routes {
+				var out []byte
+				out, err = exec.Command("ip", "route", "add", v.Address, "via", OUTIF.LINUX_IF.IPv4Address, "dev", OUTIF.LINUX_IF.Name, "metric", v.Metric).CombinedOutput()
+				if err != nil {
+					return errors.New("err: " + err.Error() + " || out: " + string(out))
+				}
+			}
 		}
 
 		return
 	}
 
-	OUTIF.Disconnect = func() (err error) {
+	OUTIF.Disconnect = func(_ *VPNConnectionMETA) (err error) {
 		if !OUTIF.LINUX_IF.Persistent {
-			OUTIF.Delete()
-		} else {
-			OUTIF.Down()
-
-			var out []byte
-			out, err = exec.Command("ip", "route", "del", "default", "via", OUTIF.LINUX_IF.IPv4Address, "dev", OUTIF.LINUX_IF.Name, "metric", "0").CombinedOutput()
+			err = OUTIF.Delete()
 			if err != nil {
-				return errors.New("err: " + err.Error() + " || out: " + string(out))
+				CreateErrorLog("disconnect", "unable to delete the interface", err)
+			}
+		} else {
+			err = OUTIF.Down()
+			if err != nil {
+				CreateErrorLog("disconnect", "unable to bring the interface down", err)
 			}
 		}
 

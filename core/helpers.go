@@ -9,8 +9,8 @@ import (
 
 func InitPaths() {
 	GLOBAL_STATE.BasePath = GenerateBaseFolderPath()
-	GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
-	GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
+	// GLOBAL_STATE.BackupPath = GLOBAL_STATE.BasePath
+	// GLOBAL_STATE.BlockListPath = GLOBAL_STATE.BasePath + "blocklists"
 }
 
 const (
@@ -109,23 +109,23 @@ func GetDomainAndSubDomain(domain string) (d, s string) {
 	return
 }
 
-func (N *VPNNode) DNSCNameMapping(domain string) (CNAME string) {
+func (V *VPNConnectionMETA) DNSCNameMapping(domain string) (CNAME string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
 		return ""
 	}
 
-	var m *DeviceDNSRegistration
+	var m *ConnectionDNS
 	var ok bool
 	if s != "" {
-		m, ok = N.DNS[s+"."+d]
+		m, ok = V.DNS[s+"."+d]
 		if ok {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
 			return m.CNAME
 		}
 	}
 
-	m, ok = N.DNS[d]
+	m, ok = V.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
@@ -136,16 +136,16 @@ func (N *VPNNode) DNSCNameMapping(domain string) (CNAME string) {
 	return ""
 }
 
-func (N *VPNNode) DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
+func (V *VPNConnectionMETA) DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
 		return nil, ""
 	}
 
-	var m *DeviceDNSRegistration
+	var m *ConnectionDNS
 	var ok bool
 	if s != "" {
-		m, ok = N.DNS[s+"."+d]
+		m, ok = V.DNS[s+"."+d]
 		if ok {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
 			if m.CNAME != "" {
@@ -159,7 +159,7 @@ func (N *VPNNode) DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 		}
 	}
 
-	m, ok = N.DNS[d]
+	m, ok = V.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			CreateLog("", "CNAME FOUND: ", m.CNAME)
@@ -177,7 +177,7 @@ func (N *VPNNode) DNSAMapping(domain string) (IPS []net.IP, CNAME string) {
 	return nil, ""
 }
 
-func (N *VPNNode) DNSTXTMapping(domain string) (TXTS []string) {
+func (V *VPNConnectionMETA) DNSTXTMapping(domain string) (TXTS []string) {
 	d, s := GetDomainAndSubDomain(domain)
 	if d == "" {
 		return nil
@@ -189,10 +189,10 @@ func (N *VPNNode) DNSTXTMapping(domain string) (TXTS []string) {
 	// CreateLog("DNS", "AVAILABLE DOMAINS: ", AS.AP.DNS)
 
 	// DNS A RECORD
-	var m *DeviceDNSRegistration
+	var m *ConnectionDNS
 	var ok bool
 	if s != "" {
-		m, ok = N.DNS[s+"."+d]
+		m, ok = V.DNS[s+"."+d]
 		if ok {
 			// CreateLog("DNS", "TXT FOUND: ", m.TXT)
 			for _, v := range m.TXT {
@@ -202,7 +202,7 @@ func (N *VPNNode) DNSTXTMapping(domain string) (TXTS []string) {
 		}
 	}
 
-	m, ok = N.DNS[d]
+	m, ok = V.DNS[d]
 	if ok {
 		if m.Wildcard || s == "" {
 			for _, v := range m.TXT {

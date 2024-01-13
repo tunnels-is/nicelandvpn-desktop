@@ -108,10 +108,10 @@ func (V *VPNConnection) ProcessEgressPacket(p *[]byte) (sendRemote bool, sendLoc
 					V.PREV_DNS_IP[2] = V.EP_IPv4Header[18]
 					V.PREV_DNS_IP[3] = V.EP_IPv4Header[19]
 
-					V.EP_IPv4Header[16] = C.DNS1Bytes[0]
-					V.EP_IPv4Header[17] = C.DNS1Bytes[1]
-					V.EP_IPv4Header[18] = C.DNS1Bytes[2]
-					V.EP_IPv4Header[19] = C.DNS1Bytes[3]
+					V.EP_IPv4Header[16] = V.Meta.DNS1Bytes[0]
+					V.EP_IPv4Header[17] = V.Meta.DNS1Bytes[1]
+					V.EP_IPv4Header[18] = V.Meta.DNS1Bytes[2]
+					V.EP_IPv4Header[19] = V.Meta.DNS1Bytes[3]
 				}
 			}
 
@@ -214,7 +214,7 @@ func (V *VPNConnection) ProcessIngressPacket(packet []byte) bool {
 	V.IP_IPv4Header[19] = V.AddressNetIP[3]
 
 	if V.EP_Protocol == 17 {
-		if V.IP_SrcIP == C.DNS1Bytes && V.IS_UNIX {
+		if V.IP_SrcIP == V.Meta.DNS1Bytes && V.IS_UNIX {
 			// if IsDNSQuery(EP_TPHeader[8:]) && IS_UNIX {
 			V.IP_IPv4Header[12] = V.PREV_DNS_IP[0]
 			V.IP_IPv4Header[13] = V.PREV_DNS_IP[1]
@@ -290,7 +290,7 @@ func (V *VPNConnection) ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byt
 
 			} else {
 
-				IPS, CNAME := V.Node.DNSAMapping(domain)
+				IPS, CNAME := V.Meta.DNSAMapping(domain)
 				if CNAME != "" {
 
 					isCustomDNS = true
@@ -324,7 +324,7 @@ func (V *VPNConnection) ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byt
 
 		} else if x.Question[i].Qtype == dns.TypeTXT {
 
-			TXTS := V.Node.DNSTXTMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			TXTS := V.Meta.DNSTXTMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
 			if TXTS != nil {
 				isCustomDNS = true
 				for ii := range TXTS {
@@ -342,7 +342,7 @@ func (V *VPNConnection) ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byt
 
 		} else if x.Question[i].Qtype == dns.TypeCNAME {
 
-			CNAME := V.Node.DNSCNameMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
+			CNAME := V.Meta.DNSCNameMapping(x.Question[i].Name[0 : len(x.Question[i].Name)-1])
 			if CNAME != "" {
 				isCustomDNS = true
 				x.Answer = append(x.Answer, &dns.CNAME{
@@ -401,7 +401,6 @@ func RecalculateAndReplaceIPv4HeaderChecksum(bytes []byte) {
 
 	// Flip all the bits and replace checksum
 	binary.BigEndian.PutUint16(bytes[10:12], ^uint16(csum))
-	return
 }
 
 func RecalculateAndReplaceTransportChecksum(IPv4Header []byte, TPPacket []byte) {
@@ -443,6 +442,4 @@ func RecalculateAndReplaceTransportChecksum(IPv4Header []byte, TPPacket []byte) 
 	} else if IPv4Header[9] == 17 {
 		binary.BigEndian.PutUint16(TPPacket[6:8], ^uint16(csum))
 	}
-
-	return
 }

@@ -12,7 +12,7 @@ import (
 func (V *VPNConnection) ReadFromLocalSocket() {
 	defer func() {
 		RecoverAndLogToFile()
-		CreateErrorLog("", "tun tap listener exiting:", V.Name)
+		CreateErrorLog("", "tun tap listener exiting:", V.Meta.Tag)
 	}()
 
 	var (
@@ -77,6 +77,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 			_ = V.EVPNS.SOCKET.Close()
 			return
 		}
+		fmt.Println("OUT", writtenBytes)
 		V.EgressBytes += writtenBytes
 		// end := time.Since(start).Microseconds()
 		// fmt.Println("OUT:", end)
@@ -86,7 +87,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 func (V *VPNConnection) ReadFromRouterSocket() {
 	defer func() {
 		RecoverAndLogToFile()
-		CreateErrorLog("", "Router tunnel listener exiting:", V.Name)
+		CreateErrorLog("", "Router tunnel listener exiting:", V.Meta.Tag)
 	}()
 
 	var (
@@ -125,5 +126,6 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 			CreateErrorLog("", "Send: ", writeErr)
 			return
 		}
+		fmt.Println("IN", receivedBytes)
 	}
 }

@@ -19,9 +19,9 @@ type TunInterface struct {
 	Write func([]byte) (int, error)
 	Close func() error
 
-	PreConnect func() error
-	Connect    func() error
-	Disconnect func() error
+	PreConnect func(*VPNConnectionMETA) error
+	Connect    func(*VPNConnectionMETA) error
+	Disconnect func(*VPNConnectionMETA) error
 
 	// Function to apply new parameters
 	Addr       func() error

@@ -160,7 +160,6 @@ func LoadConfig() {
 		newCon.RouterProtocol = "tcp"
 		newCon.RouterPort = "443"
 		newCon.RouterIndex = 0
-		newCon.ProxyIndex = 0
 		newCon.NodeID = ""
 		newCon.AutoReconnect = false
 		newCon.KillSwitch = false
@@ -361,13 +360,13 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 	fmt.Println("LINES RETURNED:", len(lines))
 
 	for index, line := range lines {
-		fmt.Println(line)
+		fmt.Println(string(line))
 		text := string(line)
 		if text == "" {
 			continue
 		}
 
-		lineSplit := strings.Split(text, ",")
+		lineSplit := strings.Split(text, "__")
 		if len(lineSplit) < 6 {
 			CreateErrorLog("", "invalid line in router file")
 			continue
@@ -407,37 +406,9 @@ func ParseRoutersFromRawDataToMemory(lines [][]byte) (count int) {
 
 		Slots := Mbps / UserMbps
 
-		if Type == 2 || Type == 3 {
-			newCountryList[Country] = struct{}{}
-
-			NR := new(VPNNode)
-			NR.Tag = Tag
-			NR.IP = PublicIP
-			NR.Country = Country
-			NR.AvailableMbps = Mbps
-			NR.Slots = Slots
-			NR.AvailableUserMbps = UserMbps
-			NR.ListIndex = index
-			NR.Status = Status
-
-			vpnNode := GLOBAL_STATE.Nodes[index]
-			if vpnNode == nil {
-				GLOBAL_STATE.Nodes[index] = NR
-				NR.MS = 9999
-			} else {
-				GLOBAL_STATE.Nodes[index].Tag = NR.Tag
-				GLOBAL_STATE.Nodes[index].IP = NR.IP
-				GLOBAL_STATE.Nodes[index].Country = NR.Country
-				GLOBAL_STATE.Nodes[index].AvailableMbps = NR.AvailableMbps
-				GLOBAL_STATE.Nodes[index].Status = NR.Status
-				GLOBAL_STATE.Nodes[index].Slots = NR.Slots
-				GLOBAL_STATE.Nodes[index].AvailableUserMbps = NR.AvailableUserMbps
-				GLOBAL_STATE.Nodes[index].Status = NR.Status
-			}
-
-		}
-		if Type == 1 || Type == 3 {
+		if Type == 1 {
 			count++
+			newCountryList[Country] = struct{}{}
 
 			NR := new(ROUTER)
 			NR.ListIndex = index
@@ -480,7 +451,7 @@ func DownloadRoutersFromOnlineSource() ([][]byte, error) {
 	defer RecoverAndLogToFile()
 
 	client := new(http.Client)
-	resp, err := client.Get("https://raw.githubusercontent.com/tunnels-is/info/master/internal")
+	resp, err := client.Get("https://raw.githubusercontent.com/tunnels-is/info/master/infra")
 	if err != nil {
 		CreateErrorLog("loader", "Unable to get routers from online file: ", err)
 		return nil, err
@@ -545,7 +516,7 @@ func REF_RefreshRouterList() (err error) {
 	var fileLines [][]byte
 	fileLines, err = GetRoutersFromLocalFile()
 	if err != nil {
-		fmt.Println("ONLINE DOWNLOAD!")
+		// fmt.Println("ONLINE DOWNLOAD!")
 		fileLines, err = DownloadRoutersFromOnlineSource()
 		if err != nil {
 			fmt.Println("BIG ERR:", err)

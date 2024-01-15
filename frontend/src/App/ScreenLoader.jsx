@@ -78,10 +78,6 @@ const ScreenLoader = (props) => {
 				</div>
 			}
 
-			{props.loading?.subtitle &&
-				<div className="subtitle">{props.loading.subtitle}</div>
-			}
-
 			{(props.loading?.includeLogs && lines.length > 0) &&
 				<div className="scroll-frame">
 					{lines}

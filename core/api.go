@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"math/rand"
 	"net"
@@ -599,7 +598,6 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		return nil, 500, errors.New("active router not found, please wait a moment")
 	}
 
-	log.Println("FR:", FR)
 	// The domain being used here is an old domain that needs to be replaced.
 	// This method uses a custom dialer which does not DNS resolve.
 	responseBytes, code, err := SendRequestToControllerProxy(FR.Method, FR.Path, FR.JSONData, "api.atodoslist.net", FR.Timeout)
@@ -608,15 +606,17 @@ func ForwardToController(FR *FORWARD_REQUEST) (interface{}, int, error) {
 		if code != 0 {
 			return nil, code, errors.New(string(responseBytes))
 		} else {
-			return nil, code, errors.New("unable to contact controller")
+			return nil, 500, errors.New("unable to contact controller")
 		}
 	}
 
 	var respJSON interface{}
-	err = json.Unmarshal(responseBytes, &respJSON)
-	if err != nil {
-		CreateErrorLog("", "Could not process forward request: ", err)
-		return nil, 400, errors.New("unknown error, please try again in a moment")
+	if len(responseBytes) != 0 {
+		err = json.Unmarshal(responseBytes, &respJSON)
+		if err != nil {
+			CreateErrorLog("", "Could not process forward request: ", err)
+			return nil, 400, errors.New("unknown error, please try again in a moment")
+		}
 	}
 
 	return respJSON, code, nil
@@ -850,7 +850,7 @@ func HTTPS_GetLogs(e echo.Context) (err error) {
 	return e.JSON(200, R)
 }
 
-func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, errm error) {
+func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm error) {
 	defer RecoverAndLogToFile()
 	start := time.Now()
 
@@ -867,26 +867,26 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// }
 
 	fmt.Println("CR")
-	fmt.Println(ConnectionFromUser.ID)
-	fmt.Println(ConnectionFromUser.UserID)
-	fmt.Println(ConnectionFromUser.DeviceToken)
+	fmt.Println(ConnectRequest.ID)
+	fmt.Println(ConnectRequest.UserID)
+	fmt.Println(ConnectRequest.DeviceToken)
 
 	CreateLog("connect", "Creating a route to VPN")
 
-	var CMETA *VPNConnectionMETA
-	VPNC := new(VPNConnection)
+	var VpnMeta *VPNConnectionMETA
+	VPNConnection := new(VPNConnection)
 	for i, v := range GLOBAL_STATE.C.Connections {
-		if v.ID == ConnectionFromUser.ID {
-			CMETA = GLOBAL_STATE.C.Connections[i]
+		if v.ID == ConnectRequest.ID {
+			VpnMeta = GLOBAL_STATE.C.Connections[i]
 		}
 	}
-	if CMETA == nil {
-		CreateErrorLog("", "vpn connection metadata not found for tag: ", ConnectionFromUser.ID)
+	if VpnMeta == nil {
+		CreateErrorLog("", "vpn connection metadata not found for tag: ", ConnectRequest.ID)
 		return 500, errors.New("error in router tunnel")
 	}
-	VPNC.Meta = CMETA
-	CMETA.Initialize()
-	fmt.Println("NODEID:", CMETA.NodeID)
+	VPNConnection.Meta = VpnMeta
+	VpnMeta.Initialize()
+	fmt.Println("NODEID:", VpnMeta.NodeID)
 
 	var err error
 
@@ -899,26 +899,25 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// -------------------------------------------
 	CreateLog("connect", "Connecting to router")
 
-	ConnectionFromUser.NodeID, err = primitive.ObjectIDFromHex(CMETA.NodeID)
+	ConnectRequest.NodeID, err = primitive.ObjectIDFromHex(VpnMeta.NodeID)
 	if err != nil {
 		CreateErrorLog("connect", "node id format is invalid: ", err)
 		return 400, errors.New("invalid node id")
 	}
 
 	var routerIndexForConnection int
-	if CMETA.AutomaticRouter {
+	if VpnMeta.AutomaticRouter {
 		routerIndexForConnection = GLOBAL_STATE.ActiveRouter.ListIndex
 	} else {
-		routerIndexForConnection = CMETA.RouterIndex
+		routerIndexForConnection = VpnMeta.RouterIndex
 	}
 
-	ConnectionFromUser.ProxyIndex = CMETA.ProxyIndex
-	ConnectionFromUser.Country = CMETA.Country
+	ConnectRequest.Country = VpnMeta.Country
 
 	ARS, err := REF_ConnectToRouter(
 		routerIndexForConnection,
-		CMETA.RouterProtocol,
-		CMETA.RouterPort,
+		VpnMeta.RouterProtocol,
+		VpnMeta.RouterPort,
 	)
 	if err != nil {
 		CreateErrorLog("", "Unable to open tunnel to active router: ", err)
@@ -943,20 +942,39 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 		return 500, errors.New("")
 	}
 
-	SessionFromUserBytes, err := json.Marshal(ConnectionFromUser)
+	ConnectRequestBytes, err := json.Marshal(ConnectRequest)
 	if err != nil {
 		CreateErrorLog("connect", "Unable to marshal hello response: ", err)
 		return 500, errors.New("")
 	}
 
-	fmt.Println("SEND:", string(SessionFromUserBytes))
+	fmt.Println("SEND:", string(ConnectRequestBytes))
 	// fmt.Println("NN:", len(SessionFromUserBytes))
-	_, err = EARS.Write(SessionFromUserBytes)
+	_, err = EARS.Write(ConnectRequestBytes)
 	if err != nil {
 		CreateErrorLog("connect", "unable to send session to router:", err)
 		return 500, errors.New("")
 	}
-	// fmt.Println("N:", n)
+
+	// -------------------------------------------
+	// -------------------------------------------
+	//
+	// SESSION COMES BACK FROM CONTROLLER
+	// - technically the router writes is back to us
+	// but the controller populated the data.
+	//
+	// -------------------------------------------
+	// -------------------------------------------
+	_, bytesFromController, err := EARS.Read()
+	if err != nil {
+		CreateErrorLog("connect", "unable to receive connect request from controller", err)
+		return 500, errors.New("")
+	}
+	err = json.Unmarshal(bytesFromController, ConnectRequest)
+	if err != nil {
+		CreateErrorLog("connect", "data from controller is corrupt, please contact custom support if this problem persists", err)
+		return 500, errors.New("unable to parse response from controller")
+	}
 
 	// -------------------------------------------
 	// -------------------------------------------
@@ -966,12 +984,12 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 	// -------------------------------------------
 	// -------------------------------------------
 
-	VPNC.EVPNS, err = tp.NewSocketWrapper(ARS, tp.EncType(CMETA.EncryptionProtocol))
+	VPNConnection.EVPNS, err = tp.NewSocketWrapper(ARS, tp.EncType(VpnMeta.EncryptionProtocol))
 	if err != nil {
 		CreateErrorLog("connect", "unable to create encryption seal for vpn endpoint", err)
 		return 500, errors.New("")
 	}
-	err = VPNC.EVPNS.InitHandshake()
+	err = VPNConnection.EVPNS.InitHandshake()
 	if err != nil {
 		CreateErrorLog("connect", "unable to handshake with VPN endpoint", err)
 		return 500, errors.New("")
@@ -979,7 +997,7 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 
 	// encryptedBytes := make([]byte, math.MaxUint16)
 	// decryptedBytes := make([]byte, math.MaxUint16)
-	_, responseBytes, err := VPNC.EVPNS.Read()
+	_, responseBytes, err := VPNConnection.EVPNS.Read()
 	if err != nil {
 		CreateErrorLog("connect", "unable to receive session from router:", err)
 		return 500, errors.New("")
@@ -987,75 +1005,75 @@ func REF_ConnectToAccessPoint(ConnectionFromUser *ConnectionRequest) (code int, 
 
 	fmt.Println("RSP", string(responseBytes))
 
-	VPNC.Session = new(CLIENT_SESSION)
-	err = json.Unmarshal(responseBytes, VPNC.Session)
+	VPNConnection.Session = new(CLIENT_SESSION)
+	err = json.Unmarshal(responseBytes, VPNConnection.Session)
 	if err != nil {
 		CreateErrorLog("connect", "Unable to parse response from router: ", err)
 		return 500, errors.New("")
 	}
-	VPNC.Session.Created = time.Now()
+	VPNConnection.Session.Created = time.Now()
 
-	VPNC.AddressNetIP = net.ParseIP(CMETA.IPv4Address).To4()
-	VPNC.StartPort = VPNC.Session.StartPort
-	VPNC.EndPort = VPNC.Session.EndPort
+	VPNConnection.AddressNetIP = net.ParseIP(VpnMeta.IPv4Address).To4()
+	VPNConnection.StartPort = VPNConnection.Session.StartPort
+	VPNConnection.EndPort = VPNConnection.Session.EndPort
 
 	// THIS IS THE IP USED WHEN CHANGING PACKETS
 	fmt.Println("IFIP")
-	fmt.Println(VPNC.Session.InterfaceIP)
-	fmt.Println(VPNC.AddressNetIP)
+	fmt.Println(VPNConnection.Session.InterfaceIP)
+	fmt.Println(VPNConnection.AddressNetIP)
 
-	to4 := VPNC.Session.InterfaceIP.To4()
-	VPNC.EP_VPNSrcIP[0] = to4[0]
-	VPNC.EP_VPNSrcIP[1] = to4[1]
-	VPNC.EP_VPNSrcIP[2] = to4[2]
-	VPNC.EP_VPNSrcIP[3] = to4[3]
+	to4 := VPNConnection.Session.InterfaceIP.To4()
+	VPNConnection.EP_VPNSrcIP[0] = to4[0]
+	VPNConnection.EP_VPNSrcIP[1] = to4[1]
+	VPNConnection.EP_VPNSrcIP[2] = to4[2]
+	VPNConnection.EP_VPNSrcIP[3] = to4[3]
 
-	VPNC.PingReceived = time.Now()
+	VPNConnection.PingReceived = time.Now()
 
-	VPNC.Tun, err = CB_CreateNewTunnelInterface(
-		CMETA.IFName,
-		CMETA.IPv4Address,
-		CMETA.NetMask,
-		CMETA.TxQueueLen,
-		CMETA.MTU,
-		CMETA.Persistent,
+	VPNConnection.Tun, err = CB_CreateNewTunnelInterface(
+		VpnMeta.IFName,
+		VpnMeta.IPv4Address,
+		VpnMeta.NetMask,
+		VpnMeta.TxQueueLen,
+		VpnMeta.MTU,
+		VpnMeta.Persistent,
 	)
 	if err != nil {
 		CreateErrorLog("connect", "unable to create tunnel interface", err)
 		return 500, errors.New("")
 	}
 
-	err = VPNC.BuildNATMap()
+	err = VPNConnection.BuildNATMap()
 	if err != nil {
 		CreateErrorLog("connect", "unable to build NAT map", err)
 		return 500, errors.New("")
 	}
 
-	err = VPNC.Tun.PreConnect(VPNC.Meta)
+	err = VPNConnection.Tun.PreConnect(VPNConnection.Meta)
 	if err != nil {
 		CreateErrorLog("connect", "unable to configure tunnel interface", err)
 		return 500, errors.New("")
 	}
 
-	err = VPNC.Tun.Connect(VPNC.Meta)
+	err = VPNConnection.Tun.Connect(VPNConnection.Meta)
 	if err != nil {
 		CreateErrorLog("connect", "unable to configure tunnel interface", err)
 		return 500, errors.New("")
 	}
 
 	CT_LOCK.Lock()
-	v, ok := CONNECTIONS[VPNC.Meta.Tag]
+	v, ok := CONNECTIONS[VPNConnection.Meta.Tag]
 	if ok {
 		_ = v.EVPNS.SOCKET.Close()
 		_ = v.Tun.Close()
-		delete(CONNECTIONS, VPNC.Meta.Tag)
+		delete(CONNECTIONS, VPNConnection.Meta.Tag)
 	}
-	CONNECTIONS[VPNC.Meta.Tag] = VPNC
+	CONNECTIONS[VPNConnection.Meta.Tag] = VPNConnection
 	CT_LOCK.Unlock()
 
-	VPNC.Connected = true
-	go VPNC.ReadFromLocalSocket()
-	go VPNC.ReadFromRouterSocket()
+	VPNConnection.Connected = true
+	go VPNConnection.ReadFromLocalSocket()
+	go VPNConnection.ReadFromRouterSocket()
 
 	CreateLog("connect", "Session is ready - it took ", fmt.Sprintf("%.0f", math.Abs(time.Since(start).Seconds())), " seconds to connect")
 

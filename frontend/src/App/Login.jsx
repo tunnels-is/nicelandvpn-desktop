@@ -86,7 +86,10 @@ const useForm = (props) => {
 		}
 
 		let FR = {
-			Path: "v3/user/create", Method: "POST", JSONData: inputs, Timeout: 20000
+			Path: "v3/user/create",
+			Method: "POST",
+			JSONData: inputs,
+			Timeout: 20000
 		}
 
 		props.toggleLoading({ tag: "REGISTER", show: true, msg: "Creating your account" })

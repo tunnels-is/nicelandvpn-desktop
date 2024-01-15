@@ -232,7 +232,6 @@ type VPNConnectionMETA struct {
 	NetMask        string
 	RouterProtocol string
 	RouterPort     string
-	ProxyIndex     int
 	NodeID         string
 	// Routes
 	DNS map[string]*ConnectionDNS
@@ -558,8 +557,10 @@ type ConnectionRequest struct {
 	DeviceToken string             `json:"DeviceToken"`
 
 	RouterIndex int                `json:"RouterIndex"`
-	ProxyIndex  int                `bson:"ProxyIndex"`
 	NodeID      primitive.ObjectID `json:"NodeID" bson:"NodeID"`
+
+	// is set by controller based on nodeID
+	Node *VPNNode `json:"Node"`
 
 	// QUICK CONNECT
 	Country string `json:",omitempty" bson:"Country"`

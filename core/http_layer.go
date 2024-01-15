@@ -209,10 +209,9 @@ func HTTP_ForwardToController(e echo.Context) (err error) {
 	if err != nil {
 		return e.JSON(400, err)
 	}
-	log.Println("FR:", form)
 	data, code, err := ForwardToController(form)
 	if err != nil {
-		return e.JSON(code, err)
+		return e.String(code, err.Error())
 	}
 	return e.JSON(code, data)
 }

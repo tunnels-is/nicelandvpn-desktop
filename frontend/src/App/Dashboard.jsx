@@ -1,5 +1,5 @@
 import { useNavigate, Navigate } from "react-router-dom";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
 	DesktopIcon,
@@ -11,11 +11,88 @@ import Loader from "react-spinners/ScaleLoader";
 import toast from 'react-hot-toast';
 import STORE from "../store";
 import API from "../api";
+import CustomSelect from "./Select";
+import dayjs from "dayjs";
 
 const Dashboard = (props) => {
 
-	const [filter, setFilter] = useState("");
 	const navigate = useNavigate();
+
+	const [filter, setFilter] = useState("");
+	const [queryFilter, setQueryFilter] = useState();
+	const [comparison, setComparison] = useState()
+	const [nodes, setNodes] = useState([])
+	const [timeout, setTimeout] = useState(0)
+
+	const inputKeyDown = (k) => {
+		if (k.keyCode === 13) {
+			apiSearch()
+		}
+	}
+
+	useEffect(() => {
+		const newdate = dayjs().subtract(1, 'day').unix()
+		setTimeout(newdate)
+	}, [])
+
+	const apiSearch = async () => {
+
+		let now = dayjs().unix()
+		let diff = now - timeout
+
+		console.log("SEARTCH QUERY")
+		console.log(timeout)
+		console.log(now)
+		console.log("DIFF", diff)
+		console.dir(queryFilter)
+		console.dir(comparison)
+
+		if (filter === "") {
+			props.toggleError("please enter a search term")
+			return
+		}
+		if (now - timeout < 4) {
+			props.toggleError("you can search again in " + diff + " seconds")
+			return
+		}
+
+		let FR = {
+			Path: "v3/node/search",
+			Method: "POST",
+			Timeout: 10000,
+			JSONData: [{
+				Comparison: comparison.key,
+				Key: queryFilter.key,
+				Value: filter,
+			}]
+		}
+
+		setTimeout(dayjs().unix())
+
+		props.toggleLoading({ tag: "SEARCH", show: true, msg: "searching ..." })
+
+		try {
+			let resp = await API.method("forwardToController", FR)
+			if (resp === undefined) {
+				throw "no response from api"
+			}
+
+			if (resp.status === 200) {
+				setNodes(resp.data)
+			} else if (resp.status === 204) {
+				props.toggleError("nothing found during search")
+			} else {
+				props.toggleError(resp.data)
+			}
+
+		} catch (error) {
+			console.dir(error)
+			props.toggleError("unknown error, please try again in a moment")
+		}
+
+		props.toggleLoading(undefined)
+
+	}
 
 	const updateFilter = (event) => {
 		setFilter(event.target.value)
@@ -122,62 +199,43 @@ const Dashboard = (props) => {
 
 
 
-	const RenderServer = (node, ar) => {
-		// let method = undefined
-		// if (isConnected) {
-		// 	method = undefined
-		// } else {
-		let method = ConfirmConnect
-		// }
+	const RenderNode = (node) => {
 
-		let connected = false
-		// if (props.state?.ActiveAccessPoint?._id == ap._id) {
-		// 	connected = true
-		// }
 
 		if (!node.Online) {
 			return (
-				<>
-					<div className={`server`} onClick={() => NavigateToEditAP(node._id)}>
-
-						<div className="item tag tag-offline" >{node.Tag} </div>
-						<div className="item offline-text" >
-							{`( OFFLINE )`}
-
-						</div>
-						<div className="item x3"></div>
-						{/* <div className="item x3"></div> */}
-						<div className="item x3"></div>
-						<div className="item x3"> </div>
-						<div className="item x3"></div>
-						<div className="item x3"></div>
-					</div>
-				</>
+				<div className={`node`}
+				// onClick={() => NavigateToEditAP(node._id)}
+				>
+					<div className="item tag tag-offline" >{node.Tag} </div>
+				</div >
 			)
-
 		}
 
 		let country = "icon"
 		if (node.Country !== "") {
 			country = node.Country.toLowerCase()
 		}
+		let lastOnline = dayjs(node.LastOnline)
+		let now = dayjs().unix()
+		let lastOnlineUnix = lastOnline.unix()
+		let warningClass = "green"
+		if (!node.TIME_PARSED) {
+			if (now - lastOnlineUnix > 60) {
+				warningClass = "orange"
+			} else if (now - lastOnlineUnix > 120) {
+				warningClass = "red"
+			}
+		}
+		node.TIME_PARSED = true
+
 
 
 		return (
 			<>
-				<div className={`server ${connected ? `is-connected` : ``}`} onClick={() => method(node, ar)} >
+				<div className={`node`} >
 
-					{connected &&
-						<div className="item tag"  >
-							<EnterIcon className="icon"></EnterIcon>
-							{node.Tag}
-						</div>
-					}
-					{!connected &&
-						<div className="item tag"  >
-							{node.Tag}</div>
-					}
-
+					<div className="item tag">{node.Tag}</div>
 					<div className="item country" >
 						{country !== "icon" &&
 							<>
@@ -192,10 +250,9 @@ const Dashboard = (props) => {
 							</>
 						}
 						{country === "icon" &&
-
 							<>
 								<DesktopIcon className="country-temp" height={23} width={23}></DesktopIcon>
-								<div className="text">
+								<div className="text green">
 									Private
 								</div>
 							</>
@@ -203,83 +260,79 @@ const Dashboard = (props) => {
 
 					</div>
 
-					{node.Router &&
-						<>
-							<div className="item x3">{node.Score}</div>
-							<div className="item x3">{node.AvailableSlots} / {node.Router.Slots}</div>
-							<div className="item x3">{node.AvailableMbps / 1000}</div>
-							<div className="item x3">{'??'} / {"??"}</div>
-							<div className="item x3">{'??'}</div>
-							<div className="item x3">{'??'}</div>
-						</>
-					}
+					<div className="item slots">
+						Slots <span className="green">{node.Slots}</span>
+					</div>
+					<div className="item slots">
+						Sessions <span className="green">{node.Sessions}</span>
+					</div>
+					<div className={`item time`}>
+						Ping <span className={warningClass}>{lastOnline.format('HH:mm:ss')}</span>
+					</div>
 				</div>
 			</>
 		)
 	}
 
-	let Nodes = []
-	let PrivateNodes = []
-
-	if (props?.state?.PrivateNodes) {
-
-		if (filter && filter !== "") {
-
-
-			props.state.PrivateNodes.map(r => {
-
-				let filterMatch = false
-				if (r.Tag?.toLowerCase().includes(filter)) {
-					filterMatch = true
-				}
-
-				if (filterMatch) {
-					PrivateNodes.push(r)
-				}
-
-			})
-
-		} else {
-			PrivateNodes = props.state.PrivateNodes
-		}
-
-	}
-
-	if (props?.state?.Nodes) {
-
-		if (filter && filter !== "") {
-
-			props.state.Nodes.map(r => {
-
-				let filterMatch = false
-				if (r.Tag?.toLowerCase().includes(filter)) {
-					filterMatch = true
-				} else if (r.Country?.toLowerCase().includes(filter)) {
-					filterMatch = true
-				} else if (r.CountryFull?.toLowerCase().includes(filter)) {
-					filterMatch = true
-				}
-
-				if (filterMatch) {
-					Nodes.push(r)
-				}
-
-			})
-
-		} else {
-			Nodes = props.state.Nodes
-		}
-
-	}
+	// let Nodes = []
+	// let PrivateNodes = []
+	//
+	// if (props?.state?.PrivateNodes) {
+	//
+	// 	if (filter && filter !== "") {
+	//
+	//
+	// 		props.state.PrivateNodes.map(r => {
+	//
+	// 			let filterMatch = false
+	// 			if (r.Tag?.toLowerCase().includes(filter)) {
+	// 				filterMatch = true
+	// 			}
+	//
+	// 			if (filterMatch) {
+	// 				PrivateNodes.push(r)
+	// 			}
+	//
+	// 		})
+	//
+	// 	} else {
+	// 		PrivateNodes = props.state.PrivateNodes
+	// 	}
+	//
+	// }
+	//
+	// if (props?.state?.Nodes) {
+	//
+	// 	if (filter && filter !== "") {
+	//
+	// 		props.state.Nodes.map(r => {
+	//
+	// 			let filterMatch = false
+	// 			if (r.Tag?.toLowerCase().includes(filter)) {
+	// 				filterMatch = true
+	// 			} else if (r.Country?.toLowerCase().includes(filter)) {
+	// 				filterMatch = true
+	// 			} else if (r.CountryFull?.toLowerCase().includes(filter)) {
+	// 				filterMatch = true
+	// 			}
+	//
+	// 			if (filterMatch) {
+	// 				Nodes.push(r)
+	// 			}
+	//
+	// 		})
+	//
+	// 	} else {
+	// 		Nodes = props.state.Nodes
+	// 	}
+	//
+	// }
 
 	const RenderSimpleServer = (ap) => {
 		let country = "icon"
 		if (ap.Country !== "") {
 			country = ap.Country.toLowerCase()
 		}
-
-
-
 		return (
 			// <div className={`item ${connected ? "connected" : ""}`} onClick={() => ConfirmConnect(ap, activeR)}>
 			<div className={`item`} onClick={() => ConfirmConnect(ap, activeR)}>
@@ -316,96 +369,70 @@ const Dashboard = (props) => {
 
 	let activeR = props.state?.ActiveRouter
 
-	if (!props.advancedMode) {
-		return (
-			<div className="server-wrapper">
 
-				<div className="search-wrapper">
-					<MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-					<input type="text" className="search" onChange={updateFilter} placeholder="Search .."></input>
+
+	return (
+		<div className="server-wrapper" >
+			<div className="search">
+
+				<div className="submit">
+					<MagnifyingGlassIcon
+						onClick={() => apiSearch()}
+						height={30}
+						width={30}>
+					</MagnifyingGlassIcon>
+
 				</div>
 
+				<CustomSelect
+					className={"filters"}
+					setValue={setQueryFilter}
+					defaultOption={{ key: "Tag", value: "Tag" }}
+					options={[
+						{ value: "Tag", key: "Tag" },
+						{ value: "IP", key: "IP" },
+						{ value: "Country", key: "Country" },
+						{ value: "Slots", key: "Slots" },
+						{ value: "ID", key: "ID" },
+					]}
+				></CustomSelect>
 
-				{(Nodes.length < 1 && PrivateNodes.length < 1 && filter == "") &&
+				<CustomSelect
+					className={"comparisons"}
+					setValue={setComparison}
+					defaultOption={{ key: "=", value: "=" }}
+					options={[
+						{ value: "=", key: "=" },
+						{ value: ">", key: ">" },
+						{ value: "<", key: "<" },
+					]}
+				></CustomSelect>
+
+				<input
+					something="tag, id, country, ip, mbps, slots"
+					type="text"
+					onKeyDown={(k) => inputKeyDown(k)}
+					className="input"
+					onChange={updateFilter}
+					placeholder="search ..">
+				</input>
+			</div>
+			<div className="nodes">
+				{(nodes.length > 1 && filter == "") &&
 					<Loader
 						className="spinner"
 						loading={true}
 						color={"#20C997"}
 						height={100}
 						width={50}
-					/>
-				}
+					/>}
 
-				<div className="simple-list">
-					{PrivateNodes.map((ap) => {
-						return RenderSimpleServer(ap, activeR)
-					})}
-				</div>
+				{nodes?.map((n) => {
+					return RenderNode(n)
+				})}
 
-				<div className="simple-list">
-					{Nodes.map(ap => {
-						return RenderSimpleServer(ap, activeR)
-					})}
-				</div>
-
-			</div >
-		)
-	}
-
-	return (
-		<div className="server-wrapper" >
-
-			<div className="search-wrapper">
-				<MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
-				<input type="text" className="search" onChange={updateFilter} placeholder="Search .."></input>
 			</div>
 
-			{activeR &&
-				<div className="advanced-list advanced-list-bottom-margin" >
-
-					<div className="header">
-						<div className="title tag">Tag</div>
-						<div className="title country">Location</div>
-						<div className="title x3">QoS
-							<span className="tooltiptext">{STORE.VPN_Tooltips[0]}</span>
-						</div>
-						<div className="title x3">Slots
-							<span className="tooltiptext">{STORE.VPN_Tooltips[1]}</span>
-						</div>
-						<div className="title x3">Gbps
-							<span className="tooltiptext">{STORE.VPN_Tooltips[5]}</span>
-						</div>
-						<div className="title x3">AB %
-							<span className="tooltiptext">{STORE.VPN_Tooltips[2]}</span>
-						</div>
-						<div className="title x3">CPU %
-							<span className="tooltiptext">{STORE.VPN_Tooltips[3]}</span>
-						</div>
-						<div className="title x3">RAM %
-							<span className="tooltiptext">{STORE.VPN_Tooltips[4]}</span>
-						</div>
-					</div>
-
-					{(Nodes.length < 1 && PrivateNodes.length < 1 && filter == "") &&
-						<Loader
-							className="spinner"
-							loading={true}
-							color={"#20C997"}
-							height={100}
-							width={50}
-						/>
-					}
-
-					{PrivateNodes.map(ap => {
-						return RenderServer(ap, activeR)
-					})}
-
-					{Nodes.map(ap => {
-						return RenderServer(ap, activeR)
-					})}
-
-				</div>
-			}
 
 		</div >
 	);

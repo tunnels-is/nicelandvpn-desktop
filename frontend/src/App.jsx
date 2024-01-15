@@ -59,12 +59,17 @@ const LaunchApp = () => {
 	}
 
 	const ToggleLoading = (object) => {
+		if (object === undefined) {
+			setLoading(undefined)
+			return
+		}
 		if (object?.show) {
 			setLoading(object)
+			return
 		} else {
 			const to = setTimeout(() => {
 				setLoading(undefined)
-			}, 4000)
+			}, 5000)
 			return () => {
 				clearTimeout(to)
 			}
@@ -171,6 +176,8 @@ const LaunchApp = () => {
 		}
 
 	}, [state]);
+	//
+	// {loading && <ScreenLoader loading={loading} toggleError={ToggleError}></ScreenLoader>}
 
 	return (< HashRouter>
 		<>

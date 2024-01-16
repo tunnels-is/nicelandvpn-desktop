@@ -2,9 +2,13 @@ import { useNavigate, Navigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 
 import {
+	ChevronDownIcon,
+	ChevronUpIcon,
 	DesktopIcon,
 	EnterIcon,
-	MagnifyingGlassIcon
+	MagnifyingGlassIcon,
+	TextAlignBottomIcon,
+	TextAlignTopIcon
 } from "@radix-ui/react-icons";
 
 import Loader from "react-spinners/ScaleLoader";
@@ -23,6 +27,30 @@ const Dashboard = (props) => {
 	const [comparison, setComparison] = useState()
 	const [nodes, setNodes] = useState([])
 	const [timeout, setTimeout] = useState(0)
+	const [openNodes, setOpenNodes] = useState(new Map())
+
+	const toggleNode = (id) => {
+		let e = openNodes
+		let isOpen = e.get(id)
+		if (!isOpen) {
+			e.set(id, true)
+		} else {
+			e.set(id, false)
+		}
+		setOpenNodes(new Map(e))
+	}
+
+	const openNode = (id) => {
+		let e = openNodes
+		e.set(id, true)
+		setOpenNodes(new Map(e))
+	}
+
+	const closeNode = (id) => {
+		let e = openNodes
+		e.set(id, false)
+		setOpenNodes(new Map(e))
+	}
 
 	const inputKeyDown = (k) => {
 		if (k.keyCode === 13) {
@@ -230,10 +258,25 @@ const Dashboard = (props) => {
 		node.TIME_PARSED = true
 
 
-
 		return (
 			<>
 				<div className={`node`} >
+					<div className="item icon" onClick={() => toggleNode(node._id)} >
+						{!openNodes.get(node._id) &&
+							<ChevronDownIcon
+								className="green"
+								height={30}
+								width={30}>
+							</ChevronDownIcon>
+						}
+						{openNodes.get(node._id) &&
+							<ChevronUpIcon
+								className="orange"
+								height={30}
+								width={30}>
+							</ChevronUpIcon>
+						}
+					</div>
 
 					<div className="item tag">{node.Tag}</div>
 					<div className="item country" >
@@ -261,14 +304,33 @@ const Dashboard = (props) => {
 					</div>
 
 					<div className="item slots">
-						Slots <span className="green">{node.Slots}</span>
+						Slots
+						<span className="green">{node.Slots}</span>
 					</div>
+
 					<div className="item slots">
-						Sessions <span className="green">{node.Sessions}</span>
+						Sessions
+						<span className="green">{node.Sessions} </span>
 					</div>
+
 					<div className={`item time`}>
-						Ping <span className={warningClass}>{lastOnline.format('HH:mm:ss')}</span>
+						Ping
+						<span className={warningClass}>{lastOnline.format('HH:mm:ss')} </span>
 					</div>
+
+				</div>
+
+				<div className={`node-details ${openNodes.get(node._id) ? "open-details" : "closed-details"}`}>
+					{Object.keys(node).map((k) => {
+						if (node[k] && typeof node[k] !== "object" && typeof node[k] !== "array") {
+							return (
+								<div className="item">
+									<div className="key">{k}</div>
+									<div className="value">{String(STORE.formatNodeKey(k, node[k]))}</div>
+								</div>
+							)
+						}
+					})}
 				</div>
 			</>
 		)
@@ -377,6 +439,7 @@ const Dashboard = (props) => {
 
 				<div className="submit">
 					<MagnifyingGlassIcon
+						className="search-icon"
 						onClick={() => apiSearch()}
 						height={30}
 						width={30}>

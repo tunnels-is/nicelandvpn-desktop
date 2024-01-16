@@ -160,7 +160,8 @@ body::-webkit-scrollbar {
 	padding-right: 10px;
 	padding-bottom: 200px;
 	background-color: $menu-background;
-	-webkit-box-shadow: -8px 1px 5px 4px rgba(0, 0, 0, 0.9);
+	border-left: 7px solid black !important;
+
 
 	.back {
 		cursor: pointer;
@@ -1011,6 +1012,7 @@ button {
 
 		.filters {
 			width: 130px !important;
+			margin-left: 10px;
 
 			.default {
 				padding-top: 1px;
@@ -1019,13 +1021,19 @@ button {
 
 		}
 
+		.search-icon {
+			cursor: pointer;
+		}
+
 		.custom-select {
+			width: fit-content !important;
+
 			.default {
 				color: $c-teal;
 			}
 
 			.options {
-				background: none !important;
+				// background: none !important;
 			}
 		}
 
@@ -1054,14 +1062,55 @@ button {
 		margin-top: 5px;
 		justify-content: center;
 
+		.closed-details {
+			display: none !important
+		}
+
+		.open-details {
+			display: flex;
+			flex-direction: row;
+		}
+
+		.node-details {
+			width: 100%;
+			background-color: $main-bg-color;
+			display: flex;
+			flex-direction: row;
+			height: fit-content;
+			flex-wrap: wrap;
+			font-size: 12px;
+			padding-bottom: 5px;
+			padding-top: 5px;
+
+			.item {
+				width: fit-content;
+				display: flex;
+				padding: 5px;
+				padding-bottom: 0px;
+				padding-top: 0px;
+
+				.key {
+					color: white;
+					margin-right: 5px;
+				}
+
+				.value {
+					color: $c-teal;
+				}
+			}
+
+		}
+
 		.node {
 			display: flex;
+			flex-direction: row;
 			justify-content: left;
 			height: 50px;
 			max-height: 50px;
-			// background: gray;
 			border-bottom: 1px solid #303030;
 			font-size: 20px;
+			cursor: pointer;
+
 
 			.green {
 				color: $c-teal;
@@ -1078,9 +1127,17 @@ button {
 			.item {
 				padding: 10px;
 				height: inherit;
+
+				span {
+					margin-left: 4px;
+				}
 			}
 
 			.country {
+				.country-temp {
+					margin-top: 2px;
+				}
+
 				display: flex;
 				flex-direction: row;
 
@@ -1090,6 +1147,94 @@ button {
 			}
 		}
 	}
+}
+
+.router-wrapper-new {
+	height: 100%;
+
+	.routers {
+		padding-left: 5px;
+		display: flex;
+		flex-direction: column;
+		margin-top: 5px;
+		justify-content: center;
+
+		.active-bg {
+			background-color: #45ff8a0a !important;
+		}
+
+		.router {
+			display: flex;
+			flex-direction: row;
+			justify-content: left;
+			height: 50px;
+			max-height: 50px;
+			border-bottom: 1px solid #303030;
+			font-size: 20px;
+			cursor: pointer;
+
+			.icon {
+				padding: 6px !important;
+			}
+
+			.active-icon {
+				color: $c-teal;
+				margin-right: -10px;
+				margin-top: 3px;
+				// padding-top: 5px;
+			}
+
+
+			.green {
+				color: $c-teal;
+			}
+
+			.orange {
+				color: $c-orange;
+			}
+
+			.index {
+				text-align: center !important;
+			}
+
+			.red {
+				color: $error-color;
+			}
+
+			.item {
+				padding: 10px;
+				height: inherit;
+
+				span {
+					margin-left: 4px;
+				}
+			}
+
+			.country {
+
+				.country-flag {
+					height: 25px;
+					width: 30px;
+					margin-top: 2px;
+					// padding: 6px !important;
+					// padding-right: 0px;
+				}
+
+				.country-temp {
+					margin-top: 2px;
+				}
+
+				display: flex;
+				flex-direction: row;
+
+				.text {
+					margin-left: 7px;
+				}
+			}
+		}
+	}
+
+
 }
 
 .router-wrapper {
@@ -2745,12 +2890,14 @@ button {
 			}
 
 			.close {
-				color: red;
+				// color: red;
+				// color: $c-teal;
+				color: $c-orange;
 			}
 
 			.edit {
 				// background: orange;
-				color: orange;
+				color: $c-teal;
 			}
 
 			.save {

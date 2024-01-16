@@ -86,6 +86,30 @@ var STORE = {
 		return STORE.Config.AdvancedMode
 
 	},
+	formatNodeKey(key, value) {
+		switch (key) {
+			case "Country":
+				if (value === "" || value === "icon") {
+					return "unknown"
+				} else {
+					return value
+				}
+			case "APIKey":
+				return "****************************"
+			case "LastOnline":
+				return dayjs(value).format('HH:mm:ss')
+			case "Updated":
+				return dayjs(value).format('DD/MM/YYYY HH:mm:ss')
+			case "Status":
+				if (value === 0) {
+					return "offline"
+				} else {
+					return "online"
+				}
+			default:
+				return value
+		}
+	},
 	Cache: {
 		MEMORY: {
 			FetchingState: false,

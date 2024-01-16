@@ -44,9 +44,6 @@ const Routers = (props) => {
 				if (r.Tag.includes(filter)) {
 					filterMatch = true
 				}
-				if (r.Country.includes(filter)) {
-					filterMatch = true
-				}
 
 				if (filterMatch) {
 					routers.push(r)
@@ -63,80 +60,49 @@ const Routers = (props) => {
 
 	const RenderServer = (s, active) => {
 
-		let country = "icon"
-		if (s.Country !== "") {
-			country = s.Country.toLowerCase()
-		}
 
 		return (
-			<div className={`router ${active ? "active-bg" : ""}`} key={s.Tag} onClick={() => switchRouter(s)}>
-				<div className="item index">
-					<span className="green">{s.ListIndex}</span>
-				</div>
-
-				{active &&
-					<div className="item active-icon">
-						<EnterIcon
-							height={23}
-							width={23}
-							className="">
-						</EnterIcon>
-					</div>
-				}
-
+			<div className="server" key={s.Tag} onClick={() => switchRouter(s)}>
+				{/* <div className="connect"></div> */}
 				{s.Tag &&
-					<div className="item tag">
+					<div className="item ip">
+						{active &&
+
+							<EnterIcon className="icon"></EnterIcon>
+						}
 						{s.Tag}
 					</div>
 				}
-
 				{!s.Tag &&
 					<div className="item ip">Unknown</div>
 				}
+				{s.Country !== "" &&
+					<div className="item country-item x3">
+						<img
+							className="flag"
+							src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + s.Country.toLowerCase() + ".svg"}
+						// src={"/src/assets/images/flag/" + s.Country.toLowerCase() + ".svg"}
+						/>
+						<span className="name">
+							{s.Country}
+						</span>
+					</div>
+				}
+				{s.Country === "" &&
+					<div className="item country-item x3">
+						<span className="name">
+							...
+						</span>
+					</div>
 
-				<div className="item country" >
-					{country !== "icon" &&
-						<>
-							<img
-								className="country-flag"
-								src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country + ".svg"}
-							/>
-							<div className="text">
-								{country.toUpperCase()}
-							</div>
-						</>
-					}
-					{country === "icon" &&
-						<>
-							<DesktopIcon className="country-temp" height={23} width={23}></DesktopIcon>
-							<div className="text green">
-								Private
-							</div>
-						</>
-					}
-
-				</div>
-
-				<div className="item slots">
-					Slots
-					<span className="green">{s.Slots}</span>
-				</div>
-				<div className="item ">
-					Score
-					<span className="green">{s.Score}</span>
-				</div>
-				<div className="item ">
-					MS
-					<span className="green">{s.MS}</span>
-				</div>
-				<div className="item ">
-					UserMbps
-					<span className="green">{s.AvailableUserMbps}</span>
-				</div>
-				<div className="item ">
-					Mbps
-					<span className="green">{s.AvailableMbps}</span>
-				</div>
+				}
+				<div className="item x3">{s.Score}</div>
+				<div className="item x3">{s.MS === 999 ? "?" : s.MS}</div>
+				<div className="item x3">{(s.AvailableSlots)}</div>
+				<div className="item x3">{s.AvailableMbps / 1000} </div>
+				<div className="item x3">{s.CPUP}</div>
+				<div className="item x3">{s.RAMUsage}</div>
+				<div className="item x3">{s.DiskUsage}</div>
 			</div>
 		)
 	}
@@ -144,7 +110,7 @@ const Routers = (props) => {
 	let AR = props.state?.ActiveRouter
 
 	return (
-		<div className="router-wrapper-new"  >
+		<div className="router-wrapper"  >
 
 			<div className="search-wrapper">
 				<MagnifyingGlassIcon height={40} width={40} className="icon"></MagnifyingGlassIcon>
@@ -156,7 +122,35 @@ const Routers = (props) => {
 					onClick={() => switchRouter({ Tag: "" })} >Switch Back To Automatic Router Selection</div>
 			}
 
-			<div className="routers">
+			<div className="router-list">
+
+				<div className="header">
+					<div className="title ip">Tag
+					</div>
+					<div className="title x3">Country</div>
+					<div className="title x3">QoS
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[0]}</span>
+					</div>
+					<div className="title x3">MS
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[1]}</span>
+					</div>
+					<div className="title x3">Slots
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[2]}</span>
+					</div>
+					<div className="title x3">Gbps
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[3]}</span>
+					</div>
+					<div className="title x3">CPU %
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[4]}</span>
+					</div>
+					<div className="title x3">RAM %
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[5]}</span>
+					</div>
+					<div className="title x3">DISK %
+						<span className="tooltiptext">{STORE.ROUTER_Tooltips[6]}</span>
+					</div>
+				</div>
+
 
 				{routers.map(r => {
 					if (AR) {

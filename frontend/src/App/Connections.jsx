@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 
 import Loader from "react-spinners/ScaleLoader";
 import STORE from "../store";
-import { CheckIcon, ExitIcon, EyeOpenIcon, FileTextIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, ExitIcon, EyeOpenIcon, FileTextIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import API from "../api";
 
 import Editor, { useMonaco } from '@monaco-editor/react';
@@ -22,9 +22,6 @@ const Connections = (props) => {
 		},
 	};
 
-	// const updateJSON = (e) => {
-	// 	setChanged(changed + 1)
-	// }
 
 	const [filter, setFilter] = useState("");
 	const [connections, setConnections] = useState([])
@@ -37,6 +34,7 @@ const Connections = (props) => {
 		e.set(id, true)
 		setOpenEditors(new Map(e))
 	}
+
 	const closeEditor = (id) => {
 		let e = openEditors
 		e.set(id, false)
@@ -637,13 +635,13 @@ const Connections = (props) => {
 					{openEditors.get(c._id) &&
 						<div className="close button" onClick={() =>
 							closeEditor(c._id)}>
-							<ExitIcon height={30} width={30}></ExitIcon>
+							<ChevronUpIcon height={30} width={30}></ChevronUpIcon>
 						</div>
 					}
 					{!openEditors.get(c._id) &&
 						<div className="edit button" onClick={() =>
 							openEditor(c._id)}>
-							<FileTextIcon height={30} width={30}></FileTextIcon>
+							<ChevronDownIcon height={30} width={30}></ChevronDownIcon>
 						</div>
 					}
 

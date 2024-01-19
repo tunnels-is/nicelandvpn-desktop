@@ -77,7 +77,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 			_ = V.EVPNS.SOCKET.Close()
 			return
 		}
-		fmt.Println("OUT", writtenBytes)
+		// fmt.Println("OUT", writtenBytes)
 		V.EgressBytes += writtenBytes
 		// end := time.Since(start).Microseconds()
 		// fmt.Println("OUT:", end)
@@ -103,7 +103,7 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 
 		receivedBytes, packet, readErr = V.EVPNS.Read()
 		if readErr != nil {
-			CreateErrorLog("", "")
+			CreateErrorLog("", "error reading from node socket", readErr, receivedBytes, packet)
 			return
 		}
 		// fmt.Println("IN:", packet)
@@ -126,6 +126,6 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 			CreateErrorLog("", "Send: ", writeErr)
 			return
 		}
-		fmt.Println("IN", receivedBytes)
+		// fmt.Println("IN", receivedBytes)
 	}
 }

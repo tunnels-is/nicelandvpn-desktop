@@ -976,6 +976,12 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 		return 500, errors.New("unable to parse response from controller")
 	}
 
+	if ConnectRequest.ErrorCode != 0 {
+		fmt.Println("RESPONSE:", ConnectRequest)
+		CreateErrorLog("connect", "error message from controller:", ConnectRequest.Error, ConnectRequest.ErrorCode)
+		return 500, errors.New(ConnectRequest.Error)
+	}
+
 	// -------------------------------------------
 	// -------------------------------------------
 	//
@@ -1008,8 +1014,8 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 	VPNConnection.Session = new(CLIENT_SESSION)
 	err = json.Unmarshal(responseBytes, VPNConnection.Session)
 	if err != nil {
-		CreateErrorLog("connect", "Unable to parse response from router: ", err)
-		return 500, errors.New("")
+		CreateErrorLog("connect", "controller sent a non-json response", err)
+		return 500, errors.New(string(responseBytes))
 	}
 	VPNConnection.Session.Created = time.Now()
 

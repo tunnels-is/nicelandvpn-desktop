@@ -564,6 +564,9 @@ type ConnectionRequest struct {
 
 	// QUICK CONNECT
 	Country string `json:",omitempty" bson:"Country"`
+
+	Error     string `json:"Error" bson:"-"`
+	ErrorCode int    `json:"ErrorCode" bson:"-"`
 }
 
 // type CONTROLLER_SESSION_REQUEST struct {

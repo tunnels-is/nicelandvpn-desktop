@@ -270,7 +270,9 @@ func (V *VPNConnection) ProcessEgressDNSQuery(UDPData []byte) (DNSResponse []byt
 		if x.Question[i].Qtype == dns.TypeA {
 			domain := x.Question[i].Name[0 : len(x.Question[i].Name)-1]
 
-			_, ok := GLOBAL_BLOCK_LIST[domain]
+			DNSBlockLock.Lock()
+			_, ok := DNSBlockList[domain]
+			DNSBlockLock.Unlock()
 			// CreateLog("", "DNS Q: ", domain, len(GLOBAL_BLOCK_LIST), ok)
 			if ok {
 

@@ -5,10 +5,7 @@ import {
 	ChevronDownIcon,
 	ChevronUpIcon,
 	DesktopIcon,
-	EnterIcon,
 	MagnifyingGlassIcon,
-	TextAlignBottomIcon,
-	TextAlignTopIcon
 } from "@radix-ui/react-icons";
 
 import Loader from "react-spinners/ScaleLoader";
@@ -39,18 +36,18 @@ const Dashboard = (props) => {
 		}
 		setOpenNodes(new Map(e))
 	}
-
-	const openNode = (id) => {
-		let e = openNodes
-		e.set(id, true)
-		setOpenNodes(new Map(e))
-	}
-
-	const closeNode = (id) => {
-		let e = openNodes
-		e.set(id, false)
-		setOpenNodes(new Map(e))
-	}
+	//
+	// const openNode = (id) => {
+	// 	let e = openNodes
+	// 	e.set(id, true)
+	// 	setOpenNodes(new Map(e))
+	// }
+	//
+	// const closeNode = (id) => {
+	// 	let e = openNodes
+	// 	e.set(id, false)
+	// 	setOpenNodes(new Map(e))
+	// }
 
 	const inputKeyDown = (k) => {
 		if (k.keyCode === 13) {
@@ -390,14 +387,14 @@ const Dashboard = (props) => {
 	//
 	// }
 
-	const RenderSimpleServer = (ap) => {
+	const RenderCountry = (c) => {
+		console.log("COUNTRY")
 		let country = "icon"
-		if (ap.Country !== "") {
-			country = ap.Country.toLowerCase()
+		if (c !== "") {
+			country = c.toLowerCase()
 		}
 		return (
-			// <div className={`item ${connected ? "connected" : ""}`} onClick={() => ConfirmConnect(ap, activeR)}>
-			<div className={`item`} onClick={() => ConfirmConnect(ap, activeR)}>
+			<div className={`country`} onClick={() => ConfirmConnect()}>
 
 				{country !== "icon" &&
 					<>
@@ -414,23 +411,9 @@ const Dashboard = (props) => {
 					</div>
 				}
 
-				<div className="info">
-					<div className="tag">
-						{ap.Tag}
-					</div>
-					{ap.Online &&
-						<div className="score">Quality Score: {'99'}</div>
-					}
-					{!ap.Online &&
-						<div className="score offline">OFFLINE</div>
-					}
-				</div>
 
 			</div>)
 	}
-
-	let activeR = props.state?.ActiveRouter
-
 
 
 	return (
@@ -480,21 +463,44 @@ const Dashboard = (props) => {
 					placeholder="search ..">
 				</input>
 			</div>
-			<div className="nodes">
-				{(nodes.length > 1 && filter == "") &&
-					<Loader
-						className="spinner"
-						loading={true}
-						color={"#20C997"}
-						height={100}
-						width={50}
-					/>}
 
-				{nodes?.map((n) => {
-					return RenderNode(n)
-				})}
+			{!props.advancedMode &&
+				<div className="countries">
+					{(nodes.length > 1 && filter == "") &&
+						<Loader
+							className="spinner"
+							loading={true}
+							color={"#20C997"}
+							height={100}
+							width={50}
+						/>}
 
-			</div>
+
+					{props.state?.AvailableCountries?.map((n) => {
+						return RenderCountry(n)
+					})}
+
+				</div>
+			}
+
+			{props.advancedMode &&
+				<div className="nodes">
+					{(nodes.length > 1 && filter == "") &&
+						<Loader
+							className="spinner"
+							loading={true}
+							color={"#20C997"}
+							height={100}
+							width={50}
+						/>}
+
+
+					{nodes?.map((n) => {
+						return RenderNode(n)
+					})}
+
+				</div>
+			}
 
 
 		</div >

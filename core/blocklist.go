@@ -13,8 +13,6 @@ import (
 var BlockLists embed.FS
 
 func LoadBlockLists() {
-	GLOBAL_BLOCK_LIST = make(map[string]bool, 0)
-
 	x, err := BlockLists.ReadDir("blocklists")
 	if err != nil {
 		CreateErrorLog("", "Unable to read blocklist directory: ", err)
@@ -54,8 +52,6 @@ func LoadBlockLists() {
 	}
 
 	BuildDomainBlocklist()
-
-	return
 }
 
 func LoadFileIntoMap(path string) (list map[string]bool, err error) {
@@ -104,13 +100,11 @@ func LoadFileIntoMap(path string) (list map[string]bool, err error) {
 }
 
 func BuildDomainBlocklist() {
-
 	tempBlockList := make(map[string]bool, 0)
 
 	for i := range GLOBAL_STATE.BLists {
 		if GLOBAL_STATE.BLists[i].Enabled {
 			list, err := LoadFileIntoMap("blocklists/" + GLOBAL_STATE.BLists[i].FullPath)
-
 			if err != nil {
 				CreateErrorLog("", "Error parsing blocklist: ", err)
 				return
@@ -123,8 +117,9 @@ func BuildDomainBlocklist() {
 		}
 	}
 
-	GLOBAL_BLOCK_LIST = make(map[string]bool, 0)
-	GLOBAL_BLOCK_LIST = tempBlockList
+	DNSBlockLock.Lock()
+	DNSBlockList = tempBlockList
+	DNSBlockLock.Unlock()
 
 	runtime.GC()
 	CreateLog("", "New domain blocklist has been created using ", len(tempBlockList), " domains")

@@ -154,6 +154,7 @@ func StartLogQueueProcessor(MONITOR chan int) {
 			if L.LOGS[i] == "" {
 				L.LOGS[i] = logItem.Line
 				assigned = true
+				break
 			}
 		}
 

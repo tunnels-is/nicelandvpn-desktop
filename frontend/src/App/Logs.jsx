@@ -2,28 +2,34 @@ import React, { useEffect, useState } from "react";
 
 // import { GetLogs } from "../../wailsjs/go/main/Service";
 import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import API from "../api";
 
 const Logs = (props) => {
 
 	const [filter, setFilter] = useState("");
 	const [data, setData] = useState({})
 	const [timer, setTimer] = useState(1)
-	const [logCount, setlogCount] = useState(0)
-	const [timeoutMS, setTimeoutMS] = useState(500)
+	const [timeoutMS, setTimeoutMS] = useState(2000)
 
 	useEffect(() => {
 
 		const to = setTimeout(async () => {
 
-			await GetLogs(logCount, filter).then((x) => {
-				if (x.Data) {
-					setData(x.Data)
-					setlogCount(x.Data.Content.length)
-				}
+			let resp = await API.method("getLogs", {})
+			if (resp === undefined) {
 
-			}).catch((e) => {
-				console.dir(e)
-			})
+			} else {
+				setData(resp.data)
+			}
+			// await GetLogs(logCount, filter).then((x) => {
+			// 	if (x.Data) {
+			// 		setData(x.Data)
+			// 		setlogCount(x.Data.Content.length)
+			// 	}
+			//
+			// }).catch((e) => {
+			// 	console.dir(e)
+			// })
 
 			let t = timer + 1
 			if (t > 10000) {
@@ -41,16 +47,15 @@ const Logs = (props) => {
 	let logLines = []
 	if (filter !== "") {
 
-		data.Content.forEach((line) => {
-			let lowerLine = line.toLowerCase()
-			if (lowerLine.includes(filter)) {
+		data.forEach((line) => {
+			if (line.includes(filter)) {
 				logLines.push(line)
 			}
 		});
 
 	} else {
-		if (data.Content) {
-			logLines = data.Content
+		if (data.length > 0) {
+			logLines = data
 		}
 	}
 
@@ -65,14 +70,10 @@ const Logs = (props) => {
 
 			<div className="logs-window custom-scrollbar">
 
-				{logLines.map((content, index) => {
+				{logLines.map((line, index) => {
 					return (
 						<div className="line">
-							<label className="time">{data.Time[index]}</label>
-							{" || "}
-							<label className="orange">{data.Function[index]}</label>
-							{" || "}
-							<label className={"" + data.Color[index]}>{content}</label>
+							<label className={""}>{line}</label>
 						</div >
 					)
 				})}

@@ -4,6 +4,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/rand"
+	"errors"
 	"math/big"
 	"net"
 	"os"
@@ -68,7 +69,10 @@ var (
 
 var DNSWhitelist = make(map[string]bool)
 
-var GLOBAL_BLOCK_LIST = make(map[string]bool)
+var (
+	DNSBlockList = make(map[string]bool)
+	DNSBlockLock = sync.Mutex{}
+)
 
 type IP struct {
 	LOCAL  map[uint16]*RemotePort
@@ -93,7 +97,7 @@ var (
 type LoggerInterface struct{}
 
 type Logs struct {
-	LOGS [2000]string
+	LOGS [1000]string
 }
 
 type LogItem struct {
@@ -183,10 +187,37 @@ type CONFIG_FORM struct {
 	LogBlockedDomains         bool     `json:"LogBlockedDomains"`
 }
 
-var (
-	CT_LOCK     = sync.Mutex{}
-	CONNECTIONS = make(map[string]*VPNConnection, 100)
-)
+type X [1000]*VPNConnection
+
+var CONNECTIONS X
+
+func (c *X) AddConnection(C *VPNConnection) (assigned bool) {
+	for i := range c {
+		if c[i] == nil {
+			c[i] = C
+			return true
+		}
+	}
+	return false
+}
+
+func (c *X) RemoveConnection(Tag string) {
+	for i := range c {
+		if c[i] == nil {
+			continue
+		}
+		if c[i].Meta.Tag == Tag {
+			if c[i].EVPNS.SOCKET != nil {
+				_ = c[i].EVPNS.SOCKET.Close()
+			}
+			if c[i].Tun != nil {
+				_ = c[i].Tun.Close()
+			}
+			CONNECTIONS[i] = nil
+			return
+		}
+	}
+}
 
 type ConnectionNetwork struct {
 	Tag     string `json:"Tag" bson:"Tag"`
@@ -252,6 +283,13 @@ func (m *VPNConnectionMETA) Initialize() {
 	m.DNS1Bytes = [4]byte(m.DNS1IP)
 	m.DNS2IP = net.ParseIP(m.DNS2).To4()
 	m.DNS2Bytes = [4]byte(m.DNS2IP)
+}
+
+func (v *VPNConnection) Ping() (err error) {
+	if v.EVPNS == nil {
+		return errors.New("encrypted socket object missing")
+	}
+	_, err = v.EVPNS.Write([]byte{CODE_pingPong, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	return
 }
 

@@ -816,38 +816,15 @@ func HTTPS_GetLogs(e echo.Context) (err error) {
 		}
 	}
 
-	R := &GeneralLogResponse{
-		Content: make([]string, 0),
-		Time:    make([]string, 0),
-		Color:   make([]string, 0),
-	}
-
+	lines := make([]string, 0)
 	for i := len(L.LOGS) - 1; i >= 0; i-- {
 		if L.LOGS[i] == "" {
 			continue
 		}
-
-		if strings.Contains(L.LOGS[i], "ERR") {
-			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.LOGS[i], "ERROR") {
-			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.LOGS[i], "err") {
-			R.Color = append(R.Color, "error")
-		} else if strings.Contains(L.LOGS[i], "error") {
-			R.Color = append(R.Color, "error")
-		} else {
-			R.Color = append(R.Color, "")
-		}
-
-		splitLine := strings.Split(L.LOGS[i], " || ")
-
-		R.Content = append(R.Content, strings.Join(splitLine[2:], " "))
-		R.Time = append(R.Time, splitLine[0])
-		R.Function = append(R.Function, splitLine[1])
-
+		lines = append(lines, L.LOGS[i])
 	}
 
-	return e.JSON(200, R)
+	return e.JSON(200, lines)
 }
 
 func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm error) {
@@ -1067,15 +1044,8 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 		return 500, errors.New("")
 	}
 
-	CT_LOCK.Lock()
-	v, ok := CONNECTIONS[VPNConnection.Meta.Tag]
-	if ok {
-		_ = v.EVPNS.SOCKET.Close()
-		_ = v.Tun.Close()
-		delete(CONNECTIONS, VPNConnection.Meta.Tag)
-	}
-	CONNECTIONS[VPNConnection.Meta.Tag] = VPNConnection
-	CT_LOCK.Unlock()
+	CONNECTIONS.RemoveConnection(VPNConnection.Meta.Tag)
+	CONNECTIONS.AddConnection(VPNConnection)
 
 	VPNConnection.Connected = true
 	go VPNConnection.ReadFromLocalSocket()

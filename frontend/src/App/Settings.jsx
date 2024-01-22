@@ -5,8 +5,6 @@ import { v4 as uuidv4 } from 'uuid';
 import dayjs from "dayjs";
 import { DesktopIcon, FileTextIcon, LockClosedIcon, Pencil2Icon, PersonIcon } from '@radix-ui/react-icons'
 
-// import { ForwardToController, ResetEverything, SetConfig, OpenFileDialogForRouterFile, EnableBlocklist, DisableBlocklist, RebuildDomainBlocklist, EnableAllBlocklists, DisableAllBlocklists, BlockedDomainLogging } from "../../wailsjs/go/main/Service";
-// import { CloseApp, OpenURL } from "../../wailsjs/go/main/App";
 
 import STORE from "../store";
 import API from "../api";
@@ -199,8 +197,7 @@ const useForm = (props) => {
 
 		props.toggleLoading({ logTag: "loader", tag: "CONFIG", show: true, msg: "Updating configurations", includeLogs: false })
 
-		let config = STORE.Cache.GetObject("config")
-		let newConfig = { ...config }
+		let newConfig = { ...props?.state?.C }
 
 		newConfig.DNS1 = inputs["DNS"].DNS1
 		newConfig.DNS2 = inputs["DNS"].DNS2
@@ -212,19 +209,29 @@ const useForm = (props) => {
 		newConfig.CloseConnectionsOnConnect = inputs["CC"].CC
 		newConfig.CustomDNS = inputs["DT"].DT
 
-		SetConfig(newConfig).then((x) => {
-			console.dir(x)
-			if (x.Err) {
-				props.toggleError(x.Err)
-			} else {
-				STORE.Cache.SetObject("config", newConfig)
-				props.showSuccessToast("Config saved", undefined)
-				STORE.Cache.Set("aps-timeout", dayjs().subtract(120, "s").unix())
-			}
-		}).catch((e) => {
-			console.dir(e)
+		let resp = API.method("setConfig", newConfig)
+		if (resp === undefined) {
 			props.toggleError("Unknown error, please try again in a moment")
-		})
+		} else {
+			STORE.Cache.SetObject("config", newConfig)
+			props.showSuccessToast("Config saved", undefined)
+			STORE.Cache.Set("aps-timeout", dayjs().subtract(120, "s").unix())
+
+		}
+
+		// SetConfig(newConfig).then((x) => {
+		// 	console.dir(x)
+		// 	if (x.Err) {
+		// 		props.toggleError(x.Err)
+		// 	} else {
+		// 		STORE.Cache.SetObject("config", newConfig)
+		// 		props.showSuccessToast("Config saved", undefined)
+		// 		STORE.Cache.Set("aps-timeout", dayjs().subtract(120, "s").unix())
+		// 	}
+		// }).catch((e) => {
+		// 	console.dir(e)
+		// 	props.toggleError("Unknown error, please try again in a moment")
+		// })
 
 		props.toggleLoading(undefined)
 	}

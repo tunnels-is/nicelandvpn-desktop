@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/binary"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -39,8 +40,7 @@ type O3 struct {
 type M struct {
 	LOCAL  map[[2]byte]*RP
 	REMOTE map[[2]byte]*RP
-	// X []*RemotePort
-	Lock sync.Mutex
+	Lock   sync.Mutex
 }
 
 type RP struct {
@@ -141,19 +141,38 @@ func CleanPorts(MONITOR chan int) {
 		time.Sleep(10 * time.Second)
 		MONITOR <- 6
 	}()
-
-	// GLOBAL_EventQueue <- func() {
 	defer RecoverAndLogToFile()
-	// CleanPortMap(&TCP_o0, "tcp")
-	// CleanPortMap(&UDP_o0, "udp")
-	// }
 
-	// CleanPortMap(&TCP_o0, "tcp")
-	// CleanPortMap(&UDP_o0, "udp")
+	sync := sync.WaitGroup{}
+	for i := range CONNECTIONS {
+		if CONNECTIONS[i] == nil {
+			continue
+		}
+
+		sync.Add(1)
+		go func(index int) {
+			defer sync.Done()
+			defer RecoverAndLogToFile()
+			CONNECTIONS[index].CleanPortMap("tcp")
+			CONNECTIONS[index].CleanPortMap("udp")
+		}(i)
+	}
+
+	sync.Wait()
 }
 
-func (V *VPNConnection) CleanPortMap(protoMap *[256]*O1, mapType string) {
-	// start := time.Now()
+func (V *VPNConnection) CleanPortMap(mapType string) {
+	defer RecoverAndLogToFile()
+	start := time.Now()
+	var protoMap *[256]*O1
+	if mapType == "udp" {
+		protoMap = &V.UDP_MAP
+	} else if mapType == "tcp" {
+		protoMap = &V.TCP_MAP
+	} else {
+		CreateErrorLog("", "invalid map type", mapType)
+		return
+	}
 
 	var count int = 0
 
@@ -188,13 +207,13 @@ func (V *VPNConnection) CleanPortMap(protoMap *[256]*O1, mapType string) {
 						var timeout float64 = 29
 						ip := net.IP{byte(i), byte(i), byte(i), byte(i)}.String()
 						if ip == V.Meta.DNS1 || ip == V.Meta.DNS2 {
-							timeout = 4
+							timeout = 5
 						}
 
 						m.Lock.Lock()
 						for ri := range m.REMOTE {
 							if time.Since(m.REMOTE[ri].LastActivity).Seconds() > timeout {
-								// log.Println("DELETING PM: ", m.REMOTE)
+								log.Println("DELETING PM: ", ri)
 								delete(m.LOCAL, m.REMOTE[ri].Local)
 								delete(m.REMOTE, ri)
 							} else {
@@ -210,7 +229,7 @@ func (V *VPNConnection) CleanPortMap(protoMap *[256]*O1, mapType string) {
 						m.Lock.Lock()
 						for ri := range m.REMOTE {
 							if time.Since(m.REMOTE[ri].LastActivity).Seconds() > 86 {
-								// log.Println("DELETING PM: ", m.REMOTE)
+								// log.Println("DELETING PM: ", ri)
 								delete(m.LOCAL, m.REMOTE[ri].Local)
 								delete(m.REMOTE, ri)
 							} else {
@@ -248,6 +267,6 @@ func (V *VPNConnection) CleanPortMap(protoMap *[256]*O1, mapType string) {
 
 	}
 
-	// done := time.Since(start).Nanoseconds()
-	// log.Println(" @@@@@ WALK >>> Micro @@@@> ", done, " >> count >> ", count)
+	done := time.Since(start).Nanoseconds()
+	log.Println(" @@@@@ WALK >>> Nano @@@@> ", mapType, done, " >> count >> ", count)
 }

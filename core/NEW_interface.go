@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/zveinn/tunnels"
@@ -66,6 +67,30 @@ func PingAllVPNConnections(MONITOR chan int) {
 		MONITOR <- 3
 	}()
 	defer RecoverAndLogToFile()
+
+	sync := sync.WaitGroup{}
+
+	for i := range CONNECTIONS {
+		if CONNECTIONS[i] == nil {
+			continue
+		}
+		sync.Add(1)
+
+		go func(index int) {
+			defer sync.Done()
+			defer RecoverAndLogToFile()
+			err := CONNECTIONS[index].Ping()
+			if err != nil {
+				CreateErrorLog("", "error sending ping", err)
+				// DO STUFF??
+				// AUTO RECONNECT ?
+				// DISCONNECT?
+			}
+		}(i)
+
+	}
+
+	sync.Wait()
 }
 
 func getDefaultGateway() {

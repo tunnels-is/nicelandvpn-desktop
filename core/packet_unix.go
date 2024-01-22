@@ -63,7 +63,7 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 		} else if sendLocal {
 
 			fmt.Println("SEND LOCAL:", packet)
-			writtenBytes, writeError = V.Tun.Write(packet)
+			_, writeError = V.Tun.Write(packet)
 			if writeError != nil {
 				CreateErrorLog("", "Send: ", writeError)
 			}
@@ -72,12 +72,14 @@ func (V *VPNConnection) ReadFromLocalSocket() {
 		}
 		// fmt.Println("OUT", packet)
 
+		// fmt.Println("E:", len(packet))
 		writtenBytes, err = V.EVPNS.Write(packet)
 		if err != nil {
+			fmt.Println("WERR:", err)
 			_ = V.EVPNS.SOCKET.Close()
 			return
 		}
-		// fmt.Println("OUT", writtenBytes)
+		// fmt.Println("EC:", writtenBytes)
 		V.EgressBytes += writtenBytes
 		// end := time.Since(start).Microseconds()
 		// fmt.Println("OUT:", end)
@@ -100,15 +102,19 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 	)
 
 	for {
-
+		// setting ReadDeadline and reading 500k off the buffer
+		// redovers from packetloss and broken sends.
+		_ = V.EVPNS.SOCKET.SetReadDeadline(time.Now().Add(time.Second * 5))
 		receivedBytes, packet, readErr = V.EVPNS.Read()
 		if readErr != nil {
+			_, _ = V.EVPNS.SOCKET.Read(make([]byte, 66000))
 			CreateErrorLog("", "error reading from node socket", readErr, receivedBytes, packet)
-			return
+			continue
 		}
-		// fmt.Println("IN:", packet)
 
+		// fmt.Println("I:", len(packet))
 		if packet[0] == CODE_pingPong {
+			fmt.Println(packet)
 			V.PingReceived = time.Now()
 			continue
 		}
@@ -126,6 +132,5 @@ func (V *VPNConnection) ReadFromRouterSocket() {
 			CreateErrorLog("", "Send: ", writeErr)
 			return
 		}
-		// fmt.Println("IN", receivedBytes)
 	}
 }

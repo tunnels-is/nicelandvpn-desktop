@@ -847,14 +847,23 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 	fmt.Println(ConnectRequest.ID)
 	fmt.Println(ConnectRequest.UserID)
 	fmt.Println(ConnectRequest.DeviceToken)
+	fmt.Println("COUNTRY", ConnectRequest.Country)
 
 	CreateLog("connect", "Creating a route to VPN")
 
 	var VpnMeta *VPNConnectionMETA
 	VPNConnection := new(VPNConnection)
-	for i, v := range GLOBAL_STATE.C.Connections {
-		if v.ID == ConnectRequest.ID {
-			VpnMeta = GLOBAL_STATE.C.Connections[i]
+	if ConnectRequest.Country != "" {
+		for i, v := range GLOBAL_STATE.C.Connections {
+			if v.Tag == "Default" {
+				VpnMeta = GLOBAL_STATE.C.Connections[i]
+			}
+		}
+	} else {
+		for i, v := range GLOBAL_STATE.C.Connections {
+			if v.ID == ConnectRequest.ID {
+				VpnMeta = GLOBAL_STATE.C.Connections[i]
+			}
 		}
 	}
 	if VpnMeta == nil {
@@ -889,7 +898,9 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 		routerIndexForConnection = VpnMeta.RouterIndex
 	}
 
-	ConnectRequest.Country = VpnMeta.Country
+	if ConnectRequest.Country == "" {
+		ConnectRequest.Country = VpnMeta.Country
+	}
 
 	ARS, err := REF_ConnectToRouter(
 		routerIndexForConnection,
@@ -901,7 +912,8 @@ func REF_ConnectToAccessPoint(ConnectRequest *ConnectionRequest) (code int, errm
 		return 500, errors.New("error in router tunnel")
 	}
 
-	_, err = ARS.Write([]byte{28, 0, 1, 3})
+	// 3 == encryption protocol
+	_, err = ARS.Write([]byte{CODE_ConnectToNode, 0, 1, 3})
 	if err != nil {
 		CreateErrorLog("connect", "unable to send initialization code to router", err)
 		return 500, errors.New("")

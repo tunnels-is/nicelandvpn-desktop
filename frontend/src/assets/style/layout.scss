@@ -57,9 +57,64 @@ body::-webkit-scrollbar {
 	border: 1px solid grey;
 	padding: 10px !important;
 
-	:first-child {
-		margin: 0px !important;
+	// :first-child {
+	// 	margin: 0px !important;
+	// }
+}
+
+.notification-frame {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+
+	.title {
+		font-size: 20px;
+		margin-bottom: 20px;
 	}
+
+	.subtitle {
+		text-align: center;
+
+		.flag {
+			margin-top: 10px;
+			margin-left: 20px;
+			height: 30px !important;
+			width: 40px;
+		}
+	}
+
+
+	.button-wrapper {
+
+		display: flex;
+		justify-content: center;
+		flex-direction: row;
+
+		.cancel {
+			background-color: $notification-bg;
+			border: none;
+			padding: 10px;
+			color: $c-teal;
+			font-size: 1em !important;
+		}
+
+		.cancel:hover {
+			text-decoration: underline;
+		}
+
+		.exit {
+			padding: 10px;
+			border: none;
+			background-color: $notification-bg;
+			color: $c-red;
+			font-size: 1em !important;
+		}
+
+		.exit:hover {
+			text-decoration: underline;
+		}
+	}
+
 }
 
 .exit-confirm {
@@ -71,6 +126,11 @@ body::-webkit-scrollbar {
 		padding-top: 10px;
 		padding-left: 10px;
 		padding-right: 10px;
+	}
+
+	.flag {
+		height: 30px;
+		width: 40px;
 	}
 
 	.text-big {
@@ -1051,6 +1111,24 @@ button {
 				text-align: center !important;
 			}
 
+		}
+
+	}
+
+	.countries {
+		padding-left: 5px;
+		display: flex;
+		flex-direction: row;
+		margin-top: 5px;
+		justify-content: left;
+
+		.country {
+			cursor: pointer;
+			margin: 20px;
+			height: 100px;
+			width: 120px;
+			background: #171A1E;
+			padding: 15px;
 		}
 
 	}

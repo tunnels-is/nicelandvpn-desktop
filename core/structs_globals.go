@@ -601,7 +601,7 @@ type ConnectionRequest struct {
 	Node *VPNNode `json:"Node"`
 
 	// QUICK CONNECT
-	Country string `json:",omitempty" bson:"Country"`
+	Country string `json:"Country,omitempty" bson:"Country"`
 
 	Error     string `json:"Error" bson:"-"`
 	ErrorCode int    `json:"ErrorCode" bson:"-"`

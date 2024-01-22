@@ -153,8 +153,9 @@ func LoadConfig() {
 		newCon.AutomaticRouter = true
 		newCon.IPv4Address = "10.4.4.4"
 		newCon.NetMask = "255.255.255.0"
-		newCon.Tag = "Niceland Network"
-		newCon.IFName = "nicelandvpn"
+		// The Tag will be immutable
+		newCon.Tag = "Default"
+		newCon.IFName = "vpnn"
 		newCon.TxQueueLen = 3000
 		newCon.MTU = 65535
 		newCon.RouterProtocol = "tcp"
@@ -173,8 +174,12 @@ func LoadConfig() {
 		newCon.Initialize()
 
 		DNS1 := new(ConnectionDNS)
-		DNS1.TXT = []string{"welcome to niceland!"}
-		newCon.DNS["welcome.niceland.is"] = DNS1
+		DNS1.Wildcard = false
+		DNS1.TXT = []string{"welcome!"}
+		DNS1.CNAME = "welcome"
+		DNS1.IP = []string{"10.4.4.4"}
+
+		newCon.DNS["interface.vpn.local"] = DNS1
 
 		newNetwork := &ConnectionNetwork{
 			Tag:     "default",
@@ -183,7 +188,7 @@ func LoadConfig() {
 			Routes:  []*Route{},
 		}
 		newNetwork.Routes = append(newNetwork.Routes, &Route{
-			Address: "34.117.186.192",
+			Address: "default",
 			Metric:  "0",
 		})
 		newCon.Networks = append(newCon.Networks, newNetwork)

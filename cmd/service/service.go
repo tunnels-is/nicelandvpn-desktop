@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -44,7 +43,7 @@ func Start() {
 	for {
 		select {
 		case ID := <-routineMonitor:
-			log.Println("ID", ID)
+			// log.Println("ID", ID)
 			if ID == 1 {
 				go core.StartLogQueueProcessor(routineMonitor)
 			} else if ID == 2 {

@@ -134,81 +134,78 @@ const Dashboard = (props) => {
 	}
 
 
-	const ConfirmConnect = (a, ar) => {
+	const ConfirmConnect = (c) => {
 
 		toast.success((t) => (
-			<div className="exit-confirm">
-				<div className="text">
+			<div className="notification-frame">
+
+				<div className="title">
 					Your are connecting to
+				</div >
+
+				<div className="subtitle">
+					{c}
+					<img className="flag" src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + c.toLowerCase() + ".svg"} />
 				</div>
-				<div className="text-big">
-					{a.Tag}
+
+
+				<div className="button-wrapper">
+					<button className="cancel" onClick={() => {
+						toast.dismiss(t.id)
+						ConnectToVPN(c)
+					}}>
+						Connect
+					</button>
+
+					<button className="exit" onClick={() =>
+						toast.dismiss(t.id)}>
+						Cancel
+					</button>
 				</div>
-				<button className="cancel" onClick={() => {
-					toast.dismiss(t.id)
-					ConnectToVPN(a, ar)
-				}
-				}>Connect</button>
-				<button className="exit" onClick={() => toast.dismiss(t.id)}>Cancel</button>
-			</div>
+
+			</div >
 		), { id: "connect", duration: 999999 })
 
 	}
 
 
 
-	const ConnectToVPN = async (a, ar) => {
+	const ConnectToVPN = async (c) => {
 
 		try {
 
-			if (!STORE.ActiveRouterSet(props.state)) {
-				return
-			}
+			props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Connecting...", includeLogs: true })
 
-			props.toggleLoading({ logTag: "connect", tag: "CONNECT", show: true, msg: "Connecting you to VPN " + a.Tag, includeLogs: true })
-
+			let user = STORE.GetUser()
 			if (!user.DeviceToken) {
 				LogOut()
 				return
 			}
 
-			let method = undefined
-			if (props.state?.ActiveAccessPoint) {
-				method = "switch"
-			} else {
-				method = "connect"
-			}
+			let method = "connect"
+			let connectionRequest = {}
+			connectionRequest.UserID = user._id
+			connectionRequest.DeviceToken = user.DeviceToken.DT
+			connectionRequest.Country = c
 
-			let ConnectForm = {
-				UserID: user._id,
-				DeviceToken: user.DeviceToken.DT,
 
-				GROUP: ar.GROUP,
-				ROUTERID: ar.ROUTERID,
-
-				XGROUP: a.Router.GROUP,
-				XROUTERID: a.Router.ROUTERID,
-				DEVICEID: a.DEVICEID,
-			}
-
-			if (a.Networks) {
-				ConnectForm.Networks = a.Networks
-			}
-
-			let x = await API.method(method, ConnectForm)
-			if (x === undefined) {
+			let resp = await API.method(method, connectionRequest)
+			if (resp === undefined) {
 				props.toggleError("Unknown error, please try again in a moment")
 			} else {
-				if (x.status === 401) {
+				if (resp.status === 401) {
 					LogOut()
-				}
-				if (x.status === 200) {
-					STORE.Cache.Set("connected_quick", "XX")
-					props.showSuccessToast("Connected to VPN " + a.Tag, undefined)
+				} else if (resp.status === 200) {
+					props.showSuccessToast("connection ready!", undefined)
+				} else if (resp.data) {
+					console.log("HAHSJDHAKSJHDKHASDKJ")
+					console.dir(resp.data)
+					props.toggleError(resp.data)
 				} else {
-					props.toggleError(x.data)
+					props.toggleError("Unknown error, please try again in a moment")
 				}
 			}
+
 
 		} catch (error) {
 			console.dir(error)
@@ -389,84 +386,22 @@ const Dashboard = (props) => {
 
 	const RenderCountry = (c) => {
 		console.log("COUNTRY")
-		let country = "icon"
-		if (c !== "") {
-			country = c.toLowerCase()
-		}
+		let country = c.toLowerCase()
 		return (
-			<div className={`country`} onClick={() => ConfirmConnect()}>
-
-				{country !== "icon" &&
-					<>
-						<img
-							className="flag"
-							src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country + ".svg"}
-						/>
-
-					</>
-				}
-				{country === "icon" &&
-					<div className="icon">
-						<DesktopIcon className="icon" height={"auto"} width={"auto"}></DesktopIcon>
-					</div>
-				}
-
-
-			</div>)
+			<div className={`country`} onClick={() => ConfirmConnect(c)}>
+				<img className="flag" src={"https://raw.githubusercontent.com/tunnels-is/media/master/nl-website/v2/flags/" + country + ".svg"}
+				/>
+			</div>
+		)
 	}
 
 
 	return (
 		<div className="server-wrapper" >
-			<div className="search">
-
-				<div className="submit">
-					<MagnifyingGlassIcon
-						className="search-icon"
-						onClick={() => apiSearch()}
-						height={30}
-						width={30}>
-					</MagnifyingGlassIcon>
-
-				</div>
-
-				<CustomSelect
-					className={"filters"}
-					setValue={setQueryFilter}
-					defaultOption={{ key: "Tag", value: "Tag" }}
-					options={[
-						{ value: "Tag", key: "Tag" },
-						{ value: "IP", key: "IP" },
-						{ value: "Country", key: "Country" },
-						{ value: "Slots", key: "Slots" },
-						{ value: "ID", key: "ID" },
-					]}
-				></CustomSelect>
-
-				<CustomSelect
-					className={"comparisons"}
-					setValue={setComparison}
-					defaultOption={{ key: "=", value: "=" }}
-					options={[
-						{ value: "=", key: "=" },
-						{ value: ">", key: ">" },
-						{ value: "<", key: "<" },
-					]}
-				></CustomSelect>
-
-				<input
-					something="tag, id, country, ip, mbps, slots"
-					type="text"
-					onKeyDown={(k) => inputKeyDown(k)}
-					className="input"
-					onChange={updateFilter}
-					placeholder="search ..">
-				</input>
-			</div>
 
 			{!props.advancedMode &&
 				<div className="countries">
-					{(nodes.length > 1 && filter == "") &&
+					{!props.state.AvailableCountries &&
 						<Loader
 							className="spinner"
 							loading={true}
@@ -476,30 +411,79 @@ const Dashboard = (props) => {
 						/>}
 
 
-					{props.state?.AvailableCountries?.map((n) => {
-						return RenderCountry(n)
+					{props.state?.AvailableCountries?.map((c) => {
+						return RenderCountry(c)
 					})}
 
 				</div>
 			}
 
 			{props.advancedMode &&
-				<div className="nodes">
-					{(nodes.length > 1 && filter == "") &&
-						<Loader
-							className="spinner"
-							loading={true}
-							color={"#20C997"}
-							height={100}
-							width={50}
-						/>}
+				<>
+					<div className="search">
+
+						<div className="submit">
+							<MagnifyingGlassIcon
+								className="search-icon"
+								onClick={() => apiSearch()}
+								height={30}
+								width={30}>
+							</MagnifyingGlassIcon>
+
+						</div>
+
+						<CustomSelect
+							className={"filters"}
+							setValue={setQueryFilter}
+							defaultOption={{ key: "Tag", value: "Tag" }}
+							options={[
+								{ value: "Tag", key: "Tag" },
+								{ value: "IP", key: "IP" },
+								{ value: "Country", key: "Country" },
+								{ value: "Slots", key: "Slots" },
+								{ value: "ID", key: "ID" },
+							]}
+						></CustomSelect>
+
+						<CustomSelect
+							className={"comparisons"}
+							setValue={setComparison}
+							defaultOption={{ key: "=", value: "=" }}
+							options={[
+								{ value: "=", key: "=" },
+								{ value: ">", key: ">" },
+								{ value: "<", key: "<" },
+							]}
+						></CustomSelect>
+
+						<input
+							something="tag, id, country, ip, mbps, slots"
+							type="text"
+							onKeyDown={(k) => inputKeyDown(k)}
+							className="input"
+							onChange={updateFilter}
+							placeholder="search ..">
+						</input>
+					</div>
 
 
-					{nodes?.map((n) => {
-						return RenderNode(n)
-					})}
+					<div className="nodes">
+						{(nodes.length < 1 && filter == "") &&
+							<Loader
+								className="spinner"
+								loading={true}
+								color={"#20C997"}
+								height={100}
+								width={50}
+							/>}
 
-				</div>
+
+						{nodes?.map((n) => {
+							return RenderNode(n)
+						})}
+
+					</div>
+				</>
 			}
 
 

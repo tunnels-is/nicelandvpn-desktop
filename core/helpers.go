@@ -14,7 +14,8 @@ func InitPaths() {
 }
 
 const (
-	CODE_pingPong = 101
+	CODE_pingPong      = 101
+	CODE_ConnectToNode = 28
 )
 
 func RecoverAndLogToFile() {

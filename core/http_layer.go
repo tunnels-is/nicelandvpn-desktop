@@ -54,8 +54,8 @@ func START_API(MONITOR chan int) {
 	v1 := E.Group("/v1")
 	v1.POST("/method/:method", serveMethod)
 
-	E.File("/", "./public/index.html")
-	E.Static("/assets", "./public/assets/")
+	E.File("/", "./dist/index.html")
+	E.Static("/assets", "./dist/assets/")
 
 	err := E.Start("0.0.0.0:9999")
 	if err != nil {
